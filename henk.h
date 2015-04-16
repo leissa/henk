@@ -53,7 +53,7 @@ private:
 class Const : public Expr {
 public:
     Const(const Expr* type, std::string name)
-        : Expr(type ? level_up(type->sort()) : Box, std::move(name))
+        : Expr(type ? level_down(type->sort()) : Box, std::move(name))
         , type_(type)
     {}
 
@@ -77,9 +77,9 @@ protected:
 public:
     const Expr* type() const { return type_; }
     const Expr* owner() const { return owner_; }
+    virtual void dump() const;
 
 private:
-    void dump_var() const;
 
     const Expr* type_;
     const Expr* owner_;
@@ -93,7 +93,6 @@ public:
     {}
 
     const Abs* abs() const { return owner()->as<Abs>(); }
-    virtual void dump() const;
 };
 
 /// Variable of a quantification @p Pi.
@@ -104,15 +103,14 @@ public:
     {}
 
     const Pi* pi() const { return owner()->as<Pi>(); }
-    virtual void dump() const;
 };
 
 //------------------------------------------------------------------------------
 
 /// Base class for lambda abstraction @p Abs and quantification @p Pi.
-class BodyExpr : public Expr {
+class Body : public Expr {
 public:
-    BodyExpr(Sort sort, std::string name)
+    Body(Sort sort, std::string name)
         : Expr(sort, std::move(name))
         , body_(nullptr)
     {}
@@ -121,38 +119,38 @@ public:
     const Expr* body() const { return body_; }
     void close(const Expr* body) { assert(body_ == nullptr); body_ = body; }
 
-private:
-    virtual void dump_body() const;
-
-    const Expr* body_;
-
 protected:
+    void dump_body() const;
+
     std::unique_ptr<const Var> var_;
+
+private:
+    const Expr* body_;
 };
 
 /// Abstraction
-class Abs : public BodyExpr {
+class Abs : public Body {
 public:
     Abs(const Expr* type, std::string abs_name, std::string var_name)
-        : BodyExpr(level_down(type->sort()), std::move(abs_name))
+        : Body(level_down(type->sort()), std::move(abs_name))
     {
         var_.reset(new AbsVar(type, std::move(var_name)));
     }
 
-    const AbsVar* var() const { return var()->as<AbsVar>(); }
+    const AbsVar* var() const { return Body::var()->as<AbsVar>(); }
     virtual void dump() const;
 };
 
 /// Quantification
-class Pi : public BodyExpr {
+class Pi : public Body {
 public:
     Pi(const Expr* type, std::string pi_name, std::string var_name)
-        : BodyExpr(level_down(type->sort()), std::move(pi_name))
+        : Body(level_down(type->sort()), std::move(pi_name))
     {
         var_.reset(new PiVar(type, std::move(var_name)));
     }
 
-    const PiVar* var() const { return var_->as<PiVar>(); }
+    const PiVar* var() const { return Body::var()->as<PiVar>(); }
     virtual void dump() const;
 };
 
