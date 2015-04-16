@@ -9,20 +9,18 @@ namespace henk {
  */
 
 void Const::dump() const {
-    std::cout << name() << ": ";
-    if (type_)
-        type_->dump();
-    else
-        std::cout << "box";
+    std::cout << name();
 }
 
 void Var::dump() const {
-    std::cout << name() << ": ";
-    type()->dump();
+    std::cout << name();
 }
 
 void Body::dump_body() const {
-    std::cout << var()->name() << ". ";
+    var()->dump();
+    std::cout << ": ";
+    var()->type()->dump();
+    std::cout << ". ";
     body()->dump();
 }
 
