@@ -1,8 +1,13 @@
 #include "henk.h"
 
+#include <iostream>
+
 using namespace henk;
 
 int main() {
-    auto abs = new Abs(nullptr);
-    abs->set_body(abs->var()); // lambda x.x
+    auto kind = new Const(nullptr, "kind");
+    kind->dump();
+    std::cout << std::endl;
+    //auto abs = new Abs(nullptr);
+    //abs->close(abs->var()); // lambda x.x
 }
