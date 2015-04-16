@@ -53,7 +53,7 @@ private:
 class Const : public Expr {
 public:
     Const(const Expr* type, std::string name)
-        : Expr(type ? level_up(type->sort()) : Box, name)
+        : Expr(type ? level_up(type->sort()) : Box, std::move(name))
         , type_(type)
     {}
 
@@ -70,7 +70,7 @@ private:
 class Var : public Expr {
 protected:
     Var(const Expr* type, std::string name)
-        : Expr(level_down(type->sort()), name)
+        : Expr(level_down(type->sort()), std::move(name))
         , type_(type)
     {}
 
@@ -89,7 +89,7 @@ private:
 class AbsVar : public Var {
 public:
     AbsVar(const Expr* type, std::string name)
-        : Var(type, name)
+        : Var(type, std::move(name))
     {}
 
     const Abs* abs() const { return owner()->as<Abs>(); }
@@ -100,7 +100,7 @@ public:
 class PiVar : public Var {
 public:
     PiVar(const Expr* type, std::string name)
-        : Var(type, name)
+        : Var(type, std::move(name))
     {}
 
     const Pi* pi() const { return owner()->as<Pi>(); }
@@ -113,7 +113,7 @@ public:
 class BodyExpr : public Expr {
 public:
     BodyExpr(Sort sort, std::string name)
-        : Expr(sort, name)
+        : Expr(sort, std::move(name))
         , body_(nullptr)
     {}
 
@@ -134,9 +134,9 @@ protected:
 class Abs : public BodyExpr {
 public:
     Abs(const Expr* type, std::string abs_name, std::string var_name)
-        : BodyExpr(level_down(type->sort()), abs_name)
+        : BodyExpr(level_down(type->sort()), std::move(abs_name))
     {
-        var_.reset(new AbsVar(type, var_name));
+        var_.reset(new AbsVar(type, std::move(var_name)));
     }
 
     const AbsVar* var() const { return var()->as<AbsVar>(); }
@@ -147,9 +147,9 @@ public:
 class Pi : public BodyExpr {
 public:
     Pi(const Expr* type, std::string pi_name, std::string var_name)
-        : BodyExpr(level_down(type->sort()), pi_name)
+        : BodyExpr(level_down(type->sort()), std::move(pi_name))
     {
-        var_.reset(new PiVar(type, var_name));
+        var_.reset(new PiVar(type, std::move(var_name)));
     }
 
     const PiVar* var() const { return var_->as<PiVar>(); }
