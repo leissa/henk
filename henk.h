@@ -1,174 +1,270 @@
 #ifndef HENK_IR_H
 #define HENK_IR_H
 
+#include <map>
 #include <memory>
-#include <string>
 
 #include "thorin/util/cast.h"
 
 namespace henk {
 
-class Abs;
+class Lam;
 class Pi;
+class Body;
+class World;
 
 //------------------------------------------------------------------------------
 
 /// Base class for all @p Expr%s.
 class Expr : public thorin::MagicCast<Expr> {
-public:
-    enum Sort {
-        Term, Type, Kind, Box
-    };
-
-    Expr(Sort sort, std::string name)
-        : sort_(sort)
-        , name_(std::move(name))
-    {}
-
-    Sort sort() const { return sort_; }
-
-    static Sort level_up(Sort sort) {
-        auto result = Sort(int(sort)+1);
-        assert(0 <= int(result) && int(result) <= Box);
-        return result;
-    }
-
-    static Sort level_down(Sort sort) {
-        auto result = Sort(int(sort)-1);
-        assert(0 <= int(result) && int(result) <= Box);
-        return result;
-    }
-
-    const std::string& name() const { return name_; }
-    virtual void dump() const = 0;
-
-private:
-    std::string name_;
-
-    Sort sort_;
-};
-
-//------------------------------------------------------------------------------
-
-class Const : public Expr {
-public:
-    Const(const Expr* type, std::string name)
-        : Expr(type ? level_down(type->sort()) : Box, std::move(name))
-        , type_(type)
-    {}
-
-    const Expr* type() const { return type_; }
-    virtual void dump() const;
-
-private:
-    const Expr* type_;
-};
-
-//------------------------------------------------------------------------------
-
-/// Base class for Variable either bound by a lambda abstraction @p Abs or a @p Pi quantification.
-class Var : public Expr {
 protected:
-    Var(const Expr* type, std::string name)
-        : Expr(level_down(type->sort()), std::move(name))
-        , type_(type)
-    {}
+    friend class World;
+    
+    Expr() {}
 
 public:
+    //virtual void dump(std::ostream& stream) const = 0;
+};
+
+//------------------------------------------------------------------------------
+
+class AnnotatedExpr : public Expr {
+protected:
+    friend class World;
+    friend class Body;
+    
+    AnnotatedExpr(const Expr* type, std::string name)
+        : type_(type)
+        , name_(std::move(name))
+
+    {}
+public:
+    const std::string& name() const { return name_; }
     const Expr* type() const { return type_; }
-    const Expr* owner() const { return owner_; }
-    virtual void dump() const;
-
-private:
-
+protected:
     const Expr* type_;
+    std::string name_;
+    
+public:
+    //virtual void dump(std::ostream& stream) const;
+};
+
+class Const : public AnnotatedExpr {
+protected:
+    friend class World;
+    Const(const Expr* type, std::string name)
+        : AnnotatedExpr(type, std::move(name))
+    {}
+    
+};
+
+class IntValueConst : public Expr {
+protected:
+    friend class World;
+    IntValueConst(int value)
+        : value_(value)
+    {}
+    
+public:
+    int value() const { return value_; }
+
+protected:
+    int value_;
+};
+
+class BoolValueConst : public Expr {
+protected:
+    friend class World;
+    BoolValueConst(bool value)
+        : value_(value)
+    {}
+    
+public:
+    bool value() const { return value_; }
+
+protected:
+    bool value_;
+};
+
+
+class PrimConst : public Expr {
+protected:
+    friend class World;
+    PrimConst(std::string name)
+        : name_(name)
+    {}
+public:    
+    const std::string& name() const { return name_; } 
+
+protected:
+    std::string name_;
+       
+};
+
+//------------------------------------------------------------------------------
+
+/**
+ *  Base class for Variable either bound by a lambda abstraction @p Abs
+ *  or a @p Pi quantification, or not bound at all
+ */
+class VarIntr : public AnnotatedExpr {
+protected:
+    friend class World;
+    VarIntr(const Expr* type, std::string name)
+        : AnnotatedExpr(type, std::move(name))
+        , owner_(nullptr)
+    {}
+    
+    VarIntr(const Expr* type, std::string name, const Expr* ownerr)
+        : AnnotatedExpr(type, std::move(name))
+        , owner_(ownerr)
+    {}
+public:
+    const Expr* owner() const { return owner_; }
+    
+protected:
     const Expr* owner_;
 };
 
 /// Variable of a lambda abstraction @p Abs.
-class AbsVar : public Var {
-public:
-    AbsVar(const Expr* type, std::string name)
-        : Var(type, std::move(name))
-    {}
+class LamVar : public VarIntr {
+protected:
+    friend class World;
+    friend class Lam;
 
-    const Abs* abs() const { return owner()->as<Abs>(); }
+    LamVar(const Expr* type, std::string name)
+        : VarIntr(type, std::move(name))
+    {}
+    
+    LamVar(const Expr* type, std::string name, const Expr* owner)
+        : VarIntr(type, std::move(name), owner)
+    {}
+    
+public:
+    const Lam* lam() const { return owner()->as<Lam>(); }
 };
 
 /// Variable of a quantification @p Pi.
-class PiVar : public Var {
-public:
+class PiVar : public VarIntr {
+protected:
+    friend class World;
+    friend class Pi;
+
     PiVar(const Expr* type, std::string name)
-        : Var(type, std::move(name))
+        : VarIntr(type, std::move(name))
+    {}
+    
+    PiVar(const Expr* type, std::string name, const Expr* owner)
+        : VarIntr(type, std::move(name), owner)
     {}
 
+public:
     const Pi* pi() const { return owner()->as<Pi>(); }
+};
+
+/// Variable occurrence - must be introduced by Lam or Pi beforehand
+class VarOcc : public Expr {
+protected:
+    friend class World;
+    VarOcc(const Body* introduced_by)
+        : introduced_by_(introduced_by)
+    {}
+
+public:
+    const Body* introduced_by() const { return introduced_by_; }
+  //  void dump(std::ostream& stream) const;
+
+protected:
+    const Body* introduced_by_;
 };
 
 //------------------------------------------------------------------------------
 
-/// Base class for lambda abstraction @p Abs and quantification @p Pi.
+/// Base class for lambda abstraction @p Abs and dependent product @p Pi.
 class Body : public Expr {
-public:
-    Body(Sort sort, std::string name)
-        : Expr(sort, std::move(name))
-        , body_(nullptr)
-    {}
-
-    const Var* var() const { return var_.get(); }
-    const Expr* body() const { return body_; }
-    void close(const Expr* body) { assert(body_ == nullptr); body_ = body; }
-
 protected:
-    void dump_body() const;
+    Body()
+        : body_(nullptr)
+    {}
+    
+    Body(const Expr* body)
+        : body_(body)
+    {}
+    
+public:
+    const VarIntr* var() const { return var_.get(); }
+    const Expr* body() const { return body_; }
 
-    std::unique_ptr<const Var> var_;
+    void close(const Expr* body) { assert(body_ == nullptr); body_ = body; }
+  //  void dump(std::ostream& stream) const;
+    
+protected:
+    // not sure about that uniqueness
+    std::unique_ptr<const VarIntr> var_;
 
-private:
     const Expr* body_;
 };
 
-/// Abstraction
-class Abs : public Body {
-public:
-    Abs(const Expr* type, std::string abs_name, std::string var_name)
-        : Body(level_down(type->sort()), std::move(abs_name))
+/// Lambda abstraction
+class Lam : public Body {
+protected:
+    friend class World;
+    Lam(std::string var_name, const Expr* var_type)
     {
-        var_.reset(new AbsVar(type, std::move(var_name)));
+        var_.reset(new LamVar(var_type, std::move(var_name)));
     }
-
-    const AbsVar* var() const { return Body::var()->as<AbsVar>(); }
-    virtual void dump() const;
+    
+    Lam(const Expr* body, std::string var_name, const Expr* var_type)
+        : Body(body)
+    {
+        var_.reset(new LamVar(var_type, std::move(var_name)));
+    }
+    
+public:
+    const LamVar* var() const { return Body::var()->as<LamVar>(); }
+  //  void dump(std::ostream& stream) const;
 };
 
-/// Quantification
+/// Dependent product
 class Pi : public Body {
-public:
-    Pi(const Expr* type, std::string pi_name, std::string var_name)
-        : Body(level_down(type->sort()), std::move(pi_name))
+protected:
+    friend class World;
+    Pi(std::string var_name, const Expr* var_type)
     {
-        var_.reset(new PiVar(type, std::move(var_name)));
+        var_.reset(new PiVar(var_type, std::move(var_name)));
+    }
+    
+    Pi(const Expr* body, std::string var_name, const Expr* var_type)
+        : Body(body)
+    {
+        var_.reset(new PiVar(var_type, std::move(var_name)));
     }
 
+public:
     const PiVar* var() const { return Body::var()->as<PiVar>(); }
-    virtual void dump() const;
+ //   void dump(std::ostream& stream) const;
 };
 
 //------------------------------------------------------------------------------
 
 /// Application
 class App : public Expr {
+protected:
+    friend class World;
+    App(const Expr* appl, const Expr* arg)
+        : apply_(appl)
+        , arg_(arg)
+    {}
+
 public:
     const Expr* apply() const { return apply_; }
     const Expr* arg() const { return arg_; }
-    virtual void dump() const;
+ //   void dump(std::ostream& stream) const;
 
-private:
+protected:
     const Expr* apply_;
     const Expr* arg_;
 };
-
-//------------------------------------------------------------------------------
 
 }
 
