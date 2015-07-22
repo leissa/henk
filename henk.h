@@ -21,9 +21,16 @@ protected:
     friend class World;
     
     Expr() {}
-
+    virtual ~Expr() {}
+    
+    
+   // virtual bool equal(const Expr* other) const;
+    
 public:
-    //virtual void dump(std::ostream& stream) const = 0;
+    virtual size_t vhash() const = 0;
+   // mutable size_t hash = 0;
+   // friend struct ExprHash;
+  //  friend struct ExprEqual;
 };
 
 //------------------------------------------------------------------------------
@@ -36,17 +43,18 @@ protected:
     AnnotatedExpr(const Expr* type, std::string name)
         : type_(type)
         , name_(std::move(name))
-
     {}
+    
+    ~AnnotatedExpr() {}
 public:
     const std::string& name() const { return name_; }
     const Expr* type() const { return type_; }
+    size_t vhash() const;
 protected:
     const Expr* type_;
     std::string name_;
     
-public:
-    //virtual void dump(std::ostream& stream) const;
+
 };
 
 class Const : public AnnotatedExpr {
@@ -55,6 +63,8 @@ protected:
     Const(const Expr* type, std::string name)
         : AnnotatedExpr(type, std::move(name))
     {}
+    
+    ~Const() {}
     
 };
 
@@ -65,11 +75,15 @@ protected:
         : value_(value)
     {}
     
+    ~IntValueConst() {}
+    
 public:
     int value() const { return value_; }
-
+    size_t vhash() const;
 protected:
     int value_;
+    
+
 };
 
 class BoolValueConst : public Expr {
@@ -79,11 +93,15 @@ protected:
         : value_(value)
     {}
     
+    ~BoolValueConst() {}
+    
 public:
     bool value() const { return value_; }
-
+    size_t vhash() const;
 protected:
     bool value_;
+    
+
 };
 
 
@@ -93,12 +111,15 @@ protected:
     PrimConst(std::string name)
         : name_(name)
     {}
+    
+    ~PrimConst() {}
 public:    
     const std::string& name() const { return name_; } 
-
+    size_t vhash() const;
 protected:
     std::string name_;
-       
+    
+
 };
 
 //------------------------------------------------------------------------------
@@ -172,10 +193,11 @@ protected:
 
 public:
     const Body* introduced_by() const { return introduced_by_; }
-  //  void dump(std::ostream& stream) const;
-
+    size_t vhash() const;
 protected:
     const Body* introduced_by_;
+    
+
 };
 
 //------------------------------------------------------------------------------
@@ -191,18 +213,21 @@ protected:
         : body_(body)
     {}
     
+    ~Body() {}
+    
 public:
     const VarIntr* var() const { return var_.get(); }
     const Expr* body() const { return body_; }
 
     void close(const Expr* body) { assert(body_ == nullptr); body_ = body; }
-  //  void dump(std::ostream& stream) const;
-    
+    size_t vhash() const;
 protected:
     // not sure about that uniqueness
     std::unique_ptr<const VarIntr> var_;
 
     const Expr* body_;
+    
+    
 };
 
 /// Lambda abstraction
@@ -222,7 +247,6 @@ protected:
     
 public:
     const LamVar* var() const { return Body::var()->as<LamVar>(); }
-  //  void dump(std::ostream& stream) const;
 };
 
 /// Dependent product
@@ -242,7 +266,6 @@ protected:
 
 public:
     const PiVar* var() const { return Body::var()->as<PiVar>(); }
- //   void dump(std::ostream& stream) const;
 };
 
 //------------------------------------------------------------------------------
@@ -255,15 +278,18 @@ protected:
         : apply_(appl)
         , arg_(arg)
     {}
+    
+    ~App() {}
 
 public:
     const Expr* apply() const { return apply_; }
     const Expr* arg() const { return arg_; }
- //   void dump(std::ostream& stream) const;
-
+    size_t vhash() const;
 protected:
     const Expr* apply_;
     const Expr* arg_;
+    
+
 };
 
 }

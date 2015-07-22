@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <unordered_set>
 
 #include "henk.h"
 
@@ -89,24 +90,26 @@ public:
 /*
  * Factory methods
  */     
-    const Const* mk_const(const Expr* type, std::string name) { return new Const(type, std::move(name)); }
-    /*const*/ Lam* mk_lam(std::string var_name, const Expr* var_type) { return new Lam(std::move(var_name), var_type); }
-    /*const*/ Pi* mk_pi(std::string var_name, const Expr* var_type) { return new Pi(std::move(var_name), var_type); }
+    const Const* mk_const(const Expr* type, std::string name);
+    const Lam* mk_lam(std::string var_name, const Expr* var_type);
+    const Pi* mk_pi(std::string var_name, const Expr* var_type);
     const VarOcc* mk_varOcc(const Body* introduced_by) { return new VarOcc(introduced_by); }
-    const App* mk_app(const Expr* appl, const Expr* arg) { return new App(appl, arg); }
+    const App* mk_app(const Expr* appl, const Expr* arg);
+    const IntValueConst* mk_int(int value);
+    const BoolValueConst* mk_bool(bool value);
     
     // sugar
-    
-    const Pi* mk_function_type(const Expr* from, const Expr* to) { return new Pi(to, "_", from); }
+    const Pi* mk_function_type(const Expr* from, const Expr* to);
+
 /*
  * Utility methods
  */ 
- 
- //   const Expr* substitute(const Expr* expr, const Expr* oldval, const Expr* nval);
     const Expr* substitute(const Expr* expr, const VarIntr* var, const Expr* nval);
 
     bool is_a_subexpression(const Expr* expr, const Expr* sub) const;
 
+    const Expr* to_whnf(const Expr* expr);
+    bool are_expressions_equal(const Expr* expr1, const Expr* expr2);
     const Expr* typecheck(const Expr* expr);
     
     void show_prims(std::ostream& stream) const;
@@ -116,6 +119,7 @@ public:
 private:
     NameSupply* name_supply_;
     void dump_body(const Body* body, std::ostream& stream) const;
+    std::unordered_set<const Expr*> expressions_;
 };
 
 
