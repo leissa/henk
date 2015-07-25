@@ -12,25 +12,53 @@ class Lam;
 class Pi;
 class Body;
 class World;
+class Expr;
 
 //------------------------------------------------------------------------------
+
+class Expression {
+public:
+    Expression()
+        : expr_(nullptr)
+    {}
+    Expression(const Expr* expr)
+        : expr_(expr)
+    {}
+    
+    bool empty() const { return expr_ == nullptr; }
+    const Expr* expr() const { return expr_; }
+    
+private:
+    mutable const Expr* expr_;
+};
 
 /// Base class for all @p Expr%s.
 class Expr : public thorin::MagicCast<Expr> {
 protected:
     friend class World;
     
-    Expr() {}
+    Expr() 
+        : gid_(-1)
+    {}
+    
+    Expr(size_t gid)
+        : gid_(gid)
+    {}
     virtual ~Expr() {}
     
     
    // virtual bool equal(const Expr* other) const;
-    
+//public:
 public:
+    size_t gid() const { return gid_; }
+    size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
+protected:
     virtual size_t vhash() const = 0;
+    
+    void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<Expr*>(this)->gid_)  = gid; }
    // mutable size_t hash = 0;
-   // friend struct ExprHash;
-  //  friend struct ExprEqual;
+    const size_t gid_;// = 0;
+    mutable size_t hash_ = 0;
 };
 
 //------------------------------------------------------------------------------
@@ -49,11 +77,11 @@ protected:
 public:
     const std::string& name() const { return name_; }
     const Expr* type() const { return type_; }
-    size_t vhash() const;
+    
 protected:
     const Expr* type_;
     std::string name_;
-    
+    size_t vhash() const;
 
 };
 
@@ -63,7 +91,7 @@ protected:
     Const(const Expr* type, std::string name)
         : AnnotatedExpr(type, std::move(name))
     {}
-    
+  //  size_t vhash() const;
     ~Const() {}
     
 };
@@ -79,10 +107,10 @@ protected:
     
 public:
     int value() const { return value_; }
-    size_t vhash() const;
+    
 protected:
     int value_;
-    
+    size_t vhash() const;
 
 };
 
@@ -97,10 +125,10 @@ protected:
     
 public:
     bool value() const { return value_; }
-    size_t vhash() const;
+    
 protected:
     bool value_;
-    
+    size_t vhash() const;
 
 };
 
@@ -115,10 +143,10 @@ protected:
     ~PrimConst() {}
 public:    
     const std::string& name() const { return name_; } 
-    size_t vhash() const;
+    
 protected:
     std::string name_;
-    
+    size_t vhash() const;
 
 };
 
@@ -126,7 +154,7 @@ protected:
 
 /**
  *  Base class for Variable either bound by a lambda abstraction @p Abs
- *  or a @p Pi quantification, or not bound at all
+ *  or a @p Pi quantification
  */
 class VarIntr : public AnnotatedExpr {
 protected:
@@ -136,15 +164,16 @@ protected:
         , owner_(nullptr)
     {}
     
-    VarIntr(const Expr* type, std::string name, const Expr* ownerr)
+    VarIntr(const Expr* type, std::string name, const Expr* owner)
         : AnnotatedExpr(type, std::move(name))
-        , owner_(ownerr)
+        , owner_(owner)
     {}
 public:
     const Expr* owner() const { return owner_; }
     
 protected:
     const Expr* owner_;
+   // size_t vhash() const;
 };
 
 /// Variable of a lambda abstraction @p Abs.
@@ -193,10 +222,10 @@ protected:
 
 public:
     const Body* introduced_by() const { return introduced_by_; }
-    size_t vhash() const;
+    
 protected:
     const Body* introduced_by_;
-    
+    size_t vhash() const;
 
 };
 
@@ -219,14 +248,14 @@ public:
     const VarIntr* var() const { return var_.get(); }
     const Expr* body() const { return body_; }
 
-    void close(const Expr* body) { assert(body_ == nullptr); body_ = body; }
-    size_t vhash() const;
+    friend class World;
+    
 protected:
     // not sure about that uniqueness
     std::unique_ptr<const VarIntr> var_;
-
+    size_t vhash() const;
     const Expr* body_;
-    
+    void close(const Expr* body) {/* assert(body_ == nullptr); */body_ = body; }
     
 };
 
@@ -284,11 +313,11 @@ protected:
 public:
     const Expr* apply() const { return apply_; }
     const Expr* arg() const { return arg_; }
-    size_t vhash() const;
+    
 protected:
     const Expr* apply_;
     const Expr* arg_;
-    
+    size_t vhash() const;
 
 };
 

@@ -5,6 +5,7 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "hash.h"
 #include "henk.h"
 
 namespace henk {
@@ -90,38 +91,61 @@ public:
 /*
  * Factory methods
  */     
-    const Const* mk_const(const Expr* type, std::string name);
-    const Lam* mk_lam(std::string var_name, const Expr* var_type);
-    const Pi* mk_pi(std::string var_name, const Expr* var_type);
+    const Const* mk_const(const Expr* type, std::string name) { return cse(new Const(type, std::move(name))); }
+    const Lam* mk_lam(std::string var_name, const Expr* var_type) { return cse(new Lam(std::move(var_name), var_type)); }
+    const Pi* mk_pi(std::string var_name, const Expr* var_type){ return cse(new Pi(std::move(var_name), var_type)); }
     const VarOcc* mk_varOcc(const Body* introduced_by) { return new VarOcc(introduced_by); }
-    const App* mk_app(const Expr* appl, const Expr* arg);
-    const IntValueConst* mk_int(int value);
-    const BoolValueConst* mk_bool(bool value);
+    const App* mk_app(const Expr* appl, const Expr* arg) { return cse(new App(appl, arg)); }
+    const IntValueConst* mk_int(int value) { return cse(new IntValueConst(value)); }
+    const BoolValueConst* mk_bool(bool value) { return cse(new BoolValueConst(value)); }
+    const Body* close_body(/*const*/ Body* expr, const Expr* body) {
+        // probably not the best way to do that
+        auto res = expressions_.erase(expr);
+        if(res) {
+            std::cout << "deleted" << std::endl;
+        }
+        else {
+            std::cout << "not deleted" << std::endl;
+        }
+        expr->close(body);
+        return cse(expr);
+    }
     
     // sugar
-    const Pi* mk_function_type(const Expr* from, const Expr* to);
+    const Pi* mk_function_type(const Expr* from, const Expr* to) { return cse(new Pi(to, "_", from)); }
 
 /*
  * Utility methods
  */ 
-    const Expr* substitute(const Expr* expr, const VarIntr* var, const Expr* nval);
+    static const Expr* substitute(const Expr* expr, const VarIntr* var, const Expr* nval);
 
-    bool is_a_subexpression(const Expr* expr, const Expr* sub) const;
+    static bool is_a_subexpression(const Expr* expr, const Expr* sub);
 
-    const Expr* to_whnf(const Expr* expr);
-    bool are_expressions_equal(const Expr* expr1, const Expr* expr2);
+    static const Expr* to_whnf(const Expr* expr);
+    static bool are_expressions_equal(const Expr* expr1, const Expr* expr2);
     const Expr* typecheck(const Expr* expr);
     
     void show_prims(std::ostream& stream) const;
+    static void sdump(const Expr* expr) { sdump(expr, std::cout); }
+    static void sdump(const Expr* expr, std::ostream& stream);
     void dump(const Expr* expr, std::ostream& stream) const;
     void dump(const Expr* expr) const { dump(expr, std::cout); }
 
+    size_t gid() const { return gid_; }
+    
 private:
+    struct ExprHash { size_t operator () (const Expr* e) const { return e->hash(); } };
+    struct ExprEqual { bool operator () (const Expr* e1, const Expr* e2) const { return are_expressions_equal(e1, e2); } };
+
+    const Expr* cse_base(const Expr* expr);
+    template<class T> const T* cse(const T* expr) { return cse_base(expr)->template as<T>(); }
+
     NameSupply* name_supply_;
     void dump_body(const Body* body, std::ostream& stream) const;
-    std::unordered_set<const Expr*> expressions_;
+    static void sdump_body(const Body* body, std::ostream& stream) ;
+    HashSet<const Expr*, ExprHash, ExprEqual> expressions_;
+    size_t gid_; // global id for expressions
 };
-
 
 }
 

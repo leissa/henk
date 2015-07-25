@@ -5,18 +5,33 @@
 #include "henk.h"
 
 namespace henk {
+
+const Expr* World::cse_base(const Expr* expr) {
+    std::cout << "csebegin!" <<  expr << std::endl;
+   // dump(expr);
+    std::cout << std::endl << "of such expr" << std::endl;
+    for(auto e : expressions_) {
+      //  dump(e);
+        std::cout << " at " << e << std::endl;
+    }
+    std::cout << "expr_ shown" << std::endl;
+    auto i = expressions_.find(expr);
+  //  std::cout << "bb!" << std::endl;
+    if (i != expressions_.end()) {
+        std::cout << "found!" << std::endl;
+        delete expr;
+        expr = *i;
+    } else {
+        std::cout << "not found!" << std::endl;
+        expr->set_gid(gid_++);
+        auto p = expressions_.insert(expr);
+    }
     
+    return expr;
+}
+/*
 const Const* World::mk_const(const Expr* type, std::string name) { 
-    auto nconst = new Const(type, std::move(name));
-    auto hashed = expressions_.find(nconst);
-    if(hashed != expressions_.end()) {
-        delete nconst;
-        return (*hashed)->as<Const>();
-    }
-    else {
-        expressions_.insert(nconst);
-        return nconst;
-    }
+    return cse(new Const(type, std::move(name)));
 }
 
 const Lam* World::mk_lam(std::string var_name, const Expr* var_type) {
@@ -95,7 +110,7 @@ const Pi* World::mk_function_type(const Expr* from, const Expr* to) {
         expressions_.insert(npi);
         return npi;
     }
-}
+}*/
 
 const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* nval) {
     if(expr == var)
@@ -139,7 +154,7 @@ const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* 
         return expr;
 }
 
-bool World::is_a_subexpression(const Expr* expr, const Expr* sub) const {
+bool World::is_a_subexpression(const Expr* expr, const Expr* sub) {
     if(expr == sub) {
         return true;
     }
@@ -163,7 +178,8 @@ bool World::is_a_subexpression(const Expr* expr, const Expr* sub) const {
 
 const Expr* World::to_whnf(const Expr* expr) {
     if(expr == nullptr) {
-        throw std::runtime_error("nullptr has no weak head normal form");
+        return expr;
+        //throw std::runtime_error("nullptr has no weak head normal form");
     }
     else if(auto app = expr->isa<App>()) {
         auto f = to_whnf(app->apply());
@@ -183,6 +199,11 @@ bool World::are_expressions_equal(const Expr* expr1, const Expr* expr2) {
     auto e1 = to_whnf(expr1);
     auto e2 = to_whnf(expr2);
     // neither e1 nor e2 can be applications now
+   // std::cout << "are ";
+   // sdump(e1);
+  //  std::cout << " and ";
+ //   sdump(e2);
+  //  std::cout << " equal?" << std::endl;
 
     if(auto int1 = e1->isa<IntValueConst>()) {
         if(auto int2 = e2->isa<IntValueConst>()) {
@@ -206,23 +227,31 @@ bool World::are_expressions_equal(const Expr* expr1, const Expr* expr2) {
     }
     else if(auto varo1 = e1->isa<VarOcc>()) {
         if(auto varo2 = e2->isa<VarOcc>()) {
-            return are_expressions_equal(varo1->introduced_by(),
-                varo2->introduced_by());
+            return varo1->introduced_by() == varo2->introduced_by();
+           // return are_expressions_equal(varo1->introduced_by(),
+              //  varo2->introduced_by());
         }
     }
     else if(auto lam1 = e1->isa<Lam>()) {
         if(auto lam2 = e2->isa<Lam>()) {
-            return are_expressions_equal(lam1->var(), lam2->var()) &&
-                are_expressions_equal(lam1->body(), lam2->body());
+            // wrong! lambdas are equal iff their bodies are equivalent
+            return are_expressions_equal(lam1->body(),
+                substitute(lam2->body(), lam2->var(), new VarOcc(lam1)));
+            /*return are_expressions_equal(lam1->var(), lam2->var()) &&
+                are_expressions_equal(lam1->body(), lam2->body());*/
         }
     }
     else if(auto pi1 = e1->isa<Pi>()) {
         if(auto pi2 = e2->isa<Pi>()) {
+            // same as with lambdas!
             return are_expressions_equal(pi1->var(), pi2->var()) &&
                 are_expressions_equal(pi1->body(), pi2->body());
         }
     }
-    return false;
+    else if(e1 == nullptr && e2 == nullptr)
+        return true;
+    else
+        return false;
 }
 
 const Expr* World::typecheck(const Expr* expr) {
@@ -327,7 +356,8 @@ void World::show_prims(std::ostream& stream) const {
 
 void World::dump(const Expr* expr, std::ostream& stream) const {
     if(expr == nullptr) {
-        throw std::runtime_error("dumping nullptr");
+        stream << "'nullptr'";
+       // throw std::runtime_error("dumping nullptr");
     }
     else if(auto int_value = expr->isa<IntValueConst>()) {
         stream << int_value->value();
@@ -374,6 +404,67 @@ void World::dump(const Expr* expr, std::ostream& stream) const {
         dump(app->arg(), stream);
         stream << ")";
     }
+}
+
+
+void World::sdump(const Expr* expr, std::ostream& stream)  {
+    if(expr == nullptr) {
+        stream << "'nullptr'";
+       // throw std::runtime_error("dumping nullptr");
+    }
+    else if(auto int_value = expr->isa<IntValueConst>()) {
+        stream << int_value->value();
+    }
+    else if(auto bool_value = expr->isa<BoolValueConst>()) {
+        stream << bool_value->value() ? "true" : "false";
+    }
+    else if(auto prim_const = expr->isa<PrimConst>()) {
+        stream << prim_const->name();
+    }
+    else if(auto ann_expr = expr->isa<AnnotatedExpr>()) {
+        stream << ann_expr->name();
+    }
+    else if(auto var_occ = expr->isa<VarOcc>()) {
+        sdump(var_occ->introduced_by()->var(), stream);
+    }
+    else if(auto lam = expr->isa<Lam>()) {
+        stream << "λ";
+        sdump_body(lam, stream);
+    }
+    else if(auto pi = expr->isa<Pi>()) {
+         if(pi->var()->name() == "_" ||
+            !is_a_subexpression(pi->body(), pi->var())
+            ) {
+            stream << "(";
+            sdump(pi->var()->type(), stream);
+            stream << ") -> (";
+            sdump(pi->body(), stream);
+            stream << ")";
+        }
+     /*   else if(pi->var()->type() == prim_consts.at("*")) {
+            stream << "∀" << pi->var()->name() << ". ";
+            dump(pi->body(), stream);
+        }*/
+        else {
+            stream << "Π";
+            sdump_body(pi, stream);
+        }  
+    }
+    else if(auto app = expr->isa<App>()) {
+        stream << "(";
+        sdump(app->apply(), stream);
+        stream << ") (";
+        sdump(app->arg(), stream);
+        stream << ")";
+    }
+}
+
+void World::sdump_body(const Body* body, std::ostream& stream)  {
+    sdump(body->var(), stream);
+    std::cout << ":";
+    sdump(body->var()->type(), stream);
+    std::cout << ". ";
+    sdump(body->body(), stream);
 }
 
 void World::dump_body(const Body* body, std::ostream& stream) const {
