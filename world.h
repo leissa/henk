@@ -130,6 +130,8 @@ public:
     static void sdump(const Expr* expr, std::ostream& stream);
     void dump(const Expr* expr, std::ostream& stream) const;
     void dump(const Expr* expr) const { dump(expr, std::cout); }
+    void show_expressions(std::ostream& stream) const;
+    void show_expressions() const { show_expressions(std::cout); }
 
     size_t gid() const { return gid_; }
     

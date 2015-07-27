@@ -91,5 +91,7 @@ int main() {
     world->show_prims(std::cout);
     std::cout << std::endl;   
     test4(world);
+    std::cout << std::endl << "world has expressions: " << std::endl;
+    world->show_expressions();
     std::cout << std::endl;
 }

@@ -6,6 +6,13 @@
 
 namespace henk {
 
+void World::show_expressions(std::ostream& stream) const {
+    for(auto e : expressions_) {
+        dump(e);
+        std::cout << " at " << e << std::endl;
+    }
+}
+
 const Expr* World::cse_base(const Expr* expr) {
   //  std::cout << "csebegin!" <<  expr << std::endl;
  //   dump(expr);
@@ -22,7 +29,7 @@ const Expr* World::cse_base(const Expr* expr) {
     if (i != expressions_.end() && *i != expr) {
      //   std::cout << "found! " << *i << " ; " << std::endl;
        // dump(*i);
-     //  std::cout << "deleting " << expr << std::endl;
+       std::cout << "deleting " << expr << std::endl;
       //  delete expr;
     //    std::cout << " and deleted!" << std::endl;
         expr = *i;
@@ -311,11 +318,9 @@ void World::dump(const Expr* expr, std::ostream& stream) const {
         stream << "'nullptr'";
        // throw std::runtime_error("dumping nullptr");
     }
-    //std::cout << "czy int?" << std::endl;
     if(auto int_value = expr->isa<IntValueConst>()) {
         stream << int_value->value();
     }
- //   std::cout << "nie int!" << std::endl;
     if(auto bool_value = expr->isa<BoolValueConst>()) {
         stream << bool_value->value() ? "true" : "false";
     }
