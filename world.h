@@ -100,13 +100,13 @@ public:
     const BoolValueConst* mk_bool(bool value) { return cse(new BoolValueConst(value)); }
     const Body* close_body(/*const*/ Body* expr, const Expr* body) {
         // probably not the best way to do that
-        auto res = expressions_.erase(expr);
-        if(res) {
+       // auto res = expressions_.erase(expr);
+     /*   if(res) {
             std::cout << "deleted" << std::endl;
         }
         else {
             std::cout << "not deleted" << std::endl;
-        }
+        }*/
         expr->close(body);
         return cse(expr);
     }

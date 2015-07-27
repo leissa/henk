@@ -8,12 +8,12 @@ Lam* mk_poly_id(World* world, std::string tvar, std::string var) {
     auto type_lam = const_cast<Lam*>(
         world->mk_lam(tvar, world->prim_consts.at("*"))
     );
-    std::cout << "fsdfsd! " << std::endl;
+  //  std::cout << "fsdfsd! " << std::endl;
     auto id_lam = const_cast<Lam*>(world->mk_lam(var, type_lam->var()));
     auto x_occ = world->mk_varOcc(id_lam);
-    std::cout << "nbvcx " << std::endl;
+ //   std::cout << "nbvcx " << std::endl;
     id_lam = const_cast<Lam*>(world->close_body(id_lam, x_occ)->as<Lam>());
-    std::cout << "urwe! " << std::endl;
+//  std::cout << "urwe! " << std::endl;
     type_lam = const_cast<Lam*>(world->close_body(type_lam, id_lam)->as<Lam>());
     return type_lam;
 }
@@ -40,7 +40,7 @@ void test2(World* world) {
     auto app = world->mk_app(lam, world->mk_int(33));//prim_consts.at("Int"));
     world->dump(app);
     auto tapp = world->typecheck(app);
-    std::cout << "\n\n";
+    std::cout << " : ";
     world->dump(tapp);
 }
 
@@ -65,8 +65,12 @@ void test3(World* world) {
     auto app = world->mk_app(f, forallb);
     world->dump(app);
     std::cout << std::endl;
-    auto apptype = world->typecheck(app);
-    world->dump(apptype);
+    try {
+        auto apptype = world->typecheck(app);
+        world->dump(apptype);
+    } catch (std::runtime_error& e) {
+        std::cout << "typecheck error: " << e.what() << std::endl;
+    }
 }
 
 void test4(World* world) {
@@ -75,9 +79,11 @@ void test4(World* world) {
     std::cout << i42 << " vs " << i42prim << std::endl;
     
     auto id1 = mk_poly_id(world, "α", "x");
-   // world->dump(id1);
+    world->dump(id1);
+    std::cout << std::endl;
     auto id2 = mk_poly_id(world, "β", "y");
-  //  world->dump(id2);
+    world->dump(id2);
+    std::cout << "\nin memory: id1 = " << id1 << ", id2 = " << id2 << std::endl;
 }
 
 int main() {

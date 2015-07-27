@@ -7,132 +7,85 @@
 namespace henk {
 
 const Expr* World::cse_base(const Expr* expr) {
-    std::cout << "csebegin!" <<  expr << std::endl;
-   // dump(expr);
-    std::cout << std::endl << "of such expr" << std::endl;
-    for(auto e : expressions_) {
-      //  dump(e);
-        std::cout << " at " << e << std::endl;
-    }
-    std::cout << "expr_ shown" << std::endl;
+  //  std::cout << "csebegin!" <<  expr << std::endl;
+ //   dump(expr);
+ //   std::cout << std::endl << "of such expr" << std::endl;
+  /*  for(auto e : expressions_) {
+        
+        std::cout << " at " << e << " we have ";
+        dump(e);
+        std::cout << std::endl;
+    }*/
+  //  std::cout << "expr_ shown" << std::endl;
     auto i = expressions_.find(expr);
   //  std::cout << "bb!" << std::endl;
-    if (i != expressions_.end()) {
-        std::cout << "found!" << std::endl;
-        delete expr;
+    if (i != expressions_.end() && *i != expr) {
+     //   std::cout << "found! " << *i << " ; " << std::endl;
+       // dump(*i);
+     //  std::cout << "deleting " << expr << std::endl;
+      //  delete expr;
+    //    std::cout << " and deleted!" << std::endl;
         expr = *i;
     } else {
-        std::cout << "not found!" << std::endl;
+     //   std::cout << "not found!" << std::endl;
         expr->set_gid(gid_++);
         auto p = expressions_.insert(expr);
     }
     
     return expr;
 }
-/*
-const Const* World::mk_const(const Expr* type, std::string name) { 
-    return cse(new Const(type, std::move(name)));
-}
-
-const Lam* World::mk_lam(std::string var_name, const Expr* var_type) {
-    auto nlam = new Lam(std::move(var_name), var_type);
-    auto hashed = expressions_.find(nlam);
-    if(hashed != expressions_.end()) {
-        delete nlam;
-        return (*hashed)->as<Lam>();
-    }
-    else {
-        expressions_.insert(nlam);
-        return nlam;
-    }
-}
-
-const Pi* World::mk_pi(std::string var_name, const Expr* var_type) {
-    auto npi = new Pi(std::move(var_name), var_type);
-    auto hashed = expressions_.find(npi);
-    if(hashed != expressions_.end()) {
-        delete npi;
-        return (*hashed)->as<Pi>();
-    }
-    else {
-        expressions_.insert(npi);
-        return npi;
-    }
-}
-
-const App* World::mk_app(const Expr* appl, const Expr* arg) { 
-    auto napp = new App(appl, arg);
-    auto hashed = expressions_.find(napp);
-    if(hashed != expressions_.end()) {
-        delete napp;
-        return (*hashed)->as<App>();
-    }
-    else {
-        expressions_.insert(napp);
-        return napp;
-    }
-}
-
-const IntValueConst* World::mk_int(int value) {
-    auto nval = new IntValueConst(value);
-    auto hashed = expressions_.find(nval);
-    if(hashed != expressions_.end()) {
-        delete nval;
-        return (*hashed)->as<IntValueConst>();
-    }
-    else {
-        expressions_.insert(nval);
-        return nval;
-    }
-}
-
-const BoolValueConst* World::mk_bool(bool value) {
-    auto nval = new BoolValueConst(value);
-    auto hashed = expressions_.find(nval);
-    if(hashed != expressions_.end()) {
-        delete nval;
-        return (*hashed)->as<BoolValueConst>();
-    }
-    else {
-        expressions_.insert(nval);
-        return nval;
-    }
-}
-
-const Pi* World::mk_function_type(const Expr* from, const Expr* to) {
-    auto npi = new Pi(to, "_", from);
-    auto hashed = expressions_.find(npi);
-    if(hashed != expressions_.end()) {
-        delete npi;
-        return (*hashed)->as<Pi>();
-    }
-    else {
-        expressions_.insert(npi);
-        return npi;
-    }
-}*/
 
 const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* nval) {
-    if(expr == var)
+    if(expr == var) {
+  //      std::cout << "expr is var so return nval" << std::endl;
         return nval;
+    }
+/*    std::cout << "subst in " << expr << " that is " << std::flush;
+    sdump(expr);
+    std::cout << " val " << nval << " that is " << std::flush;
+    sdump(nval);
+    std::cout << " for var " << var << " that is " << std::flush;
+    sdump(var);
+    std::cout << std::endl;*/
     if(auto var_occ = expr->isa<VarOcc>()) {
+     //   std::cout << "varocc" << std::endl;
         if(var_occ->introduced_by()->var() == var) {
+          //  std::cout << "xoxo nval" << std::endl;
             return nval;
+        }
+        else {
+          //  std::cout << "xoxo expr" << std::endl;
+            return expr;
         }
     }
     else if(auto lam = expr->isa<Lam>()) {
         if(lam->var() == var) {
+           // std::cout << "same var, no subst" << std::endl;
             return expr;
         }
         else {
-            auto nlam = new Lam(lam->var()->name(), lam->var()->type());
+          //  std::cout << "diff vars, new lam to subst" << std::endl;
+            std::ostringstream nvarn;
+            nvarn << lam->var()->name() << "'";
+            auto nlam = new Lam(/*lam->var()->name()*/nvarn.str(), lam->var()->type());
+        //    std::cout << "nlam is " << std::flush; sdump(nlam); std::cout << std::endl;
+       //     std::cout << "subst nbody preparing" << std::endl;
             auto nbody = substitute(lam->body(), lam->var(), new VarOcc(nlam));
+       //     std::cout << "nbody is " << std::flush; sdump(nbody); std::cout << std::endl;
+      //      std::cout << "after preparation, subst in new lam" << std::endl;
             auto body_substituted = substitute(nbody, var, nval);
+       //     std::cout << "body substituted is " << std::flush;
+     //       sdump(body_substituted); std::cout << std::endl;
+      //      std::cout << "sbstuted and now close" << std::endl;
             nlam->close(body_substituted);
+         //   nlam = close_body(nlam, body_substituted);
+      //      std::cout << "and closed, res is " << std::flush;
+     //       sdump(nlam); std::cout << std::endl;
             return nlam;
         }
     } // ugly copy-paste -- is it possible to coalesce this code?
     else if(auto pi = expr->isa<Pi>()) {
+     //   std::cout << "pi!" << std::endl;
         if(pi->var() == var) {
             return expr;
         }
@@ -150,8 +103,10 @@ const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* 
         auto narg = substitute(app->arg(), var, nval);
         return new App(napply, narg);
     }
-    else
+    else {
+      //  std::cout << "nothing; return expr without subst" << std::endl;
         return expr;
+    }
 }
 
 bool World::is_a_subexpression(const Expr* expr, const Expr* sub) {
@@ -204,7 +159,8 @@ bool World::are_expressions_equal(const Expr* expr1, const Expr* expr2) {
   //  std::cout << " and ";
  //   sdump(e2);
   //  std::cout << " equal?" << std::endl;
-
+    if(e1 == e2)
+        return true;
     if(auto int1 = e1->isa<IntValueConst>()) {
         if(auto int2 = e2->isa<IntValueConst>()) {
             return int1->value() == int2->value();
@@ -228,24 +184,20 @@ bool World::are_expressions_equal(const Expr* expr1, const Expr* expr2) {
     else if(auto varo1 = e1->isa<VarOcc>()) {
         if(auto varo2 = e2->isa<VarOcc>()) {
             return varo1->introduced_by() == varo2->introduced_by();
-           // return are_expressions_equal(varo1->introduced_by(),
-              //  varo2->introduced_by());
         }
     }
     else if(auto lam1 = e1->isa<Lam>()) {
         if(auto lam2 = e2->isa<Lam>()) {
-            // wrong! lambdas are equal iff their bodies are equivalent
-            return are_expressions_equal(lam1->body(),
+            return are_expressions_equal(lam1->var()->type(), lam2->var()->type())
+                && are_expressions_equal(lam1->body(),
                 substitute(lam2->body(), lam2->var(), new VarOcc(lam1)));
-            /*return are_expressions_equal(lam1->var(), lam2->var()) &&
-                are_expressions_equal(lam1->body(), lam2->body());*/
         }
     }
     else if(auto pi1 = e1->isa<Pi>()) {
         if(auto pi2 = e2->isa<Pi>()) {
-            // same as with lambdas!
-            return are_expressions_equal(pi1->var(), pi2->var()) &&
-                are_expressions_equal(pi1->body(), pi2->body());
+            return are_expressions_equal(pi1->var()->type(), pi2->var()->type())
+                && are_expressions_equal(pi1->body(),
+                substitute(pi2->body(), pi2->var(), new VarOcc(pi1)));
         }
     }
     else if(e1 == nullptr && e2 == nullptr)
@@ -359,10 +311,12 @@ void World::dump(const Expr* expr, std::ostream& stream) const {
         stream << "'nullptr'";
        // throw std::runtime_error("dumping nullptr");
     }
-    else if(auto int_value = expr->isa<IntValueConst>()) {
+    //std::cout << "czy int?" << std::endl;
+    if(auto int_value = expr->isa<IntValueConst>()) {
         stream << int_value->value();
     }
-    else if(auto bool_value = expr->isa<BoolValueConst>()) {
+ //   std::cout << "nie int!" << std::endl;
+    if(auto bool_value = expr->isa<BoolValueConst>()) {
         stream << bool_value->value() ? "true" : "false";
     }
     else if(auto prim_const = expr->isa<PrimConst>()) {
@@ -412,10 +366,12 @@ void World::sdump(const Expr* expr, std::ostream& stream)  {
         stream << "'nullptr'";
        // throw std::runtime_error("dumping nullptr");
     }
-    else if(auto int_value = expr->isa<IntValueConst>()) {
+    
+    if(auto int_value = expr->isa<IntValueConst>()) {
         stream << int_value->value();
     }
-    else if(auto bool_value = expr->isa<BoolValueConst>()) {
+    
+    if(auto bool_value = expr->isa<BoolValueConst>()) {
         stream << bool_value->value() ? "true" : "false";
     }
     else if(auto prim_const = expr->isa<PrimConst>()) {
