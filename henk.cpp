@@ -5,6 +5,14 @@
 
 namespace henk {
 
+const Expr* Expression::deref() const {
+    if(expr_ == nullptr)
+        return nullptr;
+    
+    // TODO
+    return expr_;
+}
+
 size_t AnnotatedExpr::vhash() const {
     return hash_combine(hash_begin(gid()), type()->gid());
 }

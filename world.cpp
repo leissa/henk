@@ -6,6 +6,15 @@
 
 namespace henk {
 
+Expression World::close_body(Expression abstraction, Expression body) {
+    auto abs = (*abstraction)->as<Body>();
+    std::ostringstream nvarn;
+    nvarn << abs->var()->name() << "'";
+    auto nabs = new Lam(nvarn.str(), abs->var()->type());
+    nabs->close(substitute(*body, abs->var(), new VarOcc(nabs)));
+    return cse(nabs);
+}
+
 void World::show_expressions(std::ostream& stream) const {
     for(auto e : expressions_) {
         dump(e);
@@ -30,7 +39,7 @@ const Expr* World::cse_base(const Expr* expr) {
      //   std::cout << "found! " << *i << " ; " << std::endl;
        // dump(*i);
        std::cout << "deleting " << expr << std::endl;
-      //  delete expr;
+        delete expr;
     //    std::cout << " and deleted!" << std::endl;
         expr = *i;
     } else {
@@ -71,19 +80,20 @@ const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* 
             return expr;
         }
         else {
-          //  std::cout << "diff vars, new lam to subst" << std::endl;
+        //    std::cout << "diff vars, new lam to subst" << std::endl;
             std::ostringstream nvarn;
             nvarn << lam->var()->name() << "'";
-            auto nlam = new Lam(/*lam->var()->name()*/nvarn.str(), lam->var()->type());
-        //    std::cout << "nlam is " << std::flush; sdump(nlam); std::cout << std::endl;
+            auto ntype = substitute(lam->var()->type(), var, nval);
+            auto nlam = new Lam(/*lam->var()->name()*/nvarn.str(), ntype/*lam->var()->type()*/);
+       //     std::cout << "nlam is " << std::flush; sdump(nlam); std::cout << std::endl;
        //     std::cout << "subst nbody preparing" << std::endl;
             auto nbody = substitute(lam->body(), lam->var(), new VarOcc(nlam));
        //     std::cout << "nbody is " << std::flush; sdump(nbody); std::cout << std::endl;
       //      std::cout << "after preparation, subst in new lam" << std::endl;
             auto body_substituted = substitute(nbody, var, nval);
        //     std::cout << "body substituted is " << std::flush;
-     //       sdump(body_substituted); std::cout << std::endl;
-      //      std::cout << "sbstuted and now close" << std::endl;
+       //     sdump(body_substituted); std::cout << std::endl;
+       //     std::cout << "sbstuted and now close" << std::endl;
             nlam->close(body_substituted);
          //   nlam = close_body(nlam, body_substituted);
       //      std::cout << "and closed, res is " << std::flush;
@@ -97,7 +107,10 @@ const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* 
             return expr;
         }
         else {
-            auto npi = new Pi(pi->var()->name(), pi->var()->type());
+            std::ostringstream nvarn;
+            nvarn << pi->var()->name() << "'";
+            auto ntype = substitute(pi->var()->type(), var, nval);
+            auto npi = new Pi(nvarn.str(), ntype/*pi->var()->type()*/);
             auto nbody = substitute(pi->body(), pi->var(), new VarOcc(npi));
             auto body_substituted = substitute(nbody, var, nval);
             npi->close(body_substituted);
@@ -109,6 +122,9 @@ const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* 
         auto napply = substitute(app->apply(), var, nval);
         auto narg = substitute(app->arg(), var, nval);
         return new App(napply, narg);
+    }
+    else if(auto anne = expr->isa<AnnotatedExpr>()) {
+        
     }
     else {
       //  std::cout << "nothing; return expr without subst" << std::endl;
@@ -207,13 +223,12 @@ bool World::are_expressions_equal(const Expr* expr1, const Expr* expr2) {
                 substitute(pi2->body(), pi2->var(), new VarOcc(pi1)));
         }
     }
-    else if(e1 == nullptr && e2 == nullptr)
-        return true;
     else
         return false;
 }
 
-const Expr* World::typecheck(const Expr* expr) {
+Expression World::typecheck(Expression e) {
+    auto expr = *e;
     if(expr == nullptr) {
         throw std::runtime_error("typechecking nullptr");
     }

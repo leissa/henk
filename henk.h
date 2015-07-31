@@ -27,6 +27,11 @@ public:
     
     bool empty() const { return expr_ == nullptr; }
     const Expr* expr() const { return expr_; }
+    const Expr* deref() const;
+    const Expr* operator *() const { return deref(); }
+    bool operator == (const Expr* other) const { return this->deref() == other; }
+    operator const Expr*() const { return deref(); }
+    const Expr* operator -> () const { return deref(); }
     
 private:
     mutable const Expr* expr_;
@@ -46,9 +51,6 @@ protected:
     {}
     virtual ~Expr() {}
     
-    
-   // virtual bool equal(const Expr* other) const;
-//public:
 public:
     size_t gid() const { return gid_; }
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
@@ -56,8 +58,7 @@ protected:
     virtual size_t vhash() const = 0;
     
     void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<Expr*>(this)->gid_)  = gid; }
-   // mutable size_t hash = 0;
-    const size_t gid_;// = 0;
+    const size_t gid_;
     mutable size_t hash_ = 0;
 };
 
@@ -73,7 +74,6 @@ protected:
         , name_(std::move(name))
     {}
     
-    ~AnnotatedExpr() {}
 public:
     const std::string& name() const { return name_; }
     const Expr* type() const { return type_; }
@@ -91,7 +91,7 @@ protected:
     Const(const Expr* type, std::string name)
         : AnnotatedExpr(type, std::move(name))
     {}
-  //  size_t vhash() const;
+    
     ~Const() {}
     
 };
@@ -173,7 +173,6 @@ public:
     
 protected:
     const Expr* owner_;
-   // size_t vhash() const;
 };
 
 /// Variable of a lambda abstraction @p Abs.
@@ -255,7 +254,7 @@ protected:
     std::unique_ptr<const VarIntr> var_;
     size_t vhash() const;
     const Expr* body_;
-    void close(const Expr* body) {/* assert(body_ == nullptr); */body_ = body; }
+    void close(const Expr* body) { assert(body_ == nullptr); body_ = body; }
     
 };
 

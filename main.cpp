@@ -4,17 +4,13 @@
 
 using namespace henk;
 
-Lam* mk_poly_id(World* world, std::string tvar, std::string var) {
-    auto type_lam = const_cast<Lam*>(
-        world->mk_lam(tvar, world->prim_consts.at("*"))
-    );
-  //  std::cout << "fsdfsd! " << std::endl;
-    auto id_lam = const_cast<Lam*>(world->mk_lam(var, type_lam->var()));
+Expression mk_poly_id(World* world, std::string tvar, std::string var) {
+    auto type_lam = world->mk_lam(tvar, world->prim_consts.at("*"));
+    auto id_lam = world->mk_lam(var, (*type_lam)->as<Lam>()->var());
     auto x_occ = world->mk_varOcc(id_lam);
- //   std::cout << "nbvcx " << std::endl;
-    id_lam = const_cast<Lam*>(world->close_body(id_lam, x_occ)->as<Lam>());
-//  std::cout << "urwe! " << std::endl;
-    type_lam = const_cast<Lam*>(world->close_body(type_lam, id_lam)->as<Lam>());
+    id_lam = world->close_body(id_lam, x_occ)->as<Lam>();
+    type_lam = world->close_body(type_lam, id_lam)->as<Lam>();
+
     return type_lam;
 }
 
@@ -30,13 +26,16 @@ void test2(World* world) {
      // U = lambda _ . Int
     // (lambda x: (U sth). 42) (Int)
     
-    auto u = const_cast<Lam*>(world->mk_lam("y", world->prim_consts.at("*")));
-    u = const_cast<Lam*>(world->close_body(u, world->prim_consts.at("Int"))->as<Lam>());
-    auto lam = const_cast<Lam*>(world->mk_lam("x", world->mk_app(
+    auto u = world->mk_lam("y", world->prim_consts.at("*"));
+
+    u = world->close_body(u, world->prim_consts.at("Int"))->as<Lam>();
+
+    auto lam = world->mk_lam("x", world->mk_app(
         u, world->prim_consts.at("Bool")
         )
-    ));
-    lam = const_cast<Lam*>(world->close_body(lam, world->mk_int(42))->as<Lam>());
+    );
+    lam = world->close_body(lam, world->mk_int(42))->as<Lam>();
+
     auto app = world->mk_app(lam, world->mk_int(33));//prim_consts.at("Int"));
     world->dump(app);
     auto tapp = world->typecheck(app);
@@ -48,16 +47,17 @@ void test3(World* world) {
      // f (forall b. b -> b)
     // where f: forall a. a -> Int
     // should fail
-    auto f = const_cast<Pi*>(world->mk_pi("α", world->prim_consts.at("*")));
-    f = const_cast<Pi*>(world->close_body(f, world->mk_function_type(
-        f->var(), world->prim_consts.at("Int")
+    auto f = world->mk_pi("α", world->prim_consts.at("*"));
+
+    f = world->close_body(f, world->mk_function_type(
+        /*f->var()*/world->mk_varOcc(f), world->prim_consts.at("Int")
         )
-    )->as<Pi>());
-    auto forallb = const_cast<Pi*>(world->mk_pi("β", world->prim_consts.at("*")));
-    forallb = const_cast<Pi*>(world->close_body(forallb, world->mk_function_type(
-        forallb->var(), forallb->var()
+    );
+    auto forallb = world->mk_pi("β", world->prim_consts.at("*"));
+    forallb = world->close_body(forallb, world->mk_function_type(
+        /*forallb->var()*/world->mk_varOcc(forallb), /*forallb->var()*/world->mk_varOcc(forallb)
         )
-    )->as<Pi>());
+    );
     world->dump(f);
     std::cout << std::endl;
     world->dump(forallb);

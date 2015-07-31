@@ -10,46 +10,6 @@
 
 namespace henk {
 
-class NameSupply {
-public:
-    NameSupply()
-        : name('a')
-        , number(0)
-    {}
-    
-    std::string get() {
-        std::ostringstream s;
-        if(number == 0) {
-            if(name < 'z') {
-                s << name;
-                name++;
-                return s.str();
-            }
-            else {
-                name = 'a';
-                number++;
-                return "z";
-            }
-        }
-        else {
-            if(name < 'z') {
-                s << name << number;
-                name++;
-                return s.str();
-            }
-            else {
-                s << "a" << number;
-                name = 'a';
-                number++;
-                return s.str();
-            }
-        }
-    }
-private:
-    char name;
-    int number;
-};
-
 class World {
 public:
     std::map<std::string, const PrimConst*> prim_consts;
@@ -85,34 +45,23 @@ public:
             std::make_pair(std::make_pair(prim_consts.at("⬜"), prim_consts.at("**")), prim_consts.at("**")),
             std::make_pair(std::make_pair(prim_consts.at("⬜"), prim_consts.at("⬜")), prim_consts.at("⬜"))
         }
-        , name_supply_(new NameSupply())
+       // , name_supply_(new NameSupply())
     {}
     
 /*
  * Factory methods
  */     
-    const Const* mk_const(const Expr* type, std::string name) { return cse(new Const(type, std::move(name))); }
-    const Lam* mk_lam(std::string var_name, const Expr* var_type) { return cse(new Lam(std::move(var_name), var_type)); }
-    const Pi* mk_pi(std::string var_name, const Expr* var_type){ return cse(new Pi(std::move(var_name), var_type)); }
-    const VarOcc* mk_varOcc(const Body* introduced_by) { return new VarOcc(introduced_by); }
-    const App* mk_app(const Expr* appl, const Expr* arg) { return cse(new App(appl, arg)); }
-    const IntValueConst* mk_int(int value) { return cse(new IntValueConst(value)); }
-    const BoolValueConst* mk_bool(bool value) { return cse(new BoolValueConst(value)); }
-    const Body* close_body(/*const*/ Body* expr, const Expr* body) {
-        // probably not the best way to do that
-       // auto res = expressions_.erase(expr);
-     /*   if(res) {
-            std::cout << "deleted" << std::endl;
-        }
-        else {
-            std::cout << "not deleted" << std::endl;
-        }*/
-        expr->close(body);
-        return cse(expr);
-    }
+    Expression mk_const(Expression type, std::string name) { return cse(new Const(*type, std::move(name))); }
+    Expression mk_lam(std::string var_name, Expression var_type) { return cse(new Lam(std::move(var_name), *var_type)); }
+    Expression mk_pi(std::string var_name, Expression var_type){ return cse(new Pi(std::move(var_name), *var_type)); }
+    Expression mk_varOcc(Expression introduced_by) { return new VarOcc((*introduced_by)->as<Body>()); }
+    Expression mk_app(Expression appl, Expression arg) { return cse(new App(*appl, *arg)); }
+    Expression mk_int(int value) { return cse(new IntValueConst(value)); }
+    Expression mk_bool(bool value) { return cse(new BoolValueConst(value)); }
+    Expression close_body(Expression abstraction, Expression body);
     
     // sugar
-    const Pi* mk_function_type(const Expr* from, const Expr* to) { return cse(new Pi(to, "_", from)); }
+    const Pi* mk_function_type(Expression from, Expression to) { return cse(new Pi(to, "_", from)); }
 
 /*
  * Utility methods
@@ -123,7 +72,7 @@ public:
 
     static const Expr* to_whnf(const Expr* expr);
     static bool are_expressions_equal(const Expr* expr1, const Expr* expr2);
-    const Expr* typecheck(const Expr* expr);
+    Expression typecheck(Expression expr);
     
     void show_prims(std::ostream& stream) const;
     static void sdump(const Expr* expr) { sdump(expr, std::cout); }
@@ -142,7 +91,6 @@ private:
     const Expr* cse_base(const Expr* expr);
     template<class T> const T* cse(const T* expr) { return cse_base(expr)->template as<T>(); }
 
-    NameSupply* name_supply_;
     void dump_body(const Body* body, std::ostream& stream) const;
     static void sdump_body(const Body* body, std::ostream& stream) ;
     HashSet<const Expr*, ExprHash, ExprEqual> expressions_;
