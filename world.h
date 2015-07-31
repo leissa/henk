@@ -90,6 +90,7 @@ private:
 
     const Expr* cse_base(const Expr* expr);
     template<class T> const T* cse(const T* expr) { return cse_base(expr)->template as<T>(); }
+    bool replace(Expression olde, Expression newe);
 
     void dump_body(const Body* body, std::ostream& stream) const;
     static void sdump_body(const Body* body, std::ostream& stream) ;

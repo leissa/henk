@@ -44,7 +44,7 @@ size_t VarOcc::vhash() const {
 size_t Body::vhash() const {
     return hash_begin(var()->hash());
     // body is a nullptr just after construction
-    // but we want to hash it after being closed... 
+    // but we want to hash it after being closed... what to do?
   //  return hash_combine(var()->hash(), body()->hash());
 }
 

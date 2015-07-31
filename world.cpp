@@ -15,6 +15,10 @@ Expression World::close_body(Expression abstraction, Expression body) {
     return cse(nabs);
 }
 
+bool World::replace(Expression olde, Expression newe) {
+    (*olde)->set_representative(*newe);
+}
+
 void World::show_expressions(std::ostream& stream) const {
     for(auto e : expressions_) {
         dump(e);
@@ -124,7 +128,8 @@ const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* 
         return new App(napply, narg);
     }
     else if(auto anne = expr->isa<AnnotatedExpr>()) {
-        
+        // should there be a substitution on anne->type() or not?
+        return expr;
     }
     else {
       //  std::cout << "nothing; return expr without subst" << std::endl;

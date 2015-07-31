@@ -44,10 +44,12 @@ protected:
     
     Expr() 
         : gid_(-1)
+        , representative_(this)
     {}
     
     Expr(size_t gid)
         : gid_(gid)
+        , representative_(this)
     {}
     virtual ~Expr() {}
     
@@ -60,6 +62,10 @@ protected:
     void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<Expr*>(this)->gid_)  = gid; }
     const size_t gid_;
     mutable size_t hash_ = 0;
+    mutable const Expr* representative_;
+    
+    void set_representative(const Expr* e) const { representative_ = e; }
+    const Expr* representative() { return representative_; }
 };
 
 //------------------------------------------------------------------------------
