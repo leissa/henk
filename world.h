@@ -4,14 +4,20 @@
 #include <iostream>
 #include <sstream>
 #include <unordered_set>
+#include <list>
 
 #include "hash.h"
 #include "henk.h"
 
 namespace henk {
+class Expression;
+
+
 
 class World {
 public:
+    friend class Expression;
+
     std::map<std::string, const PrimConst*> prim_consts;
     std::map<const PrimConst*, const PrimConst*> prim_rules_has_type;
     std::map<std::pair<const PrimConst*, const PrimConst*>, const PrimConst*> wavy_arrow_rules;
@@ -51,17 +57,17 @@ public:
 /*
  * Factory methods
  */     
-    Expression mk_const(Expression type, std::string name) { return cse(new Const(*type, std::move(name))); }
-    Expression mk_lam(std::string var_name, Expression var_type) { return cse(new Lam(std::move(var_name), *var_type)); }
-    Expression mk_pi(std::string var_name, Expression var_type){ return cse(new Pi(std::move(var_name), *var_type)); }
-    Expression mk_varOcc(Expression introduced_by) { return new VarOcc((*introduced_by)->as<Body>()); }
-    Expression mk_app(Expression appl, Expression arg) { return cse(new App(*appl, *arg)); }
-    Expression mk_int(int value) { return cse(new IntValueConst(value)); }
-    Expression mk_bool(bool value) { return cse(new BoolValueConst(value)); }
+    Expression mk_const(Expression type, std::string name);// { return cse(new Const(*type, std::move(name))); }
+    Expression mk_lam(std::string var_name, Expression var_type);// { return cse(new Lam(std::move(var_name), *var_type)); }
+    Expression mk_pi(std::string var_name, Expression var_type);// { return cse(new Pi(std::move(var_name), *var_type)); }
+    Expression mk_varOcc(Expression introduced_by);// { return new VarOcc((*introduced_by)->as<Body>()); }
+    Expression mk_app(Expression appl, Expression arg);// { return cse(new App(*appl, *arg)); }
+    Expression mk_int(int value);// { return cse(new IntValueConst(value)); }
+    Expression mk_bool(bool value);// { return cse(new BoolValueConst(value)); }
     Expression close_body(Expression abstraction, Expression body);
     
     // sugar
-    const Pi* mk_function_type(Expression from, Expression to) { return cse(new Pi(to, "_", from)); }
+    Expression mk_function_type(Expression from, Expression to);// { return cse(new Pi(to, "_", from)); }
 
 /*
  * Utility methods
@@ -90,12 +96,54 @@ private:
 
     const Expr* cse_base(const Expr* expr);
     template<class T> const T* cse(const T* expr) { return cse_base(expr)->template as<T>(); }
-    bool replace(Expression olde, Expression newe);
+   // bool replace(Expression olde, Expression newe);
 
     void dump_body(const Body* body, std::ostream& stream) const;
     static void sdump_body(const Body* body, std::ostream& stream) ;
     HashSet<const Expr*, ExprHash, ExprEqual> expressions_;
     size_t gid_; // global id for expressions
+    
+    void removeExpr(const Expr* expr);
+    void removeExprs(std::list<const Expr*> exprs) { for(auto e : exprs) removeExpr(e); }
+};
+
+class Expression {
+public:
+    Expression(World* world)
+        : expr_(nullptr)
+        , world_(world)
+    {}
+    
+    Expression(const Expr* expr)
+        : expr_(expr)
+        , world_(nullptr)
+    {}
+    
+    Expression(const Expr* expr, World* world)
+        : expr_(expr)
+        , world_(world)
+    { expr_->increaseRefCount(); }
+    
+    ~Expression() {
+        expr_->decreaseRefCount();
+        if(expr_->refCount() == 0) {
+            world_->removeExprs(expr_->gatherUnusedCascading());
+            //world_->foo();
+            //delete expr_;
+        }
+    }
+    
+    bool empty() const { return expr_ == nullptr; }
+    const Expr* expr() const { return expr_; }
+    const Expr* deref() const;
+    const Expr* operator *() const { return deref(); }
+    bool operator == (const Expr* other) const { return this->deref() == other; }
+    operator const Expr*() const { return deref(); }
+    const Expr* operator -> () const { return deref(); }
+    
+private:
+    mutable const Expr* expr_;
+    /*const*/ World* world_;
 };
 
 }

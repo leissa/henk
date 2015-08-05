@@ -3,6 +3,7 @@
 
 #include <map>
 #include <memory>
+#include <list>
 
 #include "thorin/util/cast.h"
 
@@ -16,27 +17,6 @@ class Expr;
 
 //------------------------------------------------------------------------------
 
-class Expression {
-public:
-    Expression()
-        : expr_(nullptr)
-    {}
-    Expression(const Expr* expr)
-        : expr_(expr)
-    {}
-    
-    bool empty() const { return expr_ == nullptr; }
-    const Expr* expr() const { return expr_; }
-    const Expr* deref() const;
-    const Expr* operator *() const { return deref(); }
-    bool operator == (const Expr* other) const { return this->deref() == other; }
-    operator const Expr*() const { return deref(); }
-    const Expr* operator -> () const { return deref(); }
-    
-private:
-    mutable const Expr* expr_;
-};
-
 /// Base class for all @p Expr%s.
 class Expr : public thorin::MagicCast<Expr> {
 protected:
@@ -44,24 +24,47 @@ protected:
     
     Expr() 
         : gid_(-1)
+        , refCount_(0)
         , representative_(this)
     {}
     
     Expr(size_t gid)
         : gid_(gid)
+        , refCount_(0)
         , representative_(this)
     {}
     virtual ~Expr() {}
     
+    std::list<const Expr*> uses() const { return uses_; }
+    std::list<const Expr*> uses_;
+    bool hasUses() { return !uses_.empty(); }
+    bool unregister_use(const Expr* user) {
+        uses_.remove(user);
+    }
+    
 public:
+
+    virtual std::list<const Expr*> gatherUnusedCascading() = 0;
+
     size_t gid() const { return gid_; }
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
+    
+    void increaseRefCount() const { refCount_++; }
+    
+    void decreaseRefCount() const {
+        assert(refCount_ >= 1);
+        refCount_--;
+    }
+    
+    size_t refCount() const { return refCount_; }
+    
 protected:
     virtual size_t vhash() const = 0;
     
-    void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<Expr*>(this)->gid_)  = gid; }
+    void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<Expr*>(this)->gid_) = gid; }
     const size_t gid_;
     mutable size_t hash_ = 0;
+    mutable size_t refCount_;
     mutable const Expr* representative_;
     
     void set_representative(const Expr* e) const { representative_ = e; }
@@ -83,6 +86,11 @@ protected:
 public:
     const std::string& name() const { return name_; }
     const Expr* type() const { return type_; }
+    
+    std::list<const Expr*> gatherUnusedCascading() {
+        // TO DO
+        return nullptr;
+    }
     
 protected:
     const Expr* type_;

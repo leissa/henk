@@ -6,6 +6,19 @@
 
 namespace henk {
 
+
+
+void World::removeExpr(const Expr* expr) {
+        auto i = expressions_.find(expr);
+        if(i != expressions_.end()) {
+            expressions_.erase(i);
+            delete expr;
+        }
+        else {
+            throw std::runtime_error("attempt to free expr outside world");
+        }
+    }
+
 Expression World::close_body(Expression abstraction, Expression body) {
     auto abs = (*abstraction)->as<Body>();
     std::ostringstream nvarn;
@@ -14,10 +27,10 @@ Expression World::close_body(Expression abstraction, Expression body) {
     nabs->close(substitute(*body, abs->var(), new VarOcc(nabs)));
     return cse(nabs);
 }
-
+/*
 bool World::replace(Expression olde, Expression newe) {
     (*olde)->set_representative(*newe);
-}
+}*/
 
 void World::show_expressions(std::ostream& stream) const {
     for(auto e : expressions_) {
@@ -88,7 +101,7 @@ const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* 
             std::ostringstream nvarn;
             nvarn << lam->var()->name() << "'";
             auto ntype = substitute(lam->var()->type(), var, nval);
-            auto nlam = new Lam(/*lam->var()->name()*/nvarn.str(), ntype/*lam->var()->type()*/);
+            auto nlam = new Lam  (/*lam->var()->name()*/nvarn.str(), ntype/*lam->var()->type()*/);
        //     std::cout << "nlam is " << std::flush; sdump(nlam); std::cout << std::endl;
        //     std::cout << "subst nbody preparing" << std::endl;
             auto nbody = substitute(lam->body(), lam->var(), new VarOcc(nlam));
@@ -454,6 +467,23 @@ void World::dump_body(const Body* body, std::ostream& stream) const {
     dump(body->var()->type(), stream);
     std::cout << ". ";
     dump(body->body(), stream);
+}
+
+Expression World::mk_const(Expression type, std::string name) { return Expression(cse(new Const(*type, std::move(name))), this); }
+Expression World::mk_lam(std::string var_name, Expression var_type) { return Expression(cse(new Lam(std::move(var_name), *var_type)), this); }
+Expression World::mk_pi(std::string var_name, Expression var_type){ return Expression(cse(new Pi(std::move(var_name), *var_type)), this); }
+Expression World::mk_varOcc(Expression introduced_by) { return Expression(new VarOcc((*introduced_by)->as<Body>()), this); }
+Expression World::mk_app(Expression appl, Expression arg) { return Expression(cse(new App(*appl, *arg)), this); }
+Expression World::mk_int(int value) { return Expression(cse(new IntValueConst(value)), this); }
+Expression World::mk_bool(bool value) { return Expression(cse(new BoolValueConst(value)), this); }
+Expression World::mk_function_type(Expression from, Expression to) { return Expression(cse(new Pi(to, "_", from)), this); }
+
+const Expr* Expression::deref() const {
+    if(expr_ == nullptr)
+        return nullptr;
+    
+    // TODO
+    return expr_;
 }
 
 }
