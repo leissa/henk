@@ -27,6 +27,7 @@ Expression World::close_body(Expression abstraction, Expression body) {
     nabs->close(substitute(*body, abs->var(), new VarOcc(nabs)));
     return cse(nabs);
 }
+
 /*
 bool World::replace(Expression olde, Expression newe) {
     (*olde)->set_representative(*newe);
@@ -40,27 +41,11 @@ void World::show_expressions(std::ostream& stream) const {
 }
 
 const Expr* World::cse_base(const Expr* expr) {
-  //  std::cout << "csebegin!" <<  expr << std::endl;
- //   dump(expr);
- //   std::cout << std::endl << "of such expr" << std::endl;
-  /*  for(auto e : expressions_) {
-        
-        std::cout << " at " << e << " we have ";
-        dump(e);
-        std::cout << std::endl;
-    }*/
-  //  std::cout << "expr_ shown" << std::endl;
     auto i = expressions_.find(expr);
-  //  std::cout << "bb!" << std::endl;
     if (i != expressions_.end() && *i != expr) {
-     //   std::cout << "found! " << *i << " ; " << std::endl;
-       // dump(*i);
-       std::cout << "deleting " << expr << std::endl;
         delete expr;
-    //    std::cout << " and deleted!" << std::endl;
         expr = *i;
     } else {
-     //   std::cout << "not found!" << std::endl;
         expr->set_gid(gid_++);
         auto p = expressions_.insert(expr);
     }
@@ -70,56 +55,34 @@ const Expr* World::cse_base(const Expr* expr) {
 
 const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* nval) {
     if(expr == var) {
-  //      std::cout << "expr is var so return nval" << std::endl;
         return nval;
     }
-/*    std::cout << "subst in " << expr << " that is " << std::flush;
-    sdump(expr);
-    std::cout << " val " << nval << " that is " << std::flush;
-    sdump(nval);
-    std::cout << " for var " << var << " that is " << std::flush;
-    sdump(var);
-    std::cout << std::endl;*/
     if(auto var_occ = expr->isa<VarOcc>()) {
-     //   std::cout << "varocc" << std::endl;
         if(var_occ->introduced_by()->var() == var) {
-          //  std::cout << "xoxo nval" << std::endl;
             return nval;
         }
         else {
-          //  std::cout << "xoxo expr" << std::endl;
             return expr;
         }
     }
     else if(auto lam = expr->isa<Lam>()) {
         if(lam->var() == var) {
-           // std::cout << "same var, no subst" << std::endl;
             return expr;
         }
         else {
-        //    std::cout << "diff vars, new lam to subst" << std::endl;
             std::ostringstream nvarn;
             nvarn << lam->var()->name() << "'";
             auto ntype = substitute(lam->var()->type(), var, nval);
-            auto nlam = new Lam  (/*lam->var()->name()*/nvarn.str(), ntype/*lam->var()->type()*/);
-       //     std::cout << "nlam is " << std::flush; sdump(nlam); std::cout << std::endl;
-       //     std::cout << "subst nbody preparing" << std::endl;
+            // TO DO probably use world to make new lambda
+            // otherwise we have floating garbage
+            auto nlam = new Lam (nvarn.str(), ntype);
             auto nbody = substitute(lam->body(), lam->var(), new VarOcc(nlam));
-       //     std::cout << "nbody is " << std::flush; sdump(nbody); std::cout << std::endl;
-      //      std::cout << "after preparation, subst in new lam" << std::endl;
             auto body_substituted = substitute(nbody, var, nval);
-       //     std::cout << "body substituted is " << std::flush;
-       //     sdump(body_substituted); std::cout << std::endl;
-       //     std::cout << "sbstuted and now close" << std::endl;
             nlam->close(body_substituted);
-         //   nlam = close_body(nlam, body_substituted);
-      //      std::cout << "and closed, res is " << std::flush;
-     //       sdump(nlam); std::cout << std::endl;
             return nlam;
         }
     } // ugly copy-paste -- is it possible to coalesce this code?
     else if(auto pi = expr->isa<Pi>()) {
-     //   std::cout << "pi!" << std::endl;
         if(pi->var() == var) {
             return expr;
         }
@@ -127,7 +90,7 @@ const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* 
             std::ostringstream nvarn;
             nvarn << pi->var()->name() << "'";
             auto ntype = substitute(pi->var()->type(), var, nval);
-            auto npi = new Pi(nvarn.str(), ntype/*pi->var()->type()*/);
+            auto npi = new Pi(nvarn.str(), ntype);
             auto nbody = substitute(pi->body(), pi->var(), new VarOcc(npi));
             auto body_substituted = substitute(nbody, var, nval);
             npi->close(body_substituted);
@@ -145,7 +108,6 @@ const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* 
         return expr;
     }
     else {
-      //  std::cout << "nothing; return expr without subst" << std::endl;
         return expr;
     }
 }
@@ -176,6 +138,7 @@ const Expr* World::to_whnf(const Expr* expr) {
     if(expr == nullptr) {
         return expr;
         //throw std::runtime_error("nullptr has no weak head normal form");
+        // but may be useful?
     }
     else if(auto app = expr->isa<App>()) {
         auto f = to_whnf(app->apply());
@@ -194,12 +157,6 @@ const Expr* World::to_whnf(const Expr* expr) {
 bool World::are_expressions_equal(const Expr* expr1, const Expr* expr2) {
     auto e1 = to_whnf(expr1);
     auto e2 = to_whnf(expr2);
-    // neither e1 nor e2 can be applications now
-   // std::cout << "are ";
-   // sdump(e1);
-  //  std::cout << " and ";
- //   sdump(e2);
-  //  std::cout << " equal?" << std::endl;
     if(e1 == e2)
         return true;
     if(auto int1 = e1->isa<IntValueConst>()) {
@@ -349,7 +306,6 @@ void World::show_prims(std::ostream& stream) const {
 void World::dump(const Expr* expr, std::ostream& stream) const {
     if(expr == nullptr) {
         stream << "'nullptr'";
-       // throw std::runtime_error("dumping nullptr");
     }
     if(auto int_value = expr->isa<IntValueConst>()) {
         stream << int_value->value();
@@ -398,11 +354,10 @@ void World::dump(const Expr* expr, std::ostream& stream) const {
     }
 }
 
-
+/*
 void World::sdump(const Expr* expr, std::ostream& stream)  {
     if(expr == nullptr) {
         stream << "'nullptr'";
-       // throw std::runtime_error("dumping nullptr");
     }
     
     if(auto int_value = expr->isa<IntValueConst>()) {
@@ -435,10 +390,6 @@ void World::sdump(const Expr* expr, std::ostream& stream)  {
             sdump(pi->body(), stream);
             stream << ")";
         }
-     /*   else if(pi->var()->type() == prim_consts.at("*")) {
-            stream << "∀" << pi->var()->name() << ". ";
-            dump(pi->body(), stream);
-        }*/
         else {
             stream << "Π";
             sdump_body(pi, stream);
@@ -460,6 +411,7 @@ void World::sdump_body(const Body* body, std::ostream& stream)  {
     std::cout << ". ";
     sdump(body->body(), stream);
 }
+* */
 
 void World::dump_body(const Body* body, std::ostream& stream) const {
     dump(body->var(), stream);

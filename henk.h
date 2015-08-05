@@ -44,7 +44,7 @@ protected:
     
 public:
 
-    virtual std::list<const Expr*> gatherUnusedCascading() = 0;
+    virtual std::list<const Expr*> gatherUnusedCascading() const = 0;
 
     size_t gid() const { return gid_; }
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
@@ -87,9 +87,9 @@ public:
     const std::string& name() const { return name_; }
     const Expr* type() const { return type_; }
     
-    std::list<const Expr*> gatherUnusedCascading() {
+    std::list<const Expr*> gatherUnusedCascading() const {
         // TO DO
-        return nullptr;
+        return std::list<const Expr*>();
     }
     
 protected:
@@ -122,6 +122,11 @@ protected:
 public:
     int value() const { return value_; }
     
+    std::list<const Expr*> gatherUnusedCascading() const {
+        // TO DO
+        return std::list<const Expr*>();
+    }
+    
 protected:
     int value_;
     size_t vhash() const;
@@ -140,6 +145,11 @@ protected:
 public:
     bool value() const { return value_; }
     
+    std::list<const Expr*> gatherUnusedCascading() const {
+        // TO DO
+        return std::list<const Expr*>();
+    }
+    
 protected:
     bool value_;
     size_t vhash() const;
@@ -157,6 +167,11 @@ protected:
     ~PrimConst() {}
 public:    
     const std::string& name() const { return name_; } 
+    
+    std::list<const Expr*> gatherUnusedCascading() const {
+        // TO DO
+        return std::list<const Expr*>();
+    }
     
 protected:
     std::string name_;
@@ -236,6 +251,11 @@ protected:
 public:
     const Body* introduced_by() const { return introduced_by_; }
     
+    std::list<const Expr*> gatherUnusedCascading() const {
+        // TO DO
+        return std::list<const Expr*>();
+    }
+    
 protected:
     const Body* introduced_by_;
     size_t vhash() const;
@@ -260,6 +280,11 @@ protected:
 public:
     const VarIntr* var() const { return var_.get(); }
     const Expr* body() const { return body_; }
+    
+    std::list<const Expr*> gatherUnusedCascading() const {
+        // TO DO
+        return std::list<const Expr*>();
+    }
 
     friend class World;
     
@@ -326,6 +351,11 @@ protected:
 public:
     const Expr* apply() const { return apply_; }
     const Expr* arg() const { return arg_; }
+    
+    std::list<const Expr*> gatherUnusedCascading() const {
+        // TO DO
+        return std::list<const Expr*>();
+    }
     
 protected:
     const Expr* apply_;

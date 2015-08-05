@@ -24,9 +24,6 @@ public:
     
     World()
         : prim_consts {
-          //  std::make_pair("Term", new PrimConst("Term")),
-          //  std::make_pair("MonoType", new PrimConst("MonoType")),
-        //    std::make_pair("PolyType", new PrimConst("PolyType")),
             std::make_pair("*", new PrimConst("*")),
             std::make_pair("**", new PrimConst("**")),
             std::make_pair("⬜", new PrimConst("⬜")),
@@ -35,8 +32,6 @@ public:
             std::make_pair("Bool", new PrimConst("Bool"))
         }
         , prim_rules_has_type {
-           // std::make_pair(prim_consts.at("MonoType"), prim_consts.at("*")),
-         //   std::make_pair(prim_consts.at("PolyType"), prim_consts.at("**")),
             std::make_pair(prim_consts.at("*"), prim_consts.at("⬜")),
             std::make_pair(prim_consts.at("**"), prim_consts.at("⬜⬜")),
             std::make_pair(prim_consts.at("Int"), prim_consts.at("*")),
@@ -51,23 +46,22 @@ public:
             std::make_pair(std::make_pair(prim_consts.at("⬜"), prim_consts.at("**")), prim_consts.at("**")),
             std::make_pair(std::make_pair(prim_consts.at("⬜"), prim_consts.at("⬜")), prim_consts.at("⬜"))
         }
-       // , name_supply_(new NameSupply())
     {}
     
 /*
  * Factory methods
  */     
-    Expression mk_const(Expression type, std::string name);// { return cse(new Const(*type, std::move(name))); }
-    Expression mk_lam(std::string var_name, Expression var_type);// { return cse(new Lam(std::move(var_name), *var_type)); }
-    Expression mk_pi(std::string var_name, Expression var_type);// { return cse(new Pi(std::move(var_name), *var_type)); }
-    Expression mk_varOcc(Expression introduced_by);// { return new VarOcc((*introduced_by)->as<Body>()); }
-    Expression mk_app(Expression appl, Expression arg);// { return cse(new App(*appl, *arg)); }
-    Expression mk_int(int value);// { return cse(new IntValueConst(value)); }
-    Expression mk_bool(bool value);// { return cse(new BoolValueConst(value)); }
+    Expression mk_const(Expression type, std::string name);
+    Expression mk_lam(std::string var_name, Expression var_type);
+    Expression mk_pi(std::string var_name, Expression var_type);
+    Expression mk_varOcc(Expression introduced_by);
+    Expression mk_app(Expression appl, Expression arg);
+    Expression mk_int(int value);
+    Expression mk_bool(bool value);
     Expression close_body(Expression abstraction, Expression body);
     
     // sugar
-    Expression mk_function_type(Expression from, Expression to);// { return cse(new Pi(to, "_", from)); }
+    Expression mk_function_type(Expression from, Expression to);
 
 /*
  * Utility methods
@@ -128,7 +122,6 @@ public:
         expr_->decreaseRefCount();
         if(expr_->refCount() == 0) {
             world_->removeExprs(expr_->gatherUnusedCascading());
-            //world_->foo();
             //delete expr_;
         }
     }
