@@ -3,7 +3,8 @@
 
 #include <map>
 #include <memory>
-#include <list>
+#include <unordered_set>
+#include <sstream>
 
 #include "thorin/util/cast.h"
 
@@ -35,16 +36,21 @@ protected:
     {}
     virtual ~Expr() {}
     
-    std::list<const Expr*> uses() const { return uses_; }
-    std::list<const Expr*> uses_;
-    bool hasUses() { return !uses_.empty(); }
-    bool unregister_use(const Expr* user) {
-        uses_.remove(user);
-    }
+    std::unordered_set<const Expr*> uses() const { return uses_; }
+    mutable std::unordered_set<const Expr*> uses_;
+
     
 public:
+    bool hasUses() const { return !uses_.empty(); }
+    bool unregister_use(const Expr* user) const {
+        uses_.erase(user);
+        return true;
+    }
+    void register_use(const Expr* user) const {
+        uses_.insert(user);
+    }
 
-    virtual std::list<const Expr*> gatherUnusedCascading() const = 0;
+    virtual std::unordered_set<const Expr*> gatherUnusedCascading() const = 0;
 
     size_t gid() const { return gid_; }
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
@@ -52,7 +58,12 @@ public:
     void increaseRefCount() const { refCount_++; }
     
     void decreaseRefCount() const {
-        assert(refCount_ >= 1);
+        std::ostringstream msg;
+        msg << " of expr " << this;
+      /*  if(refCount_ < 1) {
+            throw std::runtime_error(msg.str());
+        }*/
+        //assert(refCount_ >= 1);
         refCount_--;
     }
     
@@ -81,15 +92,22 @@ protected:
     AnnotatedExpr(const Expr* type, std::string name)
         : type_(type)
         , name_(std::move(name))
-    {}
+    { type_->register_use(this); }
     
 public:
     const std::string& name() const { return name_; }
     const Expr* type() const { return type_; }
     
-    std::list<const Expr*> gatherUnusedCascading() const {
-        // TO DO
-        return std::list<const Expr*>();
+    std::unordered_set<const Expr*> gatherUnusedCascading() const {
+        if(refCount() != 0 || hasUses()) {
+            return std::unordered_set<const Expr*>();
+        }
+        else {
+            type()->unregister_use(this);
+            auto res = type()->gatherUnusedCascading();
+            res.insert(this);
+            return res;
+        }
     }
     
 protected:
@@ -122,9 +140,9 @@ protected:
 public:
     int value() const { return value_; }
     
-    std::list<const Expr*> gatherUnusedCascading() const {
-        // TO DO
-        return std::list<const Expr*>();
+    std::unordered_set<const Expr*> gatherUnusedCascading() const {
+        // never get rid of ints on the heap -- reasonable?
+        return std::unordered_set<const Expr*>();
     }
     
 protected:
@@ -145,9 +163,8 @@ protected:
 public:
     bool value() const { return value_; }
     
-    std::list<const Expr*> gatherUnusedCascading() const {
-        // TO DO
-        return std::list<const Expr*>();
+    std::unordered_set<const Expr*> gatherUnusedCascading() const {
+        return std::unordered_set<const Expr*>();
     }
     
 protected:
@@ -168,9 +185,8 @@ protected:
 public:    
     const std::string& name() const { return name_; } 
     
-    std::list<const Expr*> gatherUnusedCascading() const {
-        // TO DO
-        return std::list<const Expr*>();
+    std::unordered_set<const Expr*> gatherUnusedCascading() const {
+        return std::unordered_set<const Expr*>();
     }
     
 protected:
@@ -240,29 +256,6 @@ public:
     const Pi* pi() const { return owner()->as<Pi>(); }
 };
 
-/// Variable occurrence - must be introduced by Lam or Pi beforehand
-class VarOcc : public Expr {
-protected:
-    friend class World;
-    VarOcc(const Body* introduced_by)
-        : introduced_by_(introduced_by)
-    {}
-
-public:
-    const Body* introduced_by() const { return introduced_by_; }
-    
-    std::list<const Expr*> gatherUnusedCascading() const {
-        // TO DO
-        return std::list<const Expr*>();
-    }
-    
-protected:
-    const Body* introduced_by_;
-    size_t vhash() const;
-
-};
-
-//------------------------------------------------------------------------------
 
 /// Base class for lambda abstraction @p Abs and dependent product @p Pi.
 class Body : public Expr {
@@ -281,9 +274,19 @@ public:
     const VarIntr* var() const { return var_.get(); }
     const Expr* body() const { return body_; }
     
-    std::list<const Expr*> gatherUnusedCascading() const {
-        // TO DO
-        return std::list<const Expr*>();
+    std::unordered_set<const Expr*> gatherUnusedCascading() const {
+        if(refCount() != 0 || hasUses()) {
+            return std::unordered_set<const Expr*>();
+        }
+        else {
+            var()->unregister_use(this);
+            body()->unregister_use(this);
+            auto vres = var()->gatherUnusedCascading();
+            auto bres = body()->gatherUnusedCascading();
+            vres.insert(bres.begin(), bres.end());
+            vres.insert(this);
+            return vres;
+        }
     }
 
     friend class World;
@@ -297,6 +300,37 @@ protected:
     
 };
 
+/// Variable occurrence - must be introduced by Lam or Pi beforehand
+class VarOcc : public Expr {
+protected:
+    friend class World;
+    VarOcc(const Body* introduced_by)
+        : introduced_by_(introduced_by)
+    { introduced_by_->var()->register_use(this); }
+
+public:
+    const Body* introduced_by() const { return introduced_by_; }
+    
+    std::unordered_set<const Expr*> gatherUnusedCascading() const {
+        if(refCount() != 0 || hasUses()) {
+            return std::unordered_set<const Expr*>();
+        }
+        else {
+            introduced_by()->var()->unregister_use(this);
+            auto res = introduced_by()->var()->gatherUnusedCascading();
+            res.insert(this);
+            return res;
+        }
+    }
+    
+protected:
+    const Body* introduced_by_;
+    size_t vhash() const;
+
+};
+
+//------------------------------------------------------------------------------
+
 /// Lambda abstraction
 class Lam : public Body {
 protected:
@@ -304,12 +338,15 @@ protected:
     Lam(std::string var_name, const Expr* var_type)
     {
         var_.reset(new LamVar(var_type, std::move(var_name)));
+        var()->register_use(this);
     }
     
-    Lam(const Expr* body, std::string var_name, const Expr* var_type)
-        : Body(body)
+    Lam(const Expr* bbody, std::string var_name, const Expr* var_type)
+        : Body(bbody)
     {
         var_.reset(new LamVar(var_type, std::move(var_name)));
+        var()->register_use(this);
+        body()->register_use(this);
     }
     
 public:
@@ -323,12 +360,15 @@ protected:
     Pi(std::string var_name, const Expr* var_type)
     {
         var_.reset(new PiVar(var_type, std::move(var_name)));
+        var()->register_use(this);
     }
     
-    Pi(const Expr* body, std::string var_name, const Expr* var_type)
-        : Body(body)
+    Pi(const Expr* bbody, std::string var_name, const Expr* var_type)
+        : Body(bbody)
     {
         var_.reset(new PiVar(var_type, std::move(var_name)));
+        var()->register_use(this);
+        body()->register_use(this);
     }
 
 public:
@@ -344,7 +384,7 @@ protected:
     App(const Expr* appl, const Expr* arg)
         : apply_(appl)
         , arg_(arg)
-    {}
+    { apply_->register_use(this); arg_->register_use(this); }
     
     ~App() {}
 
@@ -352,9 +392,19 @@ public:
     const Expr* apply() const { return apply_; }
     const Expr* arg() const { return arg_; }
     
-    std::list<const Expr*> gatherUnusedCascading() const {
-        // TO DO
-        return std::list<const Expr*>();
+    std::unordered_set<const Expr*> gatherUnusedCascading() const {
+        if(refCount() != 0 || hasUses()) {
+            return std::unordered_set<const Expr*>();
+        }
+        else {
+            apply()->unregister_use(this);
+            arg()->unregister_use(this);
+            auto res1 = apply()->gatherUnusedCascading();
+            auto res2 = arg()->gatherUnusedCascading();
+            res1.insert(res2.begin(), res2.end());
+            res1.insert(this);
+            return res1;
+        }
     }
     
 protected:

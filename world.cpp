@@ -6,11 +6,48 @@
 
 namespace henk {
 
-
+World::World()
+        : prim_consts {
+            std::make_pair("*", new PrimConst("*")),
+            std::make_pair("**", new PrimConst("**")),
+            std::make_pair("⬜", new PrimConst("⬜")),
+            std::make_pair("⬜⬜", new PrimConst("⬜⬜")),
+            std::make_pair("Int", new PrimConst("Int")),
+            std::make_pair("Bool", new PrimConst("Bool"))
+        }
+        , prim_rules_has_type {
+            std::make_pair(prim_consts.at("*"), prim_consts.at("⬜")),
+            std::make_pair(prim_consts.at("**"), prim_consts.at("⬜⬜")),
+            std::make_pair(prim_consts.at("Int"), prim_consts.at("*")),
+            std::make_pair(prim_consts.at("Bool"), prim_consts.at("*"))
+        }
+        , wavy_arrow_rules {
+            std::make_pair(std::make_pair(prim_consts.at("*"), prim_consts.at("*")), prim_consts.at("*")),
+            std::make_pair(std::make_pair(prim_consts.at("*"), prim_consts.at("**")), prim_consts.at("**")),
+            std::make_pair(std::make_pair(prim_consts.at("**"), prim_consts.at("*")), prim_consts.at("**")),
+            std::make_pair(std::make_pair(prim_consts.at("**"), prim_consts.at("**")), prim_consts.at("**")),
+            std::make_pair(std::make_pair(prim_consts.at("⬜"), prim_consts.at("*")), prim_consts.at("**")),
+            std::make_pair(std::make_pair(prim_consts.at("⬜"), prim_consts.at("**")), prim_consts.at("**")),
+            std::make_pair(std::make_pair(prim_consts.at("⬜"), prim_consts.at("⬜")), prim_consts.at("⬜"))
+        }
+    {
+        prim_consts_boxes = std::list<Expression*>();
+        // seems stupid but it's because we will never want to free primitives
+        for(auto& kv : prim_consts) {
+            prim_consts_boxes.push_back(new Expression(kv.second, this));
+        }
+    }
 
 void World::removeExpr(const Expr* expr) {
         auto i = expressions_.find(expr);
-        if(i != expressions_.end()) {
+     /*   bool is_a_prim = false;
+        for(auto& kv : prim_consts) {
+            if(kv.second == expr) {
+                is_a_prim = true;
+                break;
+            }
+        }*/
+        if(i != expressions_.end() /*&& !is_a_prim*/) {
             expressions_.erase(i);
             delete expr;
         }
@@ -73,9 +110,7 @@ const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* 
             std::ostringstream nvarn;
             nvarn << lam->var()->name() << "'";
             auto ntype = substitute(lam->var()->type(), var, nval);
-            // TO DO probably use world to make new lambda
-            // otherwise we have floating garbage
-            auto nlam = new Lam (nvarn.str(), ntype);
+            auto nlam = new Lam(nvarn.str(), ntype);
             auto nbody = substitute(lam->body(), lam->var(), new VarOcc(nlam));
             auto body_substituted = substitute(nbody, var, nval);
             nlam->close(body_substituted);
@@ -268,10 +303,8 @@ Expression World::typecheck(Expression e) {
             else {
                 std::ostringstream msg;
                 msg << "argument types don't match in application: ";
-                dump(arg_type, msg);
                 msg << " (" << arg_type << ")";
                 msg << " and ";
-                dump(app_type2->var()->type(), msg);
                 msg << " (" << app_type2->var()->type() << ")";
                 throw std::runtime_error(msg.str());
             }
@@ -279,14 +312,12 @@ Expression World::typecheck(Expression e) {
         else {
             std::ostringstream msg;
             msg << "application of non-lambda expression: ";
-            dump(app_type, msg);
             throw std::runtime_error(msg.str());
         }
     }
     else {
         std::ostringstream msg;
         msg << "malformed expression: ";
-        dump(expr, msg);
         throw std::runtime_error(msg.str());
     }
 }

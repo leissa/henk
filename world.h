@@ -10,9 +10,11 @@
 #include "henk.h"
 
 namespace henk {
+
 class Expression;
 
-
+//struct ExprHash;
+struct ExprEqual;
 
 class World {
 public:
@@ -22,8 +24,8 @@ public:
     std::map<const PrimConst*, const PrimConst*> prim_rules_has_type;
     std::map<std::pair<const PrimConst*, const PrimConst*>, const PrimConst*> wavy_arrow_rules;
     
-    World()
-        : prim_consts {
+    World();
+    /*    : prim_consts {
             std::make_pair("*", new PrimConst("*")),
             std::make_pair("**", new PrimConst("**")),
             std::make_pair("⬜", new PrimConst("⬜")),
@@ -46,7 +48,13 @@ public:
             std::make_pair(std::make_pair(prim_consts.at("⬜"), prim_consts.at("**")), prim_consts.at("**")),
             std::make_pair(std::make_pair(prim_consts.at("⬜"), prim_consts.at("⬜")), prim_consts.at("⬜"))
         }
-    {}
+    {
+        prim_consts_boxes = std::list<Expression>();
+        // seems stupid but it's because we will never want to free primitives
+        for(auto& kv : prim_consts) {
+            prim_consts_boxes.push_back(Expression(kv.second, this));
+        }
+    }*/
     
 /*
  * Factory methods
@@ -85,8 +93,12 @@ public:
     size_t gid() const { return gid_; }
     
 private:
+    std::list<Expression*> prim_consts_boxes;
+
     struct ExprHash { size_t operator () (const Expr* e) const { return e->hash(); } };
-    struct ExprEqual { bool operator () (const Expr* e1, const Expr* e2) const { return are_expressions_equal(e1, e2); } };
+    struct ExprEqual { 
+        bool operator () (const Expr* e1, const Expr* e2) const { return are_expressions_equal(e1, e2); } 
+    };
 
     const Expr* cse_base(const Expr* expr);
     template<class T> const T* cse(const T* expr) { return cse_base(expr)->template as<T>(); }
@@ -98,7 +110,14 @@ private:
     size_t gid_; // global id for expressions
     
     void removeExpr(const Expr* expr);
-    void removeExprs(std::list<const Expr*> exprs) { for(auto e : exprs) removeExpr(e); }
+    void removeExprs(std::unordered_set<const Expr*> exprs) { for(auto e : exprs) removeExpr(e); }
+};
+
+struct ExprHash { size_t operator () (const Expr* e) const { return e->hash(); } };
+struct ExprEqual { 
+    World& world;
+    ExprEqual(World& w) : world(w) {}
+    bool operator () (const Expr* e1, const Expr* e2) const { return world.are_expressions_equal(e1, e2); } 
 };
 
 class Expression {
@@ -120,10 +139,10 @@ public:
     
     ~Expression() {
         expr_->decreaseRefCount();
-        if(expr_->refCount() == 0) {
+     //   if(expr_->refCount() == 0) {
             world_->removeExprs(expr_->gatherUnusedCascading());
             //delete expr_;
-        }
+   //     }
     }
     
     bool empty() const { return expr_ == nullptr; }
