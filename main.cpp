@@ -8,8 +8,11 @@ Expression mk_poly_id(World* world, std::string tvar, std::string var) {
     auto type_lam = world->mk_lam(tvar, world->prim_consts.at("*"));
     auto id_lam = world->mk_lam(var, (*type_lam)->as<Lam>()->var());
     auto x_occ = world->mk_varOcc(id_lam);
-    id_lam = world->close_body(id_lam, x_occ)->as<Lam>();
-    type_lam = world->close_body(type_lam, id_lam)->as<Lam>();
+   // std::cout << "id_lam has expr at " << *id_lam << std::endl;
+    //delete *id_lam;
+   // std::cout << "ahah" << std::endl;
+    id_lam = world->close_body(id_lam, x_occ);//->as<Lam>();
+    type_lam = world->close_body(type_lam, id_lam);//->as<Lam>();
 
     return type_lam;
 }

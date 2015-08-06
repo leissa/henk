@@ -130,21 +130,50 @@ public:
     Expression(const Expr* expr)
         : expr_(expr)
         , world_(nullptr)
-    {}
+    {   
+        expr_->increaseRefCount();
+        std::cout << "increased refcount to " << expr_->refCount() << " of expr " << expr_ << std::endl;
+         }
     
     Expression(const Expr* expr, World* world)
         : expr_(expr)
         , world_(world)
-    { expr_->increaseRefCount(); }
+    { expr_->increaseRefCount();
+        std::cout << "increased refcount to " << expr_->refCount() << " of expr " << expr_ << std::endl; }
     
     ~Expression() {
-        expr_->decreaseRefCount();
-     //   if(expr_->refCount() == 0) {
-            world_->removeExprs(expr_->gatherUnusedCascading());
-            //delete expr_;
-   //     }
+        if(!empty()) {
+            expr_->decreaseRefCount();
+            std::cout << "decreased refcount to " << expr_->refCount() << " of expr " << expr_ << std::endl;
+         //   if(expr_->refCount() == 0) {
+                world_->removeExprs(expr_->gatherUnusedCascading());
+                //delete expr_;
+       //     }
+        }
     }
     
+    void operator = (const Expression& other) {
+        if(this != &other) {
+            std::cout << "Expr assignment: inc " << other.expr() << ", dec " << expr_ << std::endl;
+            auto oe = other.expr();
+            oe->increaseRefCount();
+            expr_->decreaseRefCount();
+            expr_ = oe;
+        }
+    }
+    
+    Expression(const Expression& other) {
+        std::cout << "copy construct " << other.expr() << std::endl;
+        expr_ = other.expr();
+        expr_->increaseRefCount();
+    }
+    
+    Expression(Expression&& other) {
+        std::cout << "move construct " << other.expr() << std::endl;
+        expr_ = other.expr();
+        expr_->increaseRefCount();
+    }
+
     bool empty() const { return expr_ == nullptr; }
     const Expr* expr() const { return expr_; }
     const Expr* deref() const;

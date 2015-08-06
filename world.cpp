@@ -48,8 +48,10 @@ void World::removeExpr(const Expr* expr) {
             }
         }*/
         if(i != expressions_.end() /*&& !is_a_prim*/) {
+            std::cout << "deleting expr at " << *i << std::endl;
             expressions_.erase(i);
             delete expr;
+            std::cout << "deleted succesfully" << std::endl;
         }
         else {
             throw std::runtime_error("attempt to free expr outside world");
@@ -80,6 +82,7 @@ void World::show_expressions(std::ostream& stream) const {
 const Expr* World::cse_base(const Expr* expr) {
     auto i = expressions_.find(expr);
     if (i != expressions_.end() && *i != expr) {
+        std::cout << "in cse_base, now deleting " << expr << std::endl;
         delete expr;
         expr = *i;
     } else {
@@ -111,6 +114,7 @@ const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* 
             nvarn << lam->var()->name() << "'";
             auto ntype = substitute(lam->var()->type(), var, nval);
             auto nlam = new Lam(nvarn.str(), ntype);
+            std::cout << "in subst, created new lam at " << nlam << std::endl;
             auto nbody = substitute(lam->body(), lam->var(), new VarOcc(nlam));
             auto body_substituted = substitute(nbody, var, nval);
             nlam->close(body_substituted);
@@ -126,6 +130,7 @@ const Expr* World::substitute(const Expr* expr, const VarIntr* var, const Expr* 
             nvarn << pi->var()->name() << "'";
             auto ntype = substitute(pi->var()->type(), var, nval);
             auto npi = new Pi(nvarn.str(), ntype);
+            std::cout << "in subst, created new pi at " << npi << std::endl;
             auto nbody = substitute(pi->body(), pi->var(), new VarOcc(npi));
             auto body_substituted = substitute(nbody, var, nval);
             npi->close(body_substituted);

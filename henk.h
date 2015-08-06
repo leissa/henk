@@ -6,6 +6,8 @@
 #include <unordered_set>
 #include <sstream>
 
+#include <iostream>
+
 #include "thorin/util/cast.h"
 
 namespace henk {
@@ -34,8 +36,9 @@ protected:
         , refCount_(0)
         , representative_(this)
     {}
+public:
     virtual ~Expr() {}
-    
+protected:
     std::unordered_set<const Expr*> uses() const { return uses_; }
     mutable std::unordered_set<const Expr*> uses_;
 
@@ -43,10 +46,12 @@ protected:
 public:
     bool hasUses() const { return !uses_.empty(); }
     bool unregister_use(const Expr* user) const {
+        std::cout << "unregistration: user " << user << " stopped using " << this << std::endl;
         uses_.erase(user);
         return true;
     }
     void register_use(const Expr* user) const {
+        std::cout << "registration: user " << user << " uses " << this << std::endl;
         uses_.insert(user);
     }
 
@@ -280,9 +285,18 @@ public:
         }
         else {
             var()->unregister_use(this);
-            body()->unregister_use(this);
+            if(body() != nullptr) {
+                //throw std::runtime_error("WTF");
+                body()->unregister_use(this);
+            }
             auto vres = var()->gatherUnusedCascading();
-            auto bres = body()->gatherUnusedCascading();
+            std::unordered_set<const Expr*> bres;
+            if(body() != nullptr) {
+                bres = body()->gatherUnusedCascading();
+            }
+            else {
+                bres = std::unordered_set<const Expr*>();
+            }
             vres.insert(bres.begin(), bres.end());
             vres.insert(this);
             return vres;
