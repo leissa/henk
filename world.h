@@ -19,13 +19,13 @@ public:
 /*
  * Factory methods
  */
-    Def mk_lam(std::string var_name, Def var_type) const;
-    Def mk_pi(std::string var_name, Def var_type) const;
-    Def mk_pi_share_var(Def var) const;
-    Def mk_var_occ(Def introduced_by) const;
-    Def mk_app(Def appl, Def arg) const;
-    Def mk_int(int value) const;
-    Def mk_fun_type(Def from, Def to) const;
+    Def lam(std::string var_name, Def var_type) const;
+    Def pi(std::string var_name, Def var_type) const;
+    Def pi_share_var(Def var) const;
+    Def var_occ(Def introduced_by) const;
+    Def app(Def appl, Def arg) const;
+    Def literal(int value) const;
+    Def fun_type(Def from, Def to) const;
 
 /*
  * Utility methods

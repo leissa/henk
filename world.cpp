@@ -137,9 +137,9 @@ Def World::substitute(/*const Expr**/Def bexpr, /*const VarIntr**/Def bvar,
             if(nvarn.str() != "_")
                 nvarn << "'";
             auto ntype = substitute(abs->var()->type(), bvar, bnval);
-            auto nlam = mk_lam(nvarn.str(), ntype);
+            auto nlam = lam(nvarn.str(), ntype);
             auto nbody = substitute(Expression(lam->body(), this), 
-                Expression(lam->var(), this), mk_varOcc_on_without_cse(nlam));
+                Expression(lam->var(), this), varOcc_on_without_cse(nlam));
             auto body_substituted = substitute(nbody, bvar, bnval);
             nlam.close(body_substituted);
             return nlam;
@@ -148,7 +148,7 @@ Def World::substitute(/*const Expr**/Def bexpr, /*const VarIntr**/Def bvar,
     else if(auto app = expr->isa<App>()) {
         auto napply = substitute(Expression(app->apply(), this), bvar, bnval);
         auto narg = substitute(Expression(app->arg(), this), bvar, bnval);
-        return mk_app(napply, narg);//new App(napply, narg);
+        return app(napply, narg);//new App(napply, narg);
     }
     else if(auto anne = expr->isa<AnnotatedExpr>()) {
         // should there be a substitution on anne->type() or not?
@@ -210,8 +210,8 @@ Def World::reduce(Def e, std::map<const DefNode*, const DefNode*>* M) const {
             if(nvarn.str() != "_")
                 nvarn << "'";
             auto ntype = reduce(abs->var()->as<Var>()->type(), M);
-            auto nabs = mk_lam(nvarn.str(), ntype);
-            (*M)[*(abs->var())] = *mk_var_occ(nabs);
+            auto nabs = lam(nvarn.str(), ntype);
+            (*M)[*(abs->var())] = *var_occ(nabs);
             auto nbody = reduce(abs->body(), M);
             nabs.close_abs(nbody);
             return nabs;
@@ -343,8 +343,8 @@ Def World::typecheck_(Def e) { // assumption: e is reduced
        // auto var_type = typecheck_(lam->var());
         auto body_type = typecheck_(lam->body());
         
-       // auto res = mk_pi(lam->var()->name(), var_type);
-        auto res = mk_pi_share_var(lam->var());
+       // auto res = pi(lam->var()->name(), var_type);
+        auto res = pi_share_var(lam->var());
         // oh, here we probably really need a real substitution...... ;(
         // but let's risk for now and make lam->var() a shared var between lam and new pi
       //  auto body_type2 = substitute(body_type, lam->var(), varocc);//new VarOcc(res));
@@ -445,38 +445,38 @@ void World::dump_body(Def body, std::ostream& stream) const {
     dump(body.abs_body(), stream);
 }
 
-Def World::mk_lam(std::string var_name, Def var_type) const {
+Def World::lam(std::string var_name, Def var_type) const {
     assert(var_type.is_closed() && "type of lambda variable is an unclosed term");
     size_t g = gid_;
     gid_ += 2; // world knows that Abs creates Var
     return cse(new Lam(this, g, var_type, var_name));
 }
 
-Def World::mk_pi(std::string var_name, Def var_type) const {
+Def World::pi(std::string var_name, Def var_type) const {
     assert(var_type.is_closed() && "type of pi variable is an unclosed term");
     size_t g = gid_;
     gid_ += 2; // world knows that Abs creates Var
     return cse(new Pi(this, g, var_type, var_name));
 }
 
-Def World::mk_pi_share_var(Def var) const {
+Def World::pi_share_var(Def var) const {
     return cse(new Pi(this, gid_++, var));
 }
 
-Def World::mk_var_occ(Def introduced_by) const {
+Def World::var_occ(Def introduced_by) const {
     return introduced_by->as<Abs>()->var();
 }
 
-Def World::mk_app(Def fun, Def arg) const {
+Def World::app(Def fun, Def arg) const {
     return cse(new App(this, gid_++, fun, arg, "app_"));
 }
 
-Def World::mk_int(int value) const { 
+Def World::literal(int value) const { 
     return cse(new PrimLit(this, gid_++, get_prim_const("Int"), value, "someint"));
 }
 
-Def World::mk_fun_type(Def from, Def to) const {
-    auto npi = mk_pi("_", from);
+Def World::fun_type(Def from, Def to) const {
+    auto npi = pi("_", from);
     npi.close_abs(to); // upon closing, cse should be fired automatically
     return npi; // so there's no need to call cse again
 }
