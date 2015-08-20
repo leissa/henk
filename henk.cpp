@@ -64,8 +64,7 @@ void DefNode::set_op(size_t i, Def def) const { // weird constness?
     if (!def) {
         // do nothing; we have to do this in order for var(nullptr, nullptr)
         // to work (that's how star and box are constructed, for instance
-    }
-    else {
+    } else {
         assert(i < size() && "index out of bounds");
         auto node = *def;
         ops_[i] = node;
