@@ -11,181 +11,79 @@
 
 namespace henk {
 
-class Expression;
-
-//struct ExprHash;
-struct ExprEqual;
-
 class World {
 public:
-    friend class Expression;
-
-    std::map<std::string, const PrimConst*> prim_consts;
-    std::map<const PrimConst*, const PrimConst*> prim_rules_has_type;
-    std::map<std::pair<const PrimConst*, const PrimConst*>, const PrimConst*> wavy_arrow_rules;
-    
     World();
-    /*    : prim_consts {
-            std::make_pair("*", new PrimConst("*")),
-            std::make_pair("**", new PrimConst("**")),
-            std::make_pair("⬜", new PrimConst("⬜")),
-            std::make_pair("⬜⬜", new PrimConst("⬜⬜")),
-            std::make_pair("Int", new PrimConst("Int")),
-            std::make_pair("Bool", new PrimConst("Bool"))
-        }
-        , prim_rules_has_type {
-            std::make_pair(prim_consts.at("*"), prim_consts.at("⬜")),
-            std::make_pair(prim_consts.at("**"), prim_consts.at("⬜⬜")),
-            std::make_pair(prim_consts.at("Int"), prim_consts.at("*")),
-            std::make_pair(prim_consts.at("Bool"), prim_consts.at("*"))
-        }
-        , wavy_arrow_rules {
-            std::make_pair(std::make_pair(prim_consts.at("*"), prim_consts.at("*")), prim_consts.at("*")),
-            std::make_pair(std::make_pair(prim_consts.at("*"), prim_consts.at("**")), prim_consts.at("**")),
-            std::make_pair(std::make_pair(prim_consts.at("**"), prim_consts.at("*")), prim_consts.at("**")),
-            std::make_pair(std::make_pair(prim_consts.at("**"), prim_consts.at("**")), prim_consts.at("**")),
-            std::make_pair(std::make_pair(prim_consts.at("⬜"), prim_consts.at("*")), prim_consts.at("**")),
-            std::make_pair(std::make_pair(prim_consts.at("⬜"), prim_consts.at("**")), prim_consts.at("**")),
-            std::make_pair(std::make_pair(prim_consts.at("⬜"), prim_consts.at("⬜")), prim_consts.at("⬜"))
-        }
-    {
-        prim_consts_boxes = std::list<Expression>();
-        // seems stupid but it's because we will never want to free primitives
-        for(auto& kv : prim_consts) {
-            prim_consts_boxes.push_back(Expression(kv.second, this));
-        }
-    }*/
+    ~World();
     
 /*
  * Factory methods
- */     
-    Expression mk_const(Expression type, std::string name);
-    Expression mk_lam(std::string var_name, Expression var_type);
-    Expression mk_pi(std::string var_name, Expression var_type);
-    Expression mk_varOcc(Expression introduced_by);
-    Expression mk_app(Expression appl, Expression arg);
-    Expression mk_int(int value);
-    Expression mk_bool(bool value);
-    Expression close_body(Expression abstraction, Expression body);
-    
-    // sugar
-    Expression mk_function_type(Expression from, Expression to);
+ */
+    Def mk_lam(std::string var_name, Def var_type) const;
+    Def mk_pi(std::string var_name, Def var_type) const;
+    Def mk_pi_share_var(Def var) const;
+    Def mk_var_occ(Def introduced_by) const;
+    Def mk_app(Def appl, Def arg) const;
+    Def mk_int(int value) const;
+    Def mk_fun_type(Def from, Def to) const;
 
 /*
  * Utility methods
  */ 
-    static const Expr* substitute(const Expr* expr, const VarIntr* var, const Expr* nval);
+    Def typecheck(Def def);
+    Def typecheck_(Def def);
+   // Def substitute(Def expr, Def var, Def nval);
 
-    static bool is_a_subexpression(const Expr* expr, const Expr* sub);
-
-    static const Expr* to_whnf(const Expr* expr);
-    static bool are_expressions_equal(const Expr* expr1, const Expr* expr2);
-    Expression typecheck(Expression expr);
+    bool is_a_subexpression(Def expr, Def sub) const;
+    
+    void reduce(Def def) const;
+  //  void to_whnf(Def expr);
+    Def reduce(Def e, std::map<const DefNode*, const DefNode*>* M) const;
+    bool are_expressions_equal(Def expr1, Def expr2) const;
+    bool are_expressions_equal_(Def expr1, Def expr2) const;
     
     void show_prims(std::ostream& stream) const;
-    static void sdump(const Expr* expr) { sdump(expr, std::cout); }
-    static void sdump(const Expr* expr, std::ostream& stream);
-    void dump(const Expr* expr, std::ostream& stream) const;
-    void dump(const Expr* expr) const { dump(expr, std::cout); }
+    void dump(Def expr, std::ostream& stream) const;
+    void dump(Def expr) const;
     void show_expressions(std::ostream& stream) const;
     void show_expressions() const { show_expressions(std::cout); }
 
     size_t gid() const { return gid_; }
     
+    void move_from_garbage(const DefNode* def) const;
+    std::map<std::string, const DefNode*> prim_consts;
+    std::map<const DefNode*, const DefNode*> prim_rules_has_type;
+    std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
+    
+    Def get_prim_const(std::string s) const {
+        return prim_consts.at(s);
+    }
+    
 private:
-    std::list<Expression*> prim_consts_boxes;
+    std::list<Def> prim_consts_boxes_;
+    mutable std::unordered_set<const DefNode*> garbage_;
 
-    struct ExprHash { size_t operator () (const Expr* e) const { return e->hash(); } };
-    struct ExprEqual { 
-        bool operator () (const Expr* e1, const Expr* e2) const { return are_expressions_equal(e1, e2); } 
+    struct ExprHash { size_t operator () (const DefNode* e) const { return e->hash(); } };
+    struct ExprEqual {
+        bool operator () (const DefNode* e1, const DefNode* e2) const {
+            if(e1->world_ == e2->world_)
+                return e1->world_->are_expressions_equal(e1, e2);
+            else
+                throw std::runtime_error("testing for eq defs from different worlds");
+        } 
     };
-
-    const Expr* cse_base(const Expr* expr);
-    template<class T> const T* cse(const T* expr) { return cse_base(expr)->template as<T>(); }
-   // bool replace(Expression olde, Expression newe);
-
-    void dump_body(const Body* body, std::ostream& stream) const;
-    static void sdump_body(const Body* body, std::ostream& stream) ;
-    HashSet<const Expr*, ExprHash, ExprEqual> expressions_;
-    size_t gid_; // global id for expressions
     
-    void removeExpr(const Expr* expr);
-    void removeExprs(std::unordered_set<const Expr*> exprs) { for(auto e : exprs) removeExpr(e); }
+    Def cse(Def  e) const;
+    //template<class T> const T* cse(const T* expr) { return cse_base(expr)->template as<T>(); }
+    void replace(Def olde, Def newe) const;
+
+    void dump_body(Def body, std::ostream& stream) const;
+    mutable HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
+    mutable size_t gid_; // global id for expressions
+    
 };
 
-struct ExprHash { size_t operator () (const Expr* e) const { return e->hash(); } };
-struct ExprEqual { 
-    World& world;
-    ExprEqual(World& w) : world(w) {}
-    bool operator () (const Expr* e1, const Expr* e2) const { return world.are_expressions_equal(e1, e2); } 
-};
 
-class Expression {
-public:
-    Expression(World* world)
-        : expr_(nullptr)
-        , world_(world)
-    {}
-    
-    Expression(const Expr* expr)
-        : expr_(expr)
-        , world_(nullptr)
-    {   
-        expr_->increaseRefCount();
-        std::cout << "increased refcount to " << expr_->refCount() << " of expr " << expr_ << std::endl;
-         }
-    
-    Expression(const Expr* expr, World* world)
-        : expr_(expr)
-        , world_(world)
-    { expr_->increaseRefCount();
-        std::cout << "increased refcount to " << expr_->refCount() << " of expr " << expr_ << std::endl; }
-    
-    ~Expression() {
-        if(!empty()) {
-            expr_->decreaseRefCount();
-            std::cout << "decreased refcount to " << expr_->refCount() << " of expr " << expr_ << std::endl;
-         //   if(expr_->refCount() == 0) {
-                world_->removeExprs(expr_->gatherUnusedCascading());
-                //delete expr_;
-       //     }
-        }
-    }
-    
-    void operator = (const Expression& other) {
-        if(this != &other) {
-            std::cout << "Expr assignment: inc " << other.expr() << ", dec " << expr_ << std::endl;
-            auto oe = other.expr();
-            oe->increaseRefCount();
-            expr_->decreaseRefCount();
-            expr_ = oe;
-        }
-    }
-    
-    Expression(const Expression& other) {
-        std::cout << "copy construct " << other.expr() << std::endl;
-        expr_ = other.expr();
-        expr_->increaseRefCount();
-    }
-    
-    Expression(Expression&& other) {
-        std::cout << "move construct " << other.expr() << std::endl;
-        expr_ = other.expr();
-        expr_->increaseRefCount();
-    }
-
-    bool empty() const { return expr_ == nullptr; }
-    const Expr* expr() const { return expr_; }
-    const Expr* deref() const;
-    const Expr* operator *() const { return deref(); }
-    bool operator == (const Expr* other) const { return this->deref() == other; }
-    operator const Expr*() const { return deref(); }
-    const Expr* operator -> () const { return deref(); }
-    
-private:
-    mutable const Expr* expr_;
-    /*const*/ World* world_;
-};
 
 }
 
