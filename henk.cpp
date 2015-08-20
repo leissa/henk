@@ -7,6 +7,9 @@
 
 namespace henk {
 
+using thorin::hash_combine;
+using thorin::hash_begin;
+
 /* ----------------------------------------------------
  * Def
  * ------------------------------------------------- */

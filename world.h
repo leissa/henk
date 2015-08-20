@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <list>
 
-#include "hash.h"
+#include "thorin/util/hash.h"
 #include "henk.h"
 
 namespace henk {
@@ -78,7 +78,7 @@ private:
     void replace(Def olde, Def newe) const;
 
     void dump_body(Def body, std::ostream& stream) const;
-    mutable HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
+    mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     mutable size_t gid_; // global id for expressions
     
 };
