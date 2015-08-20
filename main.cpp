@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
     auto world = new World();
     world->show_prims(std::cout);
     std::cout << std::endl;
-    if(argc == 2) {
+    if (argc == 2) {
         std::string arg = argv[1];
         switch(std::stoi(arg)) {
             case 1: test1(world); break;

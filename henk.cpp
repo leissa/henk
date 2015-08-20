@@ -61,7 +61,7 @@ bool UseLT::operator () (Use use1, Use use2) const {
 void DefNode::set_op(size_t i, Def def) const { // weird constness?
     assert(!op(i) && "already set");
    // assert(def && "setting null pointer");
-    if(!def) {
+    if (!def) {
         // do nothing; we have to do this in order for var(nullptr, nullptr)
         // to work (that's how star and box are constructed, for instance
     }
@@ -112,15 +112,15 @@ void DefNode::unset_ops() {
 
 void DefNode::update_closedness() const {
     bool closed = true;
-    for(auto& d : ops()) {
+    for (auto& d : ops()) {
         closed &= d->is_closed();
     }
-    if(closed != is_closed()) {
+    if (closed != is_closed()) {
         is_closed_ = closed;
         // closed terms need to be moved from garbage to expressions set
         world_->move_from_garbage(this);
         
-        for(auto& u : uses()) {
+        for (auto& u : uses()) {
             auto deff = u.def();
             (*deff)->update_closedness();
         }
