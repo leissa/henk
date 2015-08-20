@@ -19,7 +19,7 @@ public:
 /*
  * Factory methods
  */
-    Def lam(std::string var_name, Def var_type) const;
+    Def lambda(std::string var_name, Def var_type) const;
     Def pi(std::string var_name, Def var_type) const;
     Def pi_share_var(Def var) const;
     Def var_occ(Def introduced_by) const;

@@ -5,21 +5,21 @@
 using namespace henk;
 
 Def poly_id(World* world, std::string tvar, std::string var) {
-    auto type_lam = world->lam(tvar, world->get_prim_const("*"));
-    auto id_lam = world->lam(var, type_lam.abs_var());
-    auto x_occ = world->var_occ(id_lam);
-    id_lam.close_abs(x_occ);
-    type_lam.close_abs(id_lam);
+    auto type_lambda = world->lambda(tvar, world->get_prim_const("*"));
+    auto id_lambda = world->lambda(var, type_lambda.abs_var());
+    auto x_occ = world->var_occ(id_lambda);
+    id_lambda.close_abs(x_occ);
+    type_lambda.close_abs(id_lambda);
 
-    return type_lam;
+    return type_lambda;
 }
 
 void test1(World* world) {
-    auto type_lam = poly_id(world, "a", "x");
+    auto type_lambda = poly_id(world, "a", "x");
 
-    auto atype = world->typecheck(type_lam);
+    auto atype = world->typecheck(type_lambda);
     std::cout << std::endl;
-    world->dump(type_lam);
+    world->dump(type_lambda);
     std::cout << " : ";
     world->dump(atype);
 }
@@ -28,17 +28,17 @@ void test2(World* world) {
      // u = lambda y:* . Int
     // (lambda x: (u Bool). 42) (Int)
     
-    auto u = world->lam("y", world->get_prim_const("*"));
+    auto u = world->lambda("y", world->get_prim_const("*"));
 
     u.close_abs(world->get_prim_const("Int"));
 
-    auto lam = world->lam("x", world->app(
+    auto lambda = world->lambda("x", world->app(
         u, world->get_prim_const("Bool")
         )
     );
-    lam.close_abs(world->literal(42));
+    lambda.close_abs(world->literal(42));
 
-    auto app = world->app(lam, world->literal(33));//get_prim_const("Int"));
+    auto app = world->app(lambda, world->literal(33));//get_prim_const("Int"));
     world->dump(app);
     auto tapp = world->typecheck(app);
     std::cout << " : ";

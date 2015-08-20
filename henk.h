@@ -153,9 +153,9 @@ public:
     friend class Def;
 };
 
-class Lam : public Abs {
+class Lambda : public Abs {
 protected:
-    Lam(const World* world, size_t gid, Def var_type, std::string name)
+    Lambda(const World* world, size_t gid, Def var_type, std::string name)
         : Abs(world, gid, var_type, name)
     {}
     

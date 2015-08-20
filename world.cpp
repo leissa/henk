@@ -137,12 +137,12 @@ Def World::substitute(/*const Expr**/Def bexpr, /*const VarIntr**/Def bvar,
             if(nvarn.str() != "_")
                 nvarn << "'";
             auto ntype = substitute(abs->var()->type(), bvar, bnval);
-            auto nlam = lam(nvarn.str(), ntype);
-            auto nbody = substitute(Expression(lam->body(), this), 
-                Expression(lam->var(), this), varOcc_on_without_cse(nlam));
+            auto nlambda = lambda(nvarn.str(), ntype);
+            auto nbody = substitute(Expression(lambda->body(), this), 
+                Expression(lambda->var(), this), varOcc_on_without_cse(nlambda));
             auto body_substituted = substitute(nbody, bvar, bnval);
-            nlam.close(body_substituted);
-            return nlam;
+            nlambda.close(body_substituted);
+            return nlambda;
         }
     }
     else if(auto app = expr->isa<App>()) {
@@ -210,7 +210,7 @@ Def World::reduce(Def e, std::map<const DefNode*, const DefNode*>* M) const {
             if(nvarn.str() != "_")
                 nvarn << "'";
             auto ntype = reduce(abs->var()->as<Var>()->type(), M);
-            auto nabs = lam(nvarn.str(), ntype);
+            auto nabs = lambda(nvarn.str(), ntype);
             (*M)[*(abs->var())] = *var_occ(nabs);
             auto nbody = reduce(abs->body(), M);
             nabs.close_abs(nbody);
@@ -248,13 +248,13 @@ void World::to_whnf(/*const Expr**/Def e) const {
         auto f = app->fun();
         auto ff = *f; // done just to trigger path compression
         to_whnf(f);
-        if(auto flam = f->isa<Lam>()) {
-            auto nbody = substitute(flam->body(), flam->var(), app->arg());
+        if(auto flambda = f->isa<Lambda>()) {
+            auto nbody = substitute(flambda->body(), flambda->var(), app->arg());
             to_whnf(nbody);
             expr->set_representative(*nbody);
         }
         else
-            throw std::runtime_error("app of non-lambda");
+            throw std::runtime_error("app of non-lambdabda");
     }
 }
 #endif
@@ -338,16 +338,16 @@ Def World::typecheck_(Def e) { // assumption: e is reduced
         
         return var->type();
     }
-    else if(auto lam = expr->isa<Lam>()) {
+    else if(auto lambda = expr->isa<Lambda>()) {
         // do we need to typecheck var?
-       // auto var_type = typecheck_(lam->var());
-        auto body_type = typecheck_(lam->body());
+       // auto var_type = typecheck_(lambda->var());
+        auto body_type = typecheck_(lambda->body());
         
-       // auto res = pi(lam->var()->name(), var_type);
-        auto res = pi_share_var(lam->var());
+       // auto res = pi(lambda->var()->name(), var_type);
+        auto res = pi_share_var(lambda->var());
         // oh, here we probably really need a real substitution...... ;(
-        // but let's risk for now and make lam->var() a shared var between lam and new pi
-      //  auto body_type2 = substitute(body_type, lam->var(), varocc);//new VarOcc(res));
+        // but let's risk for now and make lambda->var() a shared var between lambda and new pi
+      //  auto body_type2 = substitute(body_type, lambda->var(), varocc);//new VarOcc(res));
         res.close_abs(body_type/*2*/);
         auto type_of_pi = typecheck_(res);
         return res;
@@ -405,7 +405,7 @@ void World::dump(Def e, std::ostream& stream) const {
     else if(auto var_occ = expr->isa<Var>()) {
         stream << var_occ->name;
     }
-    else if(auto lam = expr->isa<Lam>()) {
+    else if(auto lambda = expr->isa<Lambda>()) {
         stream << "λ";
         dump_body(e, stream);
     }
@@ -445,11 +445,11 @@ void World::dump_body(Def body, std::ostream& stream) const {
     dump(body.abs_body(), stream);
 }
 
-Def World::lam(std::string var_name, Def var_type) const {
+Def World::lambda(std::string var_name, Def var_type) const {
     assert(var_type.is_closed() && "type of lambda variable is an unclosed term");
     size_t g = gid_;
     gid_ += 2; // world knows that Abs creates Var
-    return cse(new Lam(this, g, var_type, var_name));
+    return cse(new Lambda(this, g, var_type, var_name));
 }
 
 Def World::pi(std::string var_name, Def var_type) const {
