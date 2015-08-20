@@ -36,7 +36,7 @@ public:
     bool is_closed() const;
     void close_abs(Def body) const;
     
-    // getters for deassembling defs
+    // getters for disassembling defs
     Def abs_var() const;
     Def abs_body() const;
     Def var_type() const;
