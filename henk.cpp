@@ -1,5 +1,6 @@
 #include "henk.h"
-#include "hash.h"
+
+#include "thorin/util/hash.h"
 #include "world.h"
 
 #include <iostream>
@@ -33,55 +34,12 @@ const DefNode* Def::deref() const {
 }
 
 bool Def::is_closed() const { return node_->is_closed(); }
-
-void Def::close_abs(Def body) const {
-    if(auto abs = node_->isa<Abs>()) {
-        abs->close(body);
-    }
-    else
-        throw std::runtime_error("attempt to close non-abstraction");
-}
-
-// getters for deassembling defs
-Def Def::abs_var() const {
-    if(auto abs = node_->isa<Abs>()) {
-        return abs->var();
-    }
-    else
-        throw std::runtime_error("in abs_var node_ is not Abs");
-}
-
-Def Def::abs_body() const {
-    if(auto abs = node_->isa<Abs>()) {
-        return abs->body();
-    }
-    else
-        throw std::runtime_error("in abs_var node_ is not Abs");
-}
-
-Def Def::var_type() const {
-    if(auto var = node_->isa<Var>()) {
-        return var->type();
-    }
-    else
-        throw std::runtime_error("in var_type node_ is not Var");
-}
-
-Def Def::app_fun() const {
-    if(auto app = node_->isa<App>()) {
-        return app->fun();
-    }
-    else
-        throw std::runtime_error("in app_fun node_ is not App");
-}
-
-Def Def::app_arg() const {
-    if(auto app = node_->isa<App>()) {
-        return app->arg();
-    }
-    else
-        throw std::runtime_error("in app_fun node_ is not App"); 
-}
+void Def::close_abs(Def body) const { return deref()->as<Abs>()->close(body); }
+Def Def::abs_var() const { return deref()->as<Abs>()->var(); }
+Def Def::abs_body() const { return deref()->as<Abs>()->body(); }
+Def Def::var_type() const { return deref()->as<Var>()->type(); }
+Def Def::app_fun() const { return deref()->as<App>()->fun(); }
+Def Def::app_arg() const { return deref()->as<App>()->arg(); }
 
 /* ----------------------------------------------------
  * Use
