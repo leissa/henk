@@ -12,6 +12,49 @@ namespace henk {
 class DefNode;
 class World;
 
+template<class T>
+class Proxy {
+public:
+    typedef T BaseType;
+
+    Proxy()
+        : node_(nullptr)
+    {}
+    Proxy(const T* node)
+        : node_(node)
+    {}
+
+    bool empty() const { return node_ == nullptr; }
+    bool operator == (const Proxy<T>& other) const {
+        assert(&node()->world() == &other.node()->world());
+        //return this->node()->unify() == other.node()->unify();
+        return this->node()->deref() == other.node()->deref();
+    }
+    bool operator != (const Proxy<T>& other) const { return !(*this == other); }
+    const T* representative() const { return node()->representative()->template as<T>(); }
+    const T* node() const { assert(node_ != nullptr); return node_; }
+    const T* deref() const;
+    //const T* operator  * () const { return node()->is_unified() ? representative() : node(); }
+    const T* operator  * () const { return deref(); }
+    const T* operator -> () const { return *(*this); }
+    /// Automatic up-cast in the class hierarchy.
+    template<class U> operator Proxy<U>() {
+        static_assert(std::is_base_of<U, T>::value, "U is not a base type of T");
+        return Proxy<U>((**this)->template as<T>());
+    }
+    template<class U> Proxy<typename U::BaseType> isa() const {
+        return Proxy<typename U::BaseType>((*this)->template isa<typename U::BaseType>());
+    }
+    template<class U> Proxy<typename U::BaseType> as() const {
+        return Proxy<typename U::BaseType>((*this)->template as <typename U::BaseType>());
+    }
+    operator bool() const { return !empty(); }
+    //Proxy<T> unify() const { return node()->unify()->template as<T>(); }
+
+private:
+    const T* node_;
+};
+
 class Def {
 public:
     Def()
