@@ -1,5 +1,7 @@
 #include "world.h"
 
+#include "thorin/util/queue.h"
+
 namespace henk {
 
 using thorin::hash_combine;
