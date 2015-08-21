@@ -97,12 +97,12 @@ Pi World::fun_type(Def from, Def to) {
 bool World::are_expressions_equal(Def expr1, Def expr2) {
     reduce(expr1);
     reduce(expr2);
-    are_expressions_equal_(expr1, expr2);
+    return are_expressions_equal_(expr1, expr2);
 }
 
 // TODO make this a virtual function in DefNode
 bool World::are_expressions_equal_(Def def1, Def def2) {
-    assert(!def1->is_closed() || !def2->is_closed() && "in are_expr_equal one is not closed");
+    assert((def1->is_closed() && def2->is_closed()) && "in are_expr_equal one is not closed");
     
     if (def1 == def2)
         return true;
@@ -125,8 +125,8 @@ bool World::are_expressions_equal_(Def def1, Def def2) {
         throw std::runtime_error("bumped into app in are_expr_equal after reducing");
     else if (auto app2 = def2.isa<App>()) // how to merge those branches? "||" doesn't work
         throw std::runtime_error("bumped into app in are_expr_equal after reducing");
-    else
-        return false;
+
+    return false;
 }
 
 const DefNode* World::cse_base(const DefNode* def) const {
@@ -143,7 +143,7 @@ const DefNode* World::cse_base(const DefNode* def) const {
         def = *i;
     } else {
        // def->set_gid(gid_++);
-        auto p = expressions_.insert(def);
+        expressions_.insert(def);
     }
     
     return def;
@@ -157,19 +157,19 @@ void World::dump(Def def, std::ostream& stream) const {
     } else if (auto int_value = def.isa<PrimLit>()) {
         stream << int_value->value();
     } else if (auto var = def.isa<Var>()) {
-        stream << var->name;
+        stream << var->name();
     } else if (auto lambda = def.isa<Lambda>()) {
         stream << "λ";
         dump_body(lambda, stream);
     } else if (auto pi = def.isa<Pi>()) {
-         if (pi->var()->name == "_" || !pi->body()->has_subexpr(pi->var())) {
+         if (pi->var()->name() == "_" || !pi->body()->has_subexpr(pi->var())) {
             stream << "(";
             dump(pi->var().as<Var>()->type(), stream);
             stream << ") -> (";
             dump(pi->body(), stream);
             stream << ")";
         } else if (*(pi->var().as<Var>()->type()) == *(get_prim_const("*"))) {
-            stream << "∀" << pi->var()->name << ". ";
+            stream << "∀" << pi->var()->name() << ". ";
             dump(pi->body(), stream);
         } else {
             stream << "Π";
@@ -228,7 +228,7 @@ Def World::reduce(Def def, Def2Def& map) {
             return def;
         } else {
             std::ostringstream nvarn;
-            nvarn << abs->var()->name;
+            nvarn << abs->var()->name();
             if (nvarn.str() != "_")
                 nvarn << "'";
             auto ntype = reduce(abs->var().as<Var>()->type(), map);
@@ -247,6 +247,8 @@ Def World::reduce(Def def, Def2Def& map) {
         } else
             throw std::runtime_error("app of non-lambda found in reduce");
     }
+
+    return Def(); // FIXME controll reaches end of void function
 }
 
 // TODO make this a method of DefNode
@@ -278,8 +280,8 @@ void World::show_prims(std::ostream& stream) const {
     }
     std::cout << "prim rules has type: \n";
     for (auto& p : prim_rules_has_type) {
-        stream << p.first->name << "(" << p.first << ") : ";
-        stream << p.second->name << "(" << p.second << ")" << std::endl;
+        stream << p.first->name() << "(" << p.first << ") : ";
+        stream << p.second->name() << "(" << p.second << ")" << std::endl;
     }  
 }
 
@@ -300,7 +302,7 @@ Def World::substitute(/*const Expr**/Def bexpr, /*const VarIntr**/Def bvar,
             return bexpr;
         } else {
             std::ostringstream nvarn;
-            nvarn << abs->var()->name;
+            nvarn << abs->var()->name();
             if (nvarn.str() != "_")
                 nvarn << "'";
             auto ntype = substitute(abs->var()->type(), bvar, bnval);
@@ -364,7 +366,7 @@ Def World::typecheck_(Def def) { // assumption: e is reduced
         if (kv.second == def) {
             if (i == prim_rules_has_type.end()) {
                 std::ostringstream msg;
-                msg << "typechecking " << kv.second->name << "  shouldn't happen" << std::endl;
+                msg << "typechecking " << kv.second->name() << "  shouldn't happen" << std::endl;
                 throw std::runtime_error(msg.str());
             }
         }
@@ -389,7 +391,7 @@ Def World::typecheck_(Def def) { // assumption: e is reduced
         // but let's risk for now and make lambda->var() a shared var between lambda and new pi
       //  auto body_type2 = substitute(body_type, lambda->var(), varocc);//new VarOcc(res));
         res->close(body_type/*2*/);
-        auto type_of_pi = typecheck_(res);
+        typecheck_(res);
         return res;
     } else if (auto pi = def.isa<Pi>()) {
         auto var_type = typecheck_(pi->var());
@@ -404,8 +406,8 @@ Def World::typecheck_(Def def) { // assumption: e is reduced
         }
         else {
             std::ostringstream msg;
-            msg << "no wavy arrow rule for " << var_type_type->name;
-            msg << " ⤳  " << body_type->name;
+            msg << "no wavy arrow rule for " << var_type_type->name();
+            msg << " ⤳  " << body_type->name();
             throw std::runtime_error(msg.str());
         }
     } else if (auto app = def.isa<App>()) {

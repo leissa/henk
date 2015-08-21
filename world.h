@@ -62,13 +62,13 @@ protected:
         } 
     };
     
+    mutable size_t gid_; // global id for expressions
     std::map<std::string, const DefNode*> prim_consts;
     std::map<const DefNode*, const DefNode*> prim_rules_has_type;
     std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
     std::list<Def> prim_consts_boxes_;
     mutable DefSet garbage_;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
-    mutable size_t gid_; // global id for expressions
     
     friend class DefNode; // DefNode uses move_from_garbage(const DefNode*)
 };

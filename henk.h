@@ -125,7 +125,7 @@ protected:
         , world_(world)
         , ops_(size)
         , gid_(gid)
-        , name(name)
+        , name_(name)
         , uses_{}
     {}
     
@@ -156,23 +156,23 @@ public:
     World& world() const { return world_; }
     std::vector<Def> ops() const { return ops_; }
     Def op(size_t i) const { assert(i < ops().size() && "index out of bounds"); return ops_[i]; }
+    const std::string& name() const { return name_; }
     virtual bool is_closed() const = 0;
 
 protected:
-    mutable std::vector<Def> ops_;
-    mutable std::set<Use, UseLT> uses_; // TODO use HashSet
     mutable const DefNode* representative_;
-    mutable DefSet representative_of_;
-    mutable size_t gid_;
-    mutable size_t hash_ = 0;
     World& world_;
+    mutable std::vector<Def> ops_;
+    mutable size_t gid_;
+    mutable std::string name_;
+    mutable std::set<Use, UseLT> uses_; // TODO use HashSet
+    mutable DefSet representative_of_;
+    mutable size_t hash_ = 0;
     mutable bool live_ = false;
     mutable /*Def*/ const DefNode* equiv_ = nullptr; // hack-ptr useful when testing for equality
     mutable bool is_closed_;
  //   mutable Def type_ = nullptr;
 
-public:
-    mutable std::string name;
     
     friend class World;
     template<class T> friend class Proxy;
