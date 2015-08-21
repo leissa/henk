@@ -42,12 +42,243 @@ World::World()
 World::~World() {
     std::cout << "deleting expressions_..." << std::endl;
     for (auto& e : expressions_) {
+        std::cout << "at " << e << std::endl;
         delete e;
     }
-    std::cout << "deleting garbage..." << std::endl;
+    std::cout << "deleting garbage_..." << std::endl;
     for (auto& e: garbage_) {
         std::cout << "at " << e << std::endl;
         delete e;
+    }
+}
+
+
+/*
+ * Factory methods
+ */
+Def World::lambda(std::string var_name, Def var_type) const {
+    assert(var_type.is_closed() && "type of lambda variable is an unclosed term");
+    size_t g = gid_;
+    gid_ += 2; // world knows that Abs creates Var
+    return cse(new Lambda(this, g, var_type, var_name));
+}
+
+Def World::pi(std::string var_name, Def var_type) const {
+    assert(var_type.is_closed() && "type of pi variable is an unclosed term");
+    size_t g = gid_;
+    gid_ += 2; // world knows that Abs creates Var
+    return cse(new Pi(this, g, var_type, var_name));
+}
+
+Def World::pi_share_var(Def var) const {
+    return cse(new Pi(this, gid_++, var));
+}
+
+Def World::var_occ(Def introduced_by) const {
+    return introduced_by->as<Abs>()->var();
+}
+
+Def World::app(Def fun, Def arg) const {
+    return cse(new App(this, gid_++, fun, arg, "app_"));
+}
+
+Def World::literal(int value) const { 
+    return cse(new PrimLit(this, gid_++, get_prim_const("Int"), value, "someint"));
+}
+
+Def World::fun_type(Def from, Def to) const {
+    auto npi = pi("_", from);
+    npi.close_abs(to); // upon closing, cse should be fired automatically
+    return npi; // so there's no need to call cse again
+}
+
+
+/*
+ * Utility methods -- sorted alphabetically
+ */
+bool World::are_expressions_equal(Def expr1, Def expr2) const {
+    reduce(expr1);
+    reduce(expr2);
+    are_expressions_equal_(expr1, expr2);
+}
+
+bool World::are_expressions_equal_(Def expr1, Def expr2) const {
+    if (!expr1.is_closed() || !expr2.is_closed())
+        throw std::runtime_error("in are_expr_equal one is not closed");
+    
+    auto e1 = *expr1;
+    auto e2 = *expr2;
+    if (e1 == e2)
+        return true;
+    if (auto int1 = e1->isa<PrimLit>()) {
+        if (auto int2 = e2->isa<PrimLit>()) {
+            return int1->value() == int2->value();
+        }
+    } else if (auto v1 = e1->isa<Var>()) {
+        if (auto v2 = e2->isa<Var>()) {
+            return v1 == v2 || v1->equiv_ == v2;
+        }
+    } else if (auto abs1 = e1->isa<Abs>()) {
+        if (auto abs2 = e2->isa<Abs>()) {
+            abs1->var()->equiv_ = abs2;
+            auto res = are_expressions_equal_(abs1->var()->as<Var>()->type(), 
+                abs2->var()->as<Var>()->type()) &&
+                are_expressions_equal_(abs1->body(), abs2->body());
+            abs1->var()->equiv_ = nullptr;
+            return res;
+        }
+    } else if (auto app1 = e1->isa<App>())
+        throw std::runtime_error("bumped into app in are_expr_equal after reducing");
+    else if (auto app2 = e2->isa<App>()) // how to merge those branches? "||" doesn't work
+        throw std::runtime_error("bumped into app in are_expr_equal after reducing");
+    else
+        return false;
+}
+
+Def World::cse(Def e) const {
+    if (!e.is_closed()) {
+        garbage_.insert(*e);
+        //e->set_gid(gid_++);
+        return e;
+    }
+    auto expr = *e;
+    auto i = expressions_.find(expr);
+    if (i != expressions_.end() && *i != expr) {
+        // here probably we want to do gid_-- or gid_-=2 depending on whether
+        // expr is Abs or not
+        delete expr;
+        expr = *i;
+    } else {
+       // expr->set_gid(gid_++);
+        auto p = expressions_.insert(expr);
+    }
+    
+    return expr;
+}
+
+void World::dump(Def expr) const { dump(expr, std::cout); }
+
+void World::dump(Def e, std::ostream& stream) const {
+    auto expr = *e;
+    if (expr == nullptr) {
+        stream << "'nullptr'";
+    } else if (auto int_value = expr->isa<PrimLit>()) {
+        stream << int_value->value();
+    } else if (auto var_occ = expr->isa<Var>()) {
+        stream << var_occ->name;
+    } else if (auto lambda = expr->isa<Lambda>()) {
+        stream << "λ";
+        dump_body(e, stream);
+    } else if (auto pi = expr->isa<Pi>()) {
+         if (pi->var()->name == "_" ||
+            !is_a_subexpression(pi->body(), pi->var())
+            ) {
+            stream << "(";
+            dump(pi->var()->as<Var>()->type(), stream);
+            stream << ") -> (";
+            dump(pi->body(), stream);
+            stream << ")";
+        } else if (*(pi->var()->as<Var>()->type()) == *(get_prim_const("*"))) {
+            stream << "∀" << pi->var()->name << ". ";
+            dump(pi->body(), stream);
+        } else {
+            stream << "Π";
+            dump_body(e, stream);
+        }  
+    } else if (auto app = expr->isa<App>()) {
+        stream << "(";
+        dump(app->fun(), stream);
+        stream << ") (";
+        dump(app->arg(), stream);
+        stream << ")";
+    }
+}
+
+void World::dump_body(Def body, std::ostream& stream) const {
+    dump(body.abs_var(), stream);
+    stream << ":";
+    dump(body.abs_var().var_type(), stream);
+    stream << ". ";
+    dump(body.abs_body(), stream);
+}
+
+bool World::is_a_subexpression(Def bexpr, Def bsub) const {
+    assert(!bsub.empty());
+    
+    if (bexpr.empty())
+        return false;
+    
+    auto expr = *bexpr;
+    auto sub = *bsub;
+    if (expr == sub) {
+        return true;
+    } else if (auto var = expr->isa<Var>()) {
+        return is_a_subexpression(var->type(), bsub);
+    } else if (auto abs = expr->isa<Abs>()) {
+        return is_a_subexpression(abs->var(), bsub) ||
+            is_a_subexpression(abs->body(), bsub);
+    } else if (auto app = expr->isa<App>()) {
+        return is_a_subexpression(app->fun(), bsub) ||
+            is_a_subexpression(app->arg(), bsub);
+    } else 
+        throw std::runtime_error("in is_a_subexpression malformed bexpr");
+}
+
+void World::move_from_garbage(const DefNode* def) const {
+    auto i = garbage_.find(def);
+    if (i != garbage_.end()) {
+        garbage_.erase(i);
+        auto j = expressions_.find(def);
+        if (j != expressions_.end()) {
+            def->set_representative(*j);
+        } else {
+            expressions_.insert(def);
+        }
+    }
+    else
+        throw std::runtime_error("move_from_garbage doesn't work");
+}
+
+void World::reduce(Def def) const { // should we allow non-closed exprs?
+    auto defn = *def;
+    auto M = new std::map<const DefNode*, const DefNode*>();
+    defn->set_representative(reduce(def, M));
+    delete M;
+}
+
+Def World::reduce(Def e, std::map<const DefNode*, const DefNode*>* M) const {
+    auto expr = *e;
+    if (auto var = expr->isa<Var>()) {
+        auto i = M->find(var);
+        if (i != M->end()) {
+            return i->second;
+        } else {
+            return e; // expr
+        }
+    } else if (auto abs = expr->isa<Abs>()) {
+        auto i = M->find(abs->var());
+        if (i != M->end()) {
+            return e;
+        } else {
+            std::ostringstream nvarn;
+            nvarn << abs->var()->name;
+            if (nvarn.str() != "_")
+                nvarn << "'";
+            auto ntype = reduce(abs->var()->as<Var>()->type(), M);
+            auto nabs = lambda(nvarn.str(), ntype);
+            (*M)[*(abs->var())] = *var_occ(nabs);
+            auto nbody = reduce(abs->body(), M);
+            nabs.close_abs(nbody);
+            return nabs;
+        }
+    } else if (auto app = expr->isa<App>()) {
+        auto rfun = reduce(app->fun(), M);
+        if (auto abs = (*rfun)->isa<Abs>()) {
+            auto rarg = reduce(app->arg(), M);
+            (*M)[*(abs->var())] = *rarg;
+            return reduce(abs->body(), M);
+        } else
+            throw std::runtime_error("app of non-lambda found in reduce");
     }
 }
 
@@ -72,41 +303,16 @@ void World::show_expressions(std::ostream& stream) const {
     }
 }
 
-void World::move_from_garbage(const DefNode* def) const {
-    auto i = garbage_.find(def);
-    if (i != garbage_.end()) {
-        garbage_.erase(i);
-        auto j = expressions_.find(def);
-        if (j != expressions_.end()) {
-            def->set_representative(*j);
-        } else {
-            expressions_.insert(def);
-        }
+void World::show_prims(std::ostream& stream) const {
+    stream << "prim consts: \n";
+    for (auto& p : prim_consts) {
+        stream << p.first << " at " << p.second << std::endl;
     }
-    else
-        throw std::runtime_error("move_from_garbage doesn't work");
-}
-
-Def World::cse(Def e) const {
-    if (!e.is_closed()) {
-        garbage_.insert(*e);
-        //e->set_gid(gid_++);
-        return e;
-    }
-    std::cout << "in cse_base, given box at " << &e << " and expr at " << *e << std::endl;
-    auto expr = *e;
-    auto i = expressions_.find(expr);
-    if (i != expressions_.end() && *i != expr) {
-        // here probably we want to do gid_-- or gid_-=2 depending on whether
-        // expr is Abs or not
-        delete expr;
-        expr = *i;
-    } else {
-       // expr->set_gid(gid_++);
-        auto p = expressions_.insert(expr);
-    }
-    
-    return expr;
+    std::cout << "prim rules has type: \n";
+    for (auto& p : prim_rules_has_type) {
+        stream << p.first->name << "(" << p.first << ") : ";
+        stream << p.second->name << "(" << p.second << ")" << std::endl;
+    }  
 }
 
 #if 0 // legacy code -- might be needed if general substitution turns out to be needed
@@ -150,71 +356,6 @@ Def World::substitute(/*const Expr**/Def bexpr, /*const VarIntr**/Def bvar,
 }
 #endif
 
-bool World::is_a_subexpression(Def bexpr, Def bsub) const {
-    assert(!bsub.empty());
-    
-    if (bexpr.empty())
-        return false;
-    
-    auto expr = *bexpr;
-    auto sub = *bsub;
-    if (expr == sub) {
-        return true;
-    } else if (auto var = expr->isa<Var>()) {
-        return is_a_subexpression(var->type(), bsub);
-    } else if (auto abs = expr->isa<Abs>()) {
-        return is_a_subexpression(abs->var(), bsub) ||
-            is_a_subexpression(abs->body(), bsub);
-    } else if (auto app = expr->isa<App>()) {
-        return is_a_subexpression(app->fun(), bsub) ||
-            is_a_subexpression(app->arg(), bsub);
-    } else 
-        throw std::runtime_error("in is_a_subexpression malformed bexpr");
-}
-
-Def World::reduce(Def e, std::map<const DefNode*, const DefNode*>* M) const {
-    auto expr = *e;
-    if (auto var = expr->isa<Var>()) {
-        auto i = M->find(var);
-        if (i != M->end()) {
-            return i->second;
-        } else {
-            return e; // expr
-        }
-    } else if (auto abs = expr->isa<Abs>()) {
-        auto i = M->find(abs->var());
-        if (i != M->end()) {
-            return e;
-        } else {
-            std::ostringstream nvarn;
-            nvarn << abs->var()->name;
-            if (nvarn.str() != "_")
-                nvarn << "'";
-            auto ntype = reduce(abs->var()->as<Var>()->type(), M);
-            auto nabs = lambda(nvarn.str(), ntype);
-            (*M)[*(abs->var())] = *var_occ(nabs);
-            auto nbody = reduce(abs->body(), M);
-            nabs.close_abs(nbody);
-            return nabs;
-        }
-    } else if (auto app = expr->isa<App>()) {
-        auto rfun = reduce(app->fun(), M);
-        if (auto abs = (*rfun)->isa<Abs>()) {
-            auto rarg = reduce(app->arg(), M);
-            (*M)[*(abs->var())] = *rarg;
-            return reduce(abs->body(), M);
-        } else
-            throw std::runtime_error("app of non-lambda found in reduce");
-    }
-}
-
-void World::reduce(Def def) const { // should we allow non-closed exprs?
-    auto defn = *def;
-    auto M = new std::map<const DefNode*, const DefNode*>();
-    defn->set_representative(reduce(def, M));
-    delete M;
-}
-
 #if 0 // legacy code -- if strong normalization turns out to be 'too much' then
       // will get back to whnf
 void World::to_whnf(/*const Expr**/Def e) const {
@@ -237,45 +378,6 @@ void World::to_whnf(/*const Expr**/Def e) const {
     }
 }
 #endif
-
-bool World::are_expressions_equal(Def expr1, Def expr2) const {
-    reduce(expr1);
-    reduce(expr2);
-    are_expressions_equal_(expr1, expr2);
-}
-
-bool World::are_expressions_equal_(Def expr1, Def expr2) const {
-    if (!expr1.is_closed() || !expr2.is_closed())
-        throw std::runtime_error("in are_expr_equal one is not closed");
-    
-    auto e1 = *expr1;
-    auto e2 = *expr2;
-    if (e1 == e2)
-        return true;
-    if (auto int1 = e1->isa<PrimLit>()) {
-        if (auto int2 = e2->isa<PrimLit>()) {
-            return int1->value() == int2->value();
-        }
-    } else if (auto v1 = e1->isa<Var>()) {
-        if (auto v2 = e2->isa<Var>()) {
-            return v1 == v2 || v1->equiv_ == v2;
-        }
-    } else if (auto abs1 = e1->isa<Abs>()) {
-        if (auto abs2 = e2->isa<Abs>()) {
-            abs1->var()->equiv_ = abs2;
-            auto res = are_expressions_equal_(abs1->var()->as<Var>()->type(), 
-                abs2->var()->as<Var>()->type()) &&
-                are_expressions_equal_(abs1->body(), abs2->body());
-            abs1->var()->equiv_ = nullptr;
-            return res;
-        }
-    } else if (auto app1 = e1->isa<App>())
-        throw std::runtime_error("bumped into app in are_expr_equal after reducing");
-    else if (auto app2 = e2->isa<App>()) // how to merge those branches? "||" doesn't work
-        throw std::runtime_error("bumped into app in are_expr_equal after reducing");
-    else
-        return false;
-}
 
 Def World::typecheck(Def e) {
     reduce(e);
@@ -349,100 +451,6 @@ Def World::typecheck_(Def e) { // assumption: e is reduced
         msg << "malformed expression: ";
         throw std::runtime_error(msg.str());
     }
-}
-    
-void World::show_prims(std::ostream& stream) const {
-    stream << "prim consts: \n";
-    for (auto& p : prim_consts) {
-        stream << p.first << " at " << p.second << std::endl;
-    }
-    std::cout << "prim rules has type: \n";
-    for (auto& p : prim_rules_has_type) {
-        stream << p.first->name << "(" << p.first << ") : ";
-        stream << p.second->name << "(" << p.second << ")" << std::endl;
-    }  
-}
-
-void World::dump(Def expr) const { dump(expr, std::cout); }
-
-void World::dump(Def e, std::ostream& stream) const {
-    auto expr = *e;
-    if (expr == nullptr) {
-        stream << "'nullptr'";
-    } else if (auto int_value = expr->isa<PrimLit>()) {
-        stream << int_value->value();
-    } else if (auto var_occ = expr->isa<Var>()) {
-        stream << var_occ->name;
-    } else if (auto lambda = expr->isa<Lambda>()) {
-        stream << "λ";
-        dump_body(e, stream);
-    } else if (auto pi = expr->isa<Pi>()) {
-         if (pi->var()->name == "_" ||
-            !is_a_subexpression(pi->body(), pi->var())
-            ) {
-            stream << "(";
-            dump(pi->var()->as<Var>()->type(), stream);
-            stream << ") -> (";
-            dump(pi->body(), stream);
-            stream << ")";
-        } else if (*(pi->var()->as<Var>()->type()) == *(get_prim_const("*"))) {
-            stream << "∀" << pi->var()->name << ". ";
-            dump(pi->body(), stream);
-        } else {
-            stream << "Π";
-            dump_body(e, stream);
-        }  
-    } else if (auto app = expr->isa<App>()) {
-        stream << "(";
-        dump(app->fun(), stream);
-        stream << ") (";
-        dump(app->arg(), stream);
-        stream << ")";
-    }
-}
-
-void World::dump_body(Def body, std::ostream& stream) const {
-    dump(body.abs_var(), stream);
-    stream << ":";
-    dump(body.abs_var().var_type(), stream);
-    stream << ". ";
-    dump(body.abs_body(), stream);
-}
-
-Def World::lambda(std::string var_name, Def var_type) const {
-    assert(var_type.is_closed() && "type of lambda variable is an unclosed term");
-    size_t g = gid_;
-    gid_ += 2; // world knows that Abs creates Var
-    return cse(new Lambda(this, g, var_type, var_name));
-}
-
-Def World::pi(std::string var_name, Def var_type) const {
-    assert(var_type.is_closed() && "type of pi variable is an unclosed term");
-    size_t g = gid_;
-    gid_ += 2; // world knows that Abs creates Var
-    return cse(new Pi(this, g, var_type, var_name));
-}
-
-Def World::pi_share_var(Def var) const {
-    return cse(new Pi(this, gid_++, var));
-}
-
-Def World::var_occ(Def introduced_by) const {
-    return introduced_by->as<Abs>()->var();
-}
-
-Def World::app(Def fun, Def arg) const {
-    return cse(new App(this, gid_++, fun, arg, "app_"));
-}
-
-Def World::literal(int value) const { 
-    return cse(new PrimLit(this, gid_++, get_prim_const("Int"), value, "someint"));
-}
-
-Def World::fun_type(Def from, Def to) const {
-    auto npi = pi("_", from);
-    npi.close_abs(to); // upon closing, cse should be fired automatically
-    return npi; // so there's no need to call cse again
 }
 
 }

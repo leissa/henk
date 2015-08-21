@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
         }
     }
     std::cout << std::endl << "world has expressions: " << std::endl;
-    world->show_expressions();
+   // world->show_expressions();
     std::cout << std::endl;
     delete world;
     
