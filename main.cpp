@@ -1,7 +1,5 @@
 #include "world.h"
 
-#include <iostream>
-
 using namespace henk;
 
 Def mk_poly_id(World* world, std::string tvar, std::string var) {

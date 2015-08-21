@@ -1,8 +1,6 @@
-#include <iostream>
 #include <sstream>
 
 #include "world.h"
-#include "henk.h"
 
 namespace henk {
 

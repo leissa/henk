@@ -1,8 +1,4 @@
-#include "henk.h"
-#include "hash.h"
 #include "world.h"
-
-#include <iostream>
 
 namespace henk {
 
@@ -165,6 +161,10 @@ void DefNode::update_closedness() const {
         }
     }
 }
+
+/* ----------------------------------------------------
+ * Classes B where B : DefNode
+ * ------------------------------------------------- */
 
 Abs::Abs(const World* world, size_t gid, Def var_type, std::string name)
     : DefNode(world, gid, 2, name, false)

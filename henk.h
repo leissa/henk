@@ -1,14 +1,9 @@
 #ifndef HENK_IR_H
 #define HENK_IR_H
 
-#include <map>
-#include <memory>
-#include <unordered_set>
-#include <sstream>
-#include <vector>
 #include <set>
-
-#include <iostream>
+#include <unordered_set>
+#include <vector>
 
 #include "thorin/util/cast.h"
 

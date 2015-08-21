@@ -2,9 +2,9 @@
 #define HENK_WORLD_H
 
 #include <iostream>
-#include <sstream>
-#include <unordered_set>
 #include <list>
+#include <map>
+#include <unordered_set>
 
 #include "hash.h"
 #include "henk.h"
@@ -31,38 +31,29 @@ public:
  * Utility methods
  */ 
     Def typecheck(Def def);
-    Def typecheck_(Def def);
-   // Def substitute(Def expr, Def var, Def nval);
-
-    bool is_a_subexpression(Def expr, Def sub) const;
-    
-    void reduce(Def def) const;
-  //  void to_whnf(Def expr);
-    Def reduce(Def e, std::map<const DefNode*, const DefNode*>* M) const;
     bool are_expressions_equal(Def expr1, Def expr2) const;
-    bool are_expressions_equal_(Def expr1, Def expr2) const;
-    
+    bool is_a_subexpression(Def expr, Def sub) const;
     void show_prims(std::ostream& stream) const;
     void dump(Def expr, std::ostream& stream) const;
     void dump(Def expr) const;
     void show_expressions(std::ostream& stream) const;
     void show_expressions() const { show_expressions(std::cout); }
-
+    Def get_prim_const(std::string s) const { return prim_consts.at(s); }
     size_t gid() const { return gid_; }
-    
-    void move_from_garbage(const DefNode* def) const;
-    std::map<std::string, const DefNode*> prim_consts;
-    std::map<const DefNode*, const DefNode*> prim_rules_has_type;
-    std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
-    
-    Def get_prim_const(std::string s) const {
-        return prim_consts.at(s);
-    }
-    
-private:
-    std::list<Def> prim_consts_boxes_;
-    mutable std::unordered_set<const DefNode*> garbage_;
 
+protected:
+    void dump_body(Def body, std::ostream& stream) const;
+    Def typecheck_(Def def);
+   // Def substitute(Def expr, Def var, Def nval);
+    void reduce(Def def) const;
+    Def reduce(Def e, std::map<const DefNode*, const DefNode*>* M) const;
+    bool are_expressions_equal_(Def expr1, Def expr2) const;
+    void replace(Def olde, Def newe) const;
+    void move_from_garbage(const DefNode* def) const;
+    Def cse(Def  e) const;
+    //template<class T> const T* cse(const T* expr) { return cse_base(expr)->template as<T>(); }
+
+protected:
     struct ExprHash { size_t operator () (const DefNode* e) const { return e->hash(); } };
     struct ExprEqual {
         bool operator () (const DefNode* e1, const DefNode* e2) const {
@@ -73,17 +64,16 @@ private:
         } 
     };
     
-    Def cse(Def  e) const;
-    //template<class T> const T* cse(const T* expr) { return cse_base(expr)->template as<T>(); }
-    void replace(Def olde, Def newe) const;
-
-    void dump_body(Def body, std::ostream& stream) const;
+    std::map<std::string, const DefNode*> prim_consts;
+    std::map<const DefNode*, const DefNode*> prim_rules_has_type;
+    std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
+    std::list<Def> prim_consts_boxes_;
+    mutable std::unordered_set<const DefNode*> garbage_;
     mutable HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     mutable size_t gid_; // global id for expressions
     
+    friend class DefNode; // DefNode uses move_from_garbage(const DefNode*)
 };
-
-
 
 }
 
