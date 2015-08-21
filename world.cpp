@@ -1,6 +1,6 @@
-#include <sstream>
-
 #include "world.h"
+
+#include <sstream>
 
 namespace henk {
 
@@ -162,7 +162,7 @@ void World::dump(Def def, std::ostream& stream) const {
         stream << "λ";
         dump_body(lambda, stream);
     } else if (auto pi = def.isa<Pi>()) {
-         if (pi->var()->name == "_" || !pi->body()->is_subexpr(pi->var())) {
+         if (pi->var()->name == "_" || !pi->body()->has_subexpr(pi->var())) {
             stream << "(";
             dump(pi->var().as<Var>()->type(), stream);
             stream << ") -> (";

@@ -2,11 +2,11 @@
 #define HENK_WORLD_H
 
 #include <iostream>
-#include <list>
 #include <map>
-#include <unordered_set>
+#include <list>
 
 #include "thorin/util/hash.h"
+
 #include "henk.h"
 
 namespace henk {
@@ -66,7 +66,7 @@ protected:
     std::map<const DefNode*, const DefNode*> prim_rules_has_type;
     std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
     std::list<Def> prim_consts_boxes_;
-    mutable std::unordered_set<const DefNode*> garbage_;
+    mutable DefSet garbage_;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     mutable size_t gid_; // global id for expressions
     

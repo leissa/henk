@@ -106,14 +106,26 @@ void DefNode::unset_ops() {
         unset_op(i);
 }
 
-bool DefNode::is_subexpr(Def def) const {
-    assert(!is_proxy());
-    if (this == def)
-        return true;
+bool DefNode::has_subexpr(Def sub) const {
+    DefSet done;
+    std::queue<Def> queue;
 
-    for (auto op : ops_) {
-        if (op->is_subexpr(def))
+    auto enqueue = [&] (Def def) {
+        if (def) {
+            auto p = done.insert(def);
+            if (p.second)
+                queue.push(def);
+        }
+    };
+
+    while (!queue.empty()) {
+        auto def = pop(queue);
+        if (def == sub)
             return true;
+
+        for (auto op : ops_)
+            enqueue(op);
+
     }
 
     return false;
@@ -161,7 +173,8 @@ size_t AppNode::vhash() const { return hash_combine(fun()->gid(), arg()->gid());
  */
 
 bool AbsNode::is_closed() const { return body(); }
-bool VarNode::is_closed() const { return type()->is_closed(); }
+//bool VarNode::is_closed() const { return type()->is_closed(); }
+bool VarNode::is_closed() const { return type() ? type()->is_closed() : true; }
 bool AppNode::is_closed() const { return fun()->is_closed() && arg()->is_closed(); }
 
 }

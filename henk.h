@@ -150,7 +150,7 @@ public:
     std::set<Use, UseLT> uses() const { return uses_; }
     bool is_proxy() const { return representative_ != this; }
     bool has_uses() const { return !uses_.empty(); }
-    bool is_subexpr(Def) const;
+    bool has_subexpr(Def) const;
     size_t num_uses() const { return uses().size(); }
     size_t gid() const { return gid_; }
     World& world() const { return world_; }
