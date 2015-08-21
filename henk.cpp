@@ -2,6 +2,9 @@
 
 namespace henk {
 
+using thorin::hash_combine;
+using thorin::hash_begin;
+
 /* ----------------------------------------------------
  * Def
  * ------------------------------------------------- */
@@ -29,55 +32,12 @@ const DefNode* Def::deref() const {
 }
 
 bool Def::is_closed() const { return node_->is_closed(); }
-
-void Def::close_abs(Def body) const {
-    if(auto abs = node_->isa<Abs>()) {
-        abs->close(body);
-    }
-    else
-        throw std::runtime_error("attempt to close non-abstraction");
-}
-
-// getters for deassembling defs
-Def Def::abs_var() const {
-    if(auto abs = node_->isa<Abs>()) {
-        return abs->var();
-    }
-    else
-        throw std::runtime_error("in abs_var node_ is not Abs");
-}
-
-Def Def::abs_body() const {
-    if(auto abs = node_->isa<Abs>()) {
-        return abs->body();
-    }
-    else
-        throw std::runtime_error("in abs_var node_ is not Abs");
-}
-
-Def Def::var_type() const {
-    if(auto var = node_->isa<Var>()) {
-        return var->type();
-    }
-    else
-        throw std::runtime_error("in var_type node_ is not Var");
-}
-
-Def Def::app_fun() const {
-    if(auto app = node_->isa<App>()) {
-        return app->fun();
-    }
-    else
-        throw std::runtime_error("in app_fun node_ is not App");
-}
-
-Def Def::app_arg() const {
-    if(auto app = node_->isa<App>()) {
-        return app->arg();
-    }
-    else
-        throw std::runtime_error("in app_fun node_ is not App"); 
-}
+void Def::close_abs(Def body) const { return deref()->as<Abs>()->close(body); }
+Def Def::abs_var() const { return deref()->as<Abs>()->var(); }
+Def Def::abs_body() const { return deref()->as<Abs>()->body(); }
+Def Def::var_type() const { return deref()->as<Var>()->type(); }
+Def Def::app_fun() const { return deref()->as<App>()->fun(); }
+Def Def::app_arg() const { return deref()->as<App>()->arg(); }
 
 /* ----------------------------------------------------
  * Use
@@ -96,11 +56,10 @@ bool UseLT::operator () (Use use1, Use use2) const {
 void DefNode::set_op(size_t i, Def def) const { // weird constness?
     assert(!op(i) && "already set");
    // assert(def && "setting null pointer");
-    if(!def) {
+    if (!def) {
         // do nothing; we have to do this in order for var(nullptr, nullptr)
-        // to work (that's how star and box are constructed, for instance
-    }
-    else {
+        // to work (that's how star and box are constructed, for instance)
+    } else {
         assert(i < size() && "index out of bounds");
         auto node = *def;
         ops_[i] = node;
@@ -147,15 +106,15 @@ void DefNode::unset_ops() {
 
 void DefNode::update_closedness() const {
     bool closed = true;
-    for(auto& d : ops()) {
+    for (auto& d : ops()) {
         closed &= d->is_closed();
     }
-    if(closed != is_closed()) {
+    if (closed != is_closed()) {
         is_closed_ = closed;
         // closed terms need to be moved from garbage to expressions set
         world_->move_from_garbage(this);
         
-        for(auto& u : uses()) {
+        for (auto& u : uses()) {
             auto deff = u.def();
             (*deff)->update_closedness();
         }

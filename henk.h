@@ -31,7 +31,7 @@ public:
     bool is_closed() const;
     void close_abs(Def body) const;
     
-    // getters for deassembling defs
+    // getters for disassembling defs
     Def abs_var() const;
     Def abs_body() const;
     Def var_type() const;
@@ -138,23 +138,24 @@ protected:
     Abs(const World* world, size_t gid, Def var_type, std::string name);
     Abs(const World* world, size_t gid, Def var);
     
-    void close(Def body) const;
+public:
     Def var() const { return op(0); }
     Def body() const { return op(1); }
+    void close(Def body) const;
+
+private:
     size_t vhash() const;
 
-public:
     friend class World;
     friend class Def;
 };
 
-class Lam : public Abs {
+class Lambda : public Abs {
 protected:
-    Lam(const World* world, size_t gid, Def var_type, std::string name)
+    Lambda(const World* world, size_t gid, Def var_type, std::string name)
         : Abs(world, gid, var_type, name)
     {}
     
-public:
     friend class World;
     friend class Def;
 };
@@ -169,21 +170,22 @@ protected:
         set_op(1, of_abs);
     }
     
-    size_t vhash() const;
-    
+public:
     Def type() const { return op(0); }
     Def of_abs() const { return op(1); }
     
+private:
+    size_t vhash() const;
+
     Def type_;
 
-public:
     friend class World;
     friend class Def;
     friend class Abs;
 };
 
 class PrimLit : public Var {
-protected:
+private:
     PrimLit(const World* world, size_t gid, Def type, int/*will become Box later on*/ value, std::string name)
         : Var(world, gid, type, nullptr, name)
         , value_(value)
@@ -191,17 +193,18 @@ protected:
     
     size_t vhash() const;
     
+public:
     int value() const { return value_; };
     
+private:
     int value_;
     
-public:
     friend class World;
     friend class Def;
 };
 
 class Pi : public Abs {
-protected:
+private:
     Pi(const World* world, size_t gid, Def var_type, std::string name)
         : Abs(world, gid, var_type, name)
     {}
@@ -210,21 +213,20 @@ protected:
         : Abs(world, gid, var)
     {}
     
-public:
     friend class World;
     friend class Def;
 };
 
 class App : public DefNode {
-protected:
+private:
     App(const World* world, size_t gid, Def fun, Def arg, std::string name);
     
     size_t vhash() const;
     
+public:
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }
 
-public:
     friend class World;
     friend class Def;
 };
