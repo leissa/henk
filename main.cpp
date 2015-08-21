@@ -2,7 +2,7 @@
 
 using namespace henk;
 
-Def poly_id(World* world, std::string tvar, std::string var) {
+Lambda poly_id(World* world, std::string tvar, std::string var) {
     auto type_lambda = world->lambda(tvar, world->get_prim_const("*"));
     auto id_lambda = world->lambda(var, type_lambda->var());
     id_lambda->close(id_lambda->var());
