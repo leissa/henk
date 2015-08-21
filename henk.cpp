@@ -159,21 +159,10 @@ AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
  * vhash
  */
 
-size_t VarNode::vhash() const {
-    return hash_combine(type()->gid(), abs()->gid());
-}
-
-size_t PrimLitNode::vhash() const {
-    return hash_begin(value());
-}
-
-size_t AbsNode::vhash() const {
-    return hash_combine(var()->gid(), body()->gid());
-}
-
-size_t AppNode::vhash() const {
-    return hash_combine(fun()->gid(), arg()->gid());
-}
+size_t VarNode::vhash() const { return hash_combine(type()->gid(), abs()->gid()); }
+size_t PrimLitNode::vhash() const { return hash_begin(value()); }
+size_t AbsNode::vhash() const { return hash_combine(var()->gid(), body()->gid()); }
+size_t AppNode::vhash() const { return hash_combine(fun()->gid(), arg()->gid()); }
 
 /*
  * is_closed
