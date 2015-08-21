@@ -45,7 +45,7 @@ protected:
     Def typecheck_(Def def);
    // Def substitute(Def expr, Def var, Def nval);
     void reduce(Def);
-    Def reduce(Def, std::map<const DefNode*, const DefNode*>&);
+    Def reduce(Def, Def2Def&);
     bool are_expressions_equal_(Def expr1, Def expr2);
     void replace(Def olde, Def newe) const;
     void move_from_garbage(const DefNode* def) const;

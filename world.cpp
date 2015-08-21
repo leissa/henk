@@ -100,23 +100,19 @@ bool World::are_expressions_equal(Def expr1, Def expr2) {
     are_expressions_equal_(expr1, expr2);
 }
 
-bool World::are_expressions_equal_(Def expr1, Def expr2) {
-    assert(!expr1->is_closed() || !expr2->is_closed() && "in are_expr_equal one is not closed");
+bool World::are_expressions_equal_(Def def1, Def def2) {
+    assert(!def1->is_closed() || !def2->is_closed() && "in are_expr_equal one is not closed");
     
-    auto e1 = *expr1;
-    auto e2 = *expr2;
-    if (e1 == e2)
+    if (def1 == def2)
         return true;
-    if (auto int1 = e1->isa<PrimLitNode>()) {
-        if (auto int2 = e2->isa<PrimLitNode>()) {
+    if (auto int1 = def1.isa<PrimLit>()) {
+        if (auto int2 = def2.isa<PrimLit>())
             return int1->value() == int2->value();
-        }
-    } else if (auto v1 = e1->isa<VarNode>()) {
-        if (auto v2 = e2->isa<VarNode>()) {
+    } else if (auto v1 = def1.isa<Var>()) {
+        if (auto v2 = def2.isa<Var>())
             return v1 == v2 || v1->equiv_ == v2;
-        }
-    } else if (auto abs1 = e1->isa<AbsNode>()) {
-        if (auto abs2 = e2->isa<AbsNode>()) {
+    } else if (auto abs1 = def1.isa<Abs>()) {
+        if (auto abs2 = def2.isa<Abs>()) {
             abs1->var()->equiv_ = abs2;
             auto res = are_expressions_equal_(abs1->var()->as<VarNode>()->type(), 
                 abs2->var()->as<VarNode>()->type()) &&
@@ -124,9 +120,9 @@ bool World::are_expressions_equal_(Def expr1, Def expr2) {
             abs1->var()->equiv_ = nullptr;
             return res;
         }
-    } else if (auto app1 = e1->isa<AppNode>())
+    } else if (auto app1 = def1.isa<App>())
         throw std::runtime_error("bumped into app in are_expr_equal after reducing");
-    else if (auto app2 = e2->isa<AppNode>()) // how to merge those branches? "||" doesn't work
+    else if (auto app2 = def2.isa<App>()) // how to merge those branches? "||" doesn't work
         throw std::runtime_error("bumped into app in are_expr_equal after reducing");
     else
         return false;
@@ -157,7 +153,7 @@ void World::dump(Def expr) const { dump(expr, std::cout); }
 void World::dump(Def def, std::ostream& stream) const {
     if (!def) {
         stream << "'nullptr'";
-    } else if (auto int_value = def->isa<PrimLitNode>()) {
+    } else if (auto int_value = def.isa<PrimLit>()) {
         stream << int_value->value();
     } else if (auto var = def.isa<Var>()) {
         stream << var->name;
@@ -165,7 +161,7 @@ void World::dump(Def def, std::ostream& stream) const {
         stream << "λ";
         dump_body(lambda, stream);
     } else if (auto pi = def.isa<Pi>()) {
-         if (pi->var()->name == "_" || !is_a_subexpression(pi->body(), pi->var())) {
+         if (pi->var()->name == "_" || !pi->body()->is_subexpr(pi->var())) {
             stream << "(";
             dump(pi->var().as<Var>()->type(), stream);
             stream << ") -> (";
@@ -195,28 +191,6 @@ void World::dump_body(Abs abs, std::ostream& stream) const {
     dump(abs->body(), stream);
 }
 
-bool World::is_a_subexpression(Def bexpr, Def bsub) const {
-    assert(bsub);
-    
-    if (!bexpr)
-        return false;
-    
-    auto expr = *bexpr;
-    auto sub = *bsub;
-    if (expr == sub) {
-        return true;
-    } else if (auto var = expr->isa<VarNode>()) {
-        return is_a_subexpression(var->type(), bsub);
-    } else if (auto abs = expr->isa<AbsNode>()) {
-        return is_a_subexpression(abs->var(), bsub) ||
-            is_a_subexpression(abs->body(), bsub);
-    } else if (auto app = expr->isa<AppNode>()) {
-        return is_a_subexpression(app->fun(), bsub) ||
-            is_a_subexpression(app->arg(), bsub);
-    } else 
-        throw std::runtime_error("in is_a_subexpression malformed bexpr");
-}
-
 void World::move_from_garbage(const DefNode* def) const {
     auto i = garbage_.find(def);
     if (i != garbage_.end()) {
@@ -233,25 +207,23 @@ void World::move_from_garbage(const DefNode* def) const {
 }
 
 void World::reduce(Def def) { // should we allow non-closed exprs?
-    auto defn = *def;
-    // TODO use hashmap
-    std::map<const DefNode*, const DefNode*> map;
-    defn->set_representative(reduce(def, map));
+    auto node = def.node();
+    Def2Def map;
+    node->set_representative(reduce(def, map));
 }
 
-Def World::reduce(Def e, std::map<const DefNode*, const DefNode*>& map) {
-    auto expr = *e;
-    if (auto var = expr->isa<VarNode>()) {
+Def World::reduce(Def def, Def2Def& map) {
+    if (auto var = def.isa<Var>()) {
         auto i = map.find(var);
         if (i != map.end()) {
             return i->second;
         } else {
-            return e; // expr
+            return def;
         }
-    } else if (auto abs = expr->isa<AbsNode>()) {
+    } else if (auto abs = def.isa<Abs>()) {
         auto i = map.find(abs->var());
-        if (i != map.end()) {
-            return e;
+        if (i != map.end()) { // TODO looks broken to me
+            return def;
         } else {
             std::ostringstream nvarn;
             nvarn << abs->var()->name;
@@ -264,9 +236,9 @@ Def World::reduce(Def e, std::map<const DefNode*, const DefNode*>& map) {
             nabs->close(nbody);
             return nabs;
         }
-    } else if (auto app = expr->isa<AppNode>()) {
+    } else if (auto app = def.isa<App>()) {
         auto rfun = reduce(app->fun(), map);
-        if (auto abs = (*rfun)->isa<AbsNode>()) {
+        if (auto abs = rfun.isa<Abs>()) {
             auto rarg = reduce(app->arg(), map);
             map[*(abs->var())] = *rarg;
             return reduce(abs->body(), map);
@@ -314,7 +286,7 @@ Def World::substitute(/*const Expr**/Def bexpr, /*const VarIntr**/Def bvar,
     auto expr = *bexpr; auto var = *bvar; auto nval = *bnval;
     if (expr == var) {
         return bnval;
-    } if (auto varocc = expr->isa<VarNode>()) {
+    } if (auto varocc = expr.isa<Var>()) {
         if (varocc == var) {
             return bnval;
         } else {
@@ -377,20 +349,15 @@ Def World::typecheck(Def e) {
     return typecheck_(e);
 }
 
-Def World::typecheck_(Def e) { // assumption: e is reduced
-    if (!e->is_closed())
-        throw std::runtime_error("typechecking non closed expr");
-    auto expr = *e;
-    if (expr == nullptr) {
-        throw std::runtime_error("typechecking nullptr");
-    }
+Def World::typecheck_(Def def) { // assumption: e is reduced
+    assert(def->is_closed() && "typechecking non closed expr");
     
-    auto i = prim_rules_has_type.find(expr);
-    if (i != prim_rules_has_type.end()) {
+    auto i = prim_rules_has_type.find(def);
+    if (i != prim_rules_has_type.end())
         return i->second;
-    }
+
     for (auto& kv : prim_consts) {
-        if (kv.second == expr) {
+        if (kv.second == def) {
             if (i == prim_rules_has_type.end()) {
                 std::ostringstream msg;
                 msg << "typechecking " << kv.second->name << "  shouldn't happen" << std::endl;
@@ -398,16 +365,16 @@ Def World::typecheck_(Def e) { // assumption: e is reduced
             }
         }
     }
-    if (auto int_value = expr->isa<PrimLitNode>()) {
+    if (auto int_value = def.isa<PrimLit>()) {
         return get_prim_const("Int");
-    } else if (auto var = expr->isa<VarNode>()) { // will probably typecheck such things many times
+    } else if (auto var = def.isa<Var>()) { // will probably typecheck such things many times
         // so maybe some caching? keepin inferred type in every DefNode after typechecking?
         
         // probably not use that line -- what if var is a star? then we typecheck box...
         //auto type_type = typecheck(var->type());
         
         return var->type();
-    } else if (auto lambda = expr->isa<LambdaNode>()) {
+    } else if (auto lambda = def.isa<Lambda>()) {
         // do we need to typecheck var?
        // auto var_type = typecheck_(lambda->var());
         auto body_type = typecheck_(lambda->body());
@@ -420,7 +387,7 @@ Def World::typecheck_(Def e) { // assumption: e is reduced
         res->close(body_type/*2*/);
         auto type_of_pi = typecheck_(res);
         return res;
-    } else if (auto pi = expr->isa<PiNode>()) {
+    } else if (auto pi = def.isa<Pi>()) {
         auto var_type = typecheck_(pi->var());
         auto var_type_type = typecheck_(var_type);
         auto body_type = typecheck_(pi->body());
@@ -437,7 +404,7 @@ Def World::typecheck_(Def e) { // assumption: e is reduced
             msg << " ⤳  " << body_type->name;
             throw std::runtime_error(msg.str());
         }
-    } else if (auto app = expr->isa<AppNode>()) {
+    } else if (auto app = def.isa<App>()) {
         throw std::runtime_error("bumped into app in typechecker");
     } else {
         std::ostringstream msg;

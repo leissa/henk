@@ -2,10 +2,10 @@
 #define HENK_IR_H
 
 #include <set>
-#include <unordered_set>
 #include <vector>
 
 #include "thorin/util/cast.h"
+#include "thorin/util/hash.h"
 
 namespace henk {
 
@@ -100,6 +100,23 @@ struct UseLT {
 
 //------------------------------------------------------------------------------
 
+template<class T>
+struct GIDHash {
+    size_t operator () (T n) const { return n->gid(); }
+};
+
+template<class T>
+struct GIDEq {
+    size_t operator () (T n1, T n2) const { return n1->gid() == n2->gid(); }
+};
+
+template<class To>
+using DefMap  = thorin::HashMap<const DefNode*, To, GIDHash<const DefNode*>, GIDEq<const DefNode*>>;
+using DefSet  = thorin::HashSet<const DefNode*, GIDHash<const DefNode*>, GIDEq<const DefNode*>>;
+using Def2Def = DefMap<const DefNode*>;
+
+//------------------------------------------------------------------------------
+
 /// Base class for all @p Def%s.
 class DefNode : public thorin::MagicCast<DefNode> {
 protected:   
@@ -133,6 +150,7 @@ public:
     std::set<Use, UseLT> uses() const { return uses_; }
     bool is_proxy() const { return representative_ != this; }
     bool has_uses() const { return !uses_.empty(); }
+    bool is_subexpr(Def) const;
     size_t num_uses() const { return uses().size(); }
     size_t gid() const { return gid_; }
     World& world() const { return world_; }
@@ -142,9 +160,9 @@ public:
 
 protected:
     mutable std::vector<Def> ops_;
-    mutable std::set<Use, UseLT> uses_;
+    mutable std::set<Use, UseLT> uses_; // TODO use HashSet
     mutable const DefNode* representative_;
-    mutable std::unordered_set<const DefNode*> representative_of_;
+    mutable DefSet representative_of_;
     mutable size_t gid_;
     mutable size_t hash_ = 0;
     World& world_;

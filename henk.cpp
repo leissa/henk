@@ -6,7 +6,7 @@ using thorin::hash_combine;
 using thorin::hash_begin;
 
 /* ----------------------------------------------------
- * Def
+ * Proxy
  * ------------------------------------------------- */
 
 template<class T>
@@ -106,26 +106,18 @@ void DefNode::unset_ops() {
         unset_op(i);
 }
 
-/*
+bool DefNode::is_subexpr(Def def) const {
+    assert(!is_proxy());
+    if (this == def)
+        return true;
 
-void DefNode::update_closedness() const {
-    bool closed = true;
-    for (auto& d : ops()) {
-        closed &= d->is_closed();
+    for (auto op : ops_) {
+        if (op->is_subexpr(def))
+            return true;
     }
-    if (closed != is_closed()) {
-        is_closed_ = closed;
-        // closed terms need to be moved from garbage to expressions set
-        world_->move_from_garbage(this);
-        
-        for (auto& u : uses()) {
-            auto deff = u.def();
-            (*deff)->update_closedness();
-        }
-    }
+
+    return false;
 }
-
-*/
 
 Var AbsNode::var() const { return op(0).as<Var>(); }
 
