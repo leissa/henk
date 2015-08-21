@@ -32,12 +32,12 @@ const DefNode* Def::deref() const {
 }
 
 bool Def::is_closed() const { return node_->is_closed(); }
-void Def::close_abs(Def body) const { return deref()->as<Abs>()->close(body); }
-Def Def::abs_var() const { return deref()->as<Abs>()->var(); }
-Def Def::abs_body() const { return deref()->as<Abs>()->body(); }
-Def Def::var_type() const { return deref()->as<Var>()->type(); }
-Def Def::app_fun() const { return deref()->as<App>()->fun(); }
-Def Def::app_arg() const { return deref()->as<App>()->arg(); }
+void Def::close_abs(Def body) const { return deref()->as<AbsNode>()->close(body); }
+Def Def::abs_var() const { return deref()->as<AbsNode>()->var(); }
+Def Def::abs_body() const { return deref()->as<AbsNode>()->body(); }
+Def Def::var_type() const { return deref()->as<VarNode>()->type(); }
+Def Def::app_fun() const { return deref()->as<AppNode>()->fun(); }
+Def Def::app_arg() const { return deref()->as<AppNode>()->arg(); }
 
 /* ----------------------------------------------------
  * Use
@@ -125,44 +125,47 @@ void DefNode::update_closedness() const {
  * Classes B where B : DefNode
  * ------------------------------------------------- */
 
-Abs::Abs(const World* world, size_t gid, Def var_type, std::string name)
+AbsNode::AbsNode(const World* world, size_t gid, Def var_type, std::string name)
     : DefNode(world, gid, 2, name, false)
 {
-    set_op(0, new Var(world, gid + 1 /* gid ? */, var_type, this, name));
+    set_op(0, new VarNode(world, gid + 1 /* gid ? */, var_type, this, name));
 }
 
-Abs::Abs(const World* world, size_t gid, Def var)
+AbsNode::AbsNode(const World* world, size_t gid, Def var)
     : DefNode(world, gid, 2, "some abs", false)
 {
     set_op(0, var);
 }
 
-void Abs::close(Def body) const {
+void AbsNode::close(Def body) const {
     set_op(1, body);
     is_closed_ = body.is_closed();
     update_closedness();
 }
 
-App::App(const World* world, size_t gid, Def fun, Def arg, std::string name)
+AppNode::AppNode(const World* world, size_t gid, Def fun, Def arg, std::string name)
     : DefNode(world, gid, 2, name, fun->is_closed() && arg->is_closed())
 {
     set_op(0, fun); set_op(1, arg);
 }
 
+/*
+ * vhash
+ */
 
-size_t Var::vhash() const {
+size_t VarNode::vhash() const {
     return hash_combine(type()->gid(), of_abs()->gid());
 }
 
-size_t PrimLit::vhash() const {
+size_t PrimLitNode::vhash() const {
     return hash_begin(value());
 }
 
-size_t Abs::vhash() const {
+size_t AbsNode::vhash() const {
     return hash_combine(var()->gid(), body()->gid());
 }
 
-size_t App::vhash() const {
+size_t AppNode::vhash() const {
     return hash_combine(fun()->gid(), arg()->gid());
 }
 

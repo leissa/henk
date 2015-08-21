@@ -85,7 +85,6 @@ private:
     mutable const DefNode* node_;
 };
 
-
 /**
  * References a user.
  * A \p Def u which uses \p Def d as i^th operand is a \p Use with \p index_ i of \p Def d.
@@ -113,6 +112,8 @@ struct UseLT {
     inline bool operator () (Use use1, Use use2) const;
 };
 
+
+//------------------------------------------------------------------------------
 
 /// Base class for all @p Def%s.
 class DefNode : public thorin::MagicCast<DefNode> {
@@ -176,10 +177,10 @@ public:
     friend class Def;
 };
 
-class Abs : public DefNode {
+class AbsNode : public DefNode {
 protected:
-    Abs(const World* world, size_t gid, Def var_type, std::string name);
-    Abs(const World* world, size_t gid, Def var);
+    AbsNode(const World* world, size_t gid, Def var_type, std::string name);
+    AbsNode(const World* world, size_t gid, Def var);
     
 public:
     Def var() const { return op(0); }
@@ -193,19 +194,19 @@ private:
     friend class Def;
 };
 
-class Lambda : public Abs {
+class LambdaNode : public AbsNode {
 protected:
-    Lambda(const World* world, size_t gid, Def var_type, std::string name)
-        : Abs(world, gid, var_type, name)
+    LambdaNode(const World* world, size_t gid, Def var_type, std::string name)
+        : AbsNode(world, gid, var_type, name)
     {}
     
     friend class World;
     friend class Def;
 };
 
-class Var : public DefNode {
+class VarNode : public DefNode {
 protected:
-    Var(const World* world, size_t gid, Def type, Def of_abs, std::string name)
+    VarNode(const World* world, size_t gid, Def type, Def of_abs, std::string name)
         : DefNode(world, gid, 2, name)
         , type_(type)
     {
@@ -224,13 +225,13 @@ private:
 
     friend class World;
     friend class Def;
-    friend class Abs;
+    friend class AbsNode;
 };
 
-class PrimLit : public Var {
+class PrimLitNode : public VarNode {
 private:
-    PrimLit(const World* world, size_t gid, Def type, int/*will become Box later on*/ value, std::string name)
-        : Var(world, gid, type, nullptr, name)
+    PrimLitNode(const World* world, size_t gid, Def type, int/*will become Box later on*/ value, std::string name)
+        : VarNode(world, gid, type, nullptr, name)
         , value_(value)
     {}
     
@@ -246,23 +247,23 @@ private:
     friend class Def;
 };
 
-class Pi : public Abs {
+class PiNode : public AbsNode {
 private:
-    Pi(const World* world, size_t gid, Def var_type, std::string name)
-        : Abs(world, gid, var_type, name)
+    PiNode(const World* world, size_t gid, Def var_type, std::string name)
+        : AbsNode(world, gid, var_type, name)
     {}
     
-    Pi(const World* world, size_t gid, Def var)
-        : Abs(world, gid, var)
+    PiNode(const World* world, size_t gid, Def var)
+        : AbsNode(world, gid, var)
     {}
     
     friend class World;
     friend class Def;
 };
 
-class App : public DefNode {
+class AppNode : public DefNode {
 private:
-    App(const World* world, size_t gid, Def fun, Def arg, std::string name);
+    AppNode(const World* world, size_t gid, Def fun, Def arg, std::string name);
     
     size_t vhash() const;
     
@@ -273,6 +274,8 @@ public:
     friend class World;
     friend class Def;
 };
+
+//------------------------------------------------------------------------------
 
 }
 
