@@ -9,10 +9,11 @@ using thorin::hash_begin;
  * Def
  * ------------------------------------------------- */
 
-const DefNode* Def::deref() const {
+template<class T>
+const T* Proxy<T>::deref() const {
     if (node_ == nullptr) return nullptr;
 
-    auto target = node_;
+    const DefNode* target = node_;
     for (; target->is_proxy(); target = target->representative_)
         assert(target != nullptr);
 
@@ -28,16 +29,17 @@ const DefNode* Def::deref() const {
         n = representative;
     }
 
-    return target;
+    return target->template as<T>();
 }
 
-bool Def::is_closed() const { return node_->is_closed(); }
-void Def::close_abs(Def body) const { return deref()->as<AbsNode>()->close(body); }
-Def Def::abs_var() const { return deref()->as<AbsNode>()->var(); }
-Def Def::abs_body() const { return deref()->as<AbsNode>()->body(); }
-Def Def::var_type() const { return deref()->as<VarNode>()->type(); }
-Def Def::app_fun() const { return deref()->as<AppNode>()->fun(); }
-Def Def::app_arg() const { return deref()->as<AppNode>()->arg(); }
+// instantiate templates - but maybe we should place above method simply into the header
+template class Proxy<DefNode>;
+template class Proxy<VarNode>;
+template class Proxy<PrimLitNode>;
+template class Proxy<AbsNode>;
+template class Proxy<LambdaNode>;
+template class Proxy<PiNode>;
+template class Proxy<AppNode>;
 
 /* ----------------------------------------------------
  * Use
@@ -104,6 +106,8 @@ void DefNode::unset_ops() {
         unset_op(i);
 }
 
+/*
+
 void DefNode::update_closedness() const {
     bool closed = true;
     for (auto& d : ops()) {
@@ -121,30 +125,32 @@ void DefNode::update_closedness() const {
     }
 }
 
+*/
+
+Var AbsNode::var() const { return op(0).as<Var>(); }
+
 /* ----------------------------------------------------
  * Classes B where B : DefNode
  * ------------------------------------------------- */
 
-AbsNode::AbsNode(const World* world, size_t gid, Def var_type, std::string name)
-    : DefNode(world, gid, 2, name, false)
+AbsNode::AbsNode(World& world, size_t gid, Def var_type, std::string name)
+    : DefNode(world, gid, 2, name)
 {
     set_op(0, new VarNode(world, gid + 1 /* gid ? */, var_type, this, name));
 }
 
-AbsNode::AbsNode(const World* world, size_t gid, Def var)
-    : DefNode(world, gid, 2, "some abs", false)
+AbsNode::AbsNode(World& world, size_t gid, Def var)
+    : DefNode(world, gid, 2, "some abs")
 {
     set_op(0, var);
 }
 
 void AbsNode::close(Def body) const {
     set_op(1, body);
-    is_closed_ = body.is_closed();
-    update_closedness();
 }
 
-AppNode::AppNode(const World* world, size_t gid, Def fun, Def arg, std::string name)
-    : DefNode(world, gid, 2, name, fun->is_closed() && arg->is_closed())
+AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
+    : DefNode(world, gid, 2, name)
 {
     set_op(0, fun); set_op(1, arg);
 }
@@ -154,7 +160,7 @@ AppNode::AppNode(const World* world, size_t gid, Def fun, Def arg, std::string n
  */
 
 size_t VarNode::vhash() const {
-    return hash_combine(type()->gid(), of_abs()->gid());
+    return hash_combine(type()->gid(), abs()->gid());
 }
 
 size_t PrimLitNode::vhash() const {
@@ -168,5 +174,13 @@ size_t AbsNode::vhash() const {
 size_t AppNode::vhash() const {
     return hash_combine(fun()->gid(), arg()->gid());
 }
+
+/*
+ * is_closed
+ */
+
+bool AbsNode::is_closed() const { return body(); }
+bool VarNode::is_closed() const { return type()->is_closed(); }
+bool AppNode::is_closed() const { return fun()->is_closed() && arg()->is_closed(); }
 
 }

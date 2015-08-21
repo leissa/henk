@@ -19,19 +19,18 @@ public:
 /*
  * Factory methods
  */
-    Def lambda(std::string var_name, Def var_type) const;
-    Def pi(std::string var_name, Def var_type) const;
-    Def pi_share_var(Def var) const;
-    Def var_occ(Def introduced_by) const;
-    Def app(Def appl, Def arg) const;
-    Def literal(int value) const;
-    Def fun_type(Def from, Def to) const;
+    Lambda lambda(std::string var_name, Def var_type);
+    Pi fun_type(Def from, Def to);
+    Pi pi(std::string var_name, Def var_type);
+    Pi pi_share_var(Def var);
+    App app(Def appl, Def arg);
+    PrimLit literal(int value);
 
 /*
  * Utility methods
  */ 
     Def typecheck(Def def);
-    bool are_expressions_equal(Def expr1, Def expr2) const;
+    bool are_expressions_equal(Def expr1, Def expr2);
     bool is_a_subexpression(Def expr, Def sub) const;
     void show_prims(std::ostream& stream) const;
     void dump(Def expr, std::ostream& stream) const;
@@ -42,25 +41,24 @@ public:
     size_t gid() const { return gid_; }
 
 protected:
-    void dump_body(Def body, std::ostream& stream) const;
+    void dump_body(Abs abs, std::ostream& stream) const;
     Def typecheck_(Def def);
    // Def substitute(Def expr, Def var, Def nval);
-    void reduce(Def def) const;
-    Def reduce(Def e, std::map<const DefNode*, const DefNode*>* M) const;
-    bool are_expressions_equal_(Def expr1, Def expr2) const;
+    void reduce(Def);
+    Def reduce(Def, std::map<const DefNode*, const DefNode*>&);
+    bool are_expressions_equal_(Def expr1, Def expr2);
     void replace(Def olde, Def newe) const;
     void move_from_garbage(const DefNode* def) const;
-    Def cse(Def  e) const;
-    //template<class T> const T* cse(const T* expr) { return cse_base(expr)->template as<T>(); }
+    template<class T> const T* cse(const T* def) { return cse_base(def)->template as<T>(); }
 
 protected:
+    const DefNode* cse_base(const DefNode*) const;
+
     struct ExprHash { size_t operator () (const DefNode* e) const { return e->hash(); } };
     struct ExprEqual {
-        bool operator () (const DefNode* e1, const DefNode* e2) const {
-            if(e1->world_ == e2->world_)
-                return e1->world_->are_expressions_equal(e1, e2);
-            else
-                throw std::runtime_error("testing for eq defs from different worlds");
+        bool operator () (const DefNode* def1, const DefNode* def2) const {
+            assert(&def1->world() == &def2->world_ && "testing for eq defs from different worlds");
+            return def1->world().are_expressions_equal(def1, def2);
         } 
     };
     

@@ -12,6 +12,15 @@ namespace henk {
 class DefNode;
 class World;
 
+template<class T> class Proxy;
+class DefNode;     typedef Proxy<DefNode>     Def;
+class VarNode;     typedef Proxy<VarNode>     Var;
+class PrimLitNode; typedef Proxy<PrimLitNode> PrimLit;
+class AbsNode;     typedef Proxy<AbsNode>     Abs;
+class LambdaNode;  typedef Proxy<LambdaNode>  Lambda;
+class PiNode;      typedef Proxy<PiNode>      Pi;
+class AppNode;     typedef Proxy<AppNode>     App;
+
 template<class T>
 class Proxy {
 public:
@@ -24,65 +33,42 @@ public:
         : node_(node)
     {}
 
-    bool empty() const { return node_ == nullptr; }
     bool operator == (const Proxy<T>& other) const {
         assert(&node()->world() == &other.node()->world());
         //return this->node()->unify() == other.node()->unify();
-        return this->node()->deref() == other.node()->deref();
+        return this->deref() == other.deref();
     }
     bool operator != (const Proxy<T>& other) const { return !(*this == other); }
-    const T* representative() const { return node()->representative()->template as<T>(); }
+    const T* representative() const { return node_->representative_->template as<T>(); }
     const T* node() const { assert(node_ != nullptr); return node_; }
     const T* deref() const;
     //const T* operator  * () const { return node()->is_unified() ? representative() : node(); }
     const T* operator  * () const { return deref(); }
     const T* operator -> () const { return *(*this); }
+
+    // casts
+
+    operator bool() const { return node_; }
+    operator const T*() const { return deref(); }
+
     /// Automatic up-cast in the class hierarchy.
     template<class U> operator Proxy<U>() {
         static_assert(std::is_base_of<U, T>::value, "U is not a base type of T");
         return Proxy<U>((**this)->template as<T>());
     }
+
+    /// Dynamic cast for @p Proxy.
     template<class U> Proxy<typename U::BaseType> isa() const {
         return Proxy<typename U::BaseType>((*this)->template isa<typename U::BaseType>());
     }
+
+    /// Static cast for @p Proxy.
     template<class U> Proxy<typename U::BaseType> as() const {
         return Proxy<typename U::BaseType>((*this)->template as <typename U::BaseType>());
     }
-    operator bool() const { return !empty(); }
-    //Proxy<T> unify() const { return node()->unify()->template as<T>(); }
 
 private:
     const T* node_;
-};
-
-class Def {
-public:
-    Def()
-        : node_(nullptr)
-    {}
-    Def(const DefNode* node)
-        : node_(node)
-    {}
-
-    bool empty() const { return node_ == nullptr; }
-    const DefNode* node() const { return node_; }
-    const DefNode* deref() const;
-    const DefNode* operator *() const { return deref(); }
-    bool operator == (const DefNode* other) const { return this->deref() == other; }
-    operator const DefNode*() const { return deref(); }
-    const DefNode* operator -> () const { return deref(); }
-    bool is_closed() const;
-    void close_abs(Def body) const;
-    
-    // getters for disassembling defs
-    Def abs_var() const;
-    Def abs_body() const;
-    Def var_type() const;
-    Def app_fun() const;
-    Def app_arg() const;
-
-private:
-    mutable const DefNode* node_;
 };
 
 /**
@@ -100,7 +86,6 @@ public:
     size_t index() const { return index_; }
     const Def& def() const { return def_; }
     operator Def() const { return def_; }
-    operator const DefNode*() const { return def_; }
     const Def& operator -> () const { return def_; }
 
 private:
@@ -118,13 +103,12 @@ struct UseLT {
 /// Base class for all @p Def%s.
 class DefNode : public thorin::MagicCast<DefNode> {
 protected:   
-    DefNode(const World* world, size_t gid, size_t size, std::string name, bool closed = true)
+    DefNode(World& world, size_t gid, size_t size, std::string name)
         : representative_(this)
         , world_(world)
         , ops_(size)
         , gid_(gid)
         , name(name)
-        , is_closed_(closed)
         , uses_{}
     {}
     
@@ -151,11 +135,10 @@ public:
     bool has_uses() const { return !uses_.empty(); }
     size_t num_uses() const { return uses().size(); }
     size_t gid() const { return gid_; }
-    const World* world() const { return world_; }
+    World& world() const { return world_; }
     std::vector<Def> ops() const { return ops_; }
     Def op(size_t i) const { assert(i < ops().size() && "index out of bounds"); return ops_[i]; }
-    bool is_closed() const { return is_closed_; }
-    void update_closedness() const;
+    virtual bool is_closed() const = 0;
 
 protected:
     mutable std::vector<Def> ops_;
@@ -164,7 +147,7 @@ protected:
     mutable std::unordered_set<const DefNode*> representative_of_;
     mutable size_t gid_;
     mutable size_t hash_ = 0;
-    mutable const World* world_;
+    World& world_;
     mutable bool live_ = false;
     mutable /*Def*/ const DefNode* equiv_ = nullptr; // hack-ptr useful when testing for equality
     mutable bool is_closed_;
@@ -174,41 +157,52 @@ public:
     mutable std::string name;
     
     friend class World;
-    friend class Def;
+    template<class T> friend class Proxy;
 };
 
 class AbsNode : public DefNode {
 protected:
-    AbsNode(const World* world, size_t gid, Def var_type, std::string name);
-    AbsNode(const World* world, size_t gid, Def var);
+    AbsNode(World& world, size_t gid, Def var_type, std::string name);
+    AbsNode(World& world, size_t gid, Def var);
     
 public:
-    Def var() const { return op(0); }
+    Var var() const;
     Def body() const { return op(1); }
     void close(Def body) const;
+    virtual bool is_closed() const override;
 
 private:
     size_t vhash() const;
 
     friend class World;
-    friend class Def;
 };
 
 class LambdaNode : public AbsNode {
 protected:
-    LambdaNode(const World* world, size_t gid, Def var_type, std::string name)
+    LambdaNode(World& world, size_t gid, Def var_type, std::string name)
         : AbsNode(world, gid, var_type, name)
     {}
     
     friend class World;
-    friend class Def;
+};
+
+class PiNode : public AbsNode {
+private:
+    PiNode(World& world, size_t gid, Def var_type, std::string name)
+        : AbsNode(world, gid, var_type, name)
+    {}
+    
+    PiNode(World& world, size_t gid, Def var)
+        : AbsNode(world, gid, var)
+    {}
+    
+    friend class World;
 };
 
 class VarNode : public DefNode {
 protected:
-    VarNode(const World* world, size_t gid, Def type, Def of_abs, std::string name)
+    VarNode(World& world, size_t gid, Def type, Def of_abs, std::string name)
         : DefNode(world, gid, 2, name)
-        , type_(type)
     {
         set_op(0, type); 
         set_op(1, of_abs);
@@ -216,21 +210,19 @@ protected:
     
 public:
     Def type() const { return op(0); }
-    Def of_abs() const { return op(1); }
+    Abs abs() const { return op(1).as<Abs>(); }
+    virtual bool is_closed() const override;
     
 private:
     size_t vhash() const;
 
-    Def type_;
-
     friend class World;
-    friend class Def;
     friend class AbsNode;
 };
 
 class PrimLitNode : public VarNode {
 private:
-    PrimLitNode(const World* world, size_t gid, Def type, int/*will become Box later on*/ value, std::string name)
+    PrimLitNode(World& world, size_t gid, Def type, int/*will become Box later on*/ value, std::string name)
         : VarNode(world, gid, type, nullptr, name)
         , value_(value)
     {}
@@ -244,35 +236,20 @@ private:
     int value_;
     
     friend class World;
-    friend class Def;
-};
-
-class PiNode : public AbsNode {
-private:
-    PiNode(const World* world, size_t gid, Def var_type, std::string name)
-        : AbsNode(world, gid, var_type, name)
-    {}
-    
-    PiNode(const World* world, size_t gid, Def var)
-        : AbsNode(world, gid, var)
-    {}
-    
-    friend class World;
-    friend class Def;
 };
 
 class AppNode : public DefNode {
 private:
-    AppNode(const World* world, size_t gid, Def fun, Def arg, std::string name);
+    AppNode(World& world, size_t gid, Def fun, Def arg, std::string name);
     
     size_t vhash() const;
     
 public:
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }
+    virtual bool is_closed() const override;
 
     friend class World;
-    friend class Def;
 };
 
 //------------------------------------------------------------------------------

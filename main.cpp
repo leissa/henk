@@ -4,10 +4,9 @@ using namespace henk;
 
 Def poly_id(World* world, std::string tvar, std::string var) {
     auto type_lambda = world->lambda(tvar, world->get_prim_const("*"));
-    auto id_lambda = world->lambda(var, type_lambda.abs_var());
-    auto x_occ = world->var_occ(id_lambda);
-    id_lambda.close_abs(x_occ);
-    type_lambda.close_abs(id_lambda);
+    auto id_lambda = world->lambda(var, type_lambda->var());
+    id_lambda->close(id_lambda->var());
+    type_lambda->close(id_lambda);
 
     return type_lambda;
 }
@@ -28,13 +27,13 @@ void test2(World* world) {
     
     auto u = world->lambda("y", world->get_prim_const("*"));
 
-    u.close_abs(world->get_prim_const("Int"));
+    u->close(world->get_prim_const("Int"));
 
     auto lambda = world->lambda("x", world->app(
         u, world->get_prim_const("Bool")
         )
     );
-    lambda.close_abs(world->literal(42));
+    lambda->close(world->literal(42));
 
     auto app = world->app(lambda, world->literal(33));//get_prim_const("Int"));
     world->dump(app);
@@ -49,13 +48,13 @@ void test3(World* world) {
     // should fail
     auto f = world->pi("α", world->get_prim_const("*"));
 
-    f.close_abs(world->fun_type(
-            world->var_occ(f), world->get_prim_const("Int")
+    f->close(world->fun_type(
+            f->var(), world->get_prim_const("Int")
         )
     );
     auto forallb = world->pi("β", world->get_prim_const("*"));
-    forallb.close_abs(world->fun_type(
-        world->var_occ(forallb), world->var_occ(forallb)
+    forallb->close(world->fun_type(
+        forallb->var(), forallb->var()
         )
     );
     std::cout << "f = ";

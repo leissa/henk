@@ -7,12 +7,12 @@ namespace henk {
 World::World()
     : gid_(0)
     , prim_consts {
-        std::make_pair("*", new VarNode(this, -1, nullptr, nullptr, "*")),
-        std::make_pair("**", new VarNode(this, -1, nullptr, nullptr, "**")),
-        std::make_pair("⬜", new VarNode(this, -1, nullptr, nullptr, "⬜")),
-        std::make_pair("⬜⬜", new VarNode(this, -1, nullptr, nullptr, "⬜⬜")),
-        std::make_pair("Int", new VarNode(this, -1, nullptr, nullptr, "Int")),
-        std::make_pair("Bool", new VarNode(this, -1, nullptr, nullptr, "Bool"))
+        std::make_pair("*", new VarNode(*this, -1, nullptr, nullptr, "*")),
+        std::make_pair("**", new VarNode(*this, -1, nullptr, nullptr, "**")),
+        std::make_pair("⬜", new VarNode(*this, -1, nullptr, nullptr, "⬜")),
+        std::make_pair("⬜⬜", new VarNode(*this, -1, nullptr, nullptr, "⬜⬜")),
+        std::make_pair("Int", new VarNode(*this, -1, nullptr, nullptr, "Int")),
+        std::make_pair("Bool", new VarNode(*this, -1, nullptr, nullptr, "Bool"))
     }
     , prim_rules_has_type {
         std::make_pair(prim_consts.at("*"), prim_consts.at("⬜")),
@@ -56,39 +56,36 @@ World::~World() {
 /*
  * Factory methods
  */
-Def World::lambda(std::string var_name, Def var_type) const {
-    assert(var_type.is_closed() && "type of lambda variable is an unclosed term");
+
+Lambda World::lambda(std::string name, Def var_type) {
+    assert(var_type->is_closed() && "type of lambda variable is an unclosed term");
     size_t g = gid_;
     gid_ += 2; // world knows that Abs creates Var
-    return cse(new LambdaNode(this, g, var_type, var_name));
+    return cse(new LambdaNode(*this, g, var_type, name));
 }
 
-Def World::pi(std::string var_name, Def var_type) const {
-    assert(var_type.is_closed() && "type of pi variable is an unclosed term");
+Pi World::pi(std::string name, Def var_type) {
+    assert(var_type->is_closed() && "type of pi variable is an unclosed term");
     size_t g = gid_;
     gid_ += 2; // world knows that Abs creates Var
-    return cse(new PiNode(this, g, var_type, var_name));
+    return cse(new PiNode(*this, g, var_type, name));
 }
 
-Def World::pi_share_var(Def var) const {
-    return cse(new PiNode(this, gid_++, var));
+Pi World::pi_share_var(Def var) {
+    return cse(new PiNode(*this, gid_++, var));
 }
 
-Def World::var_occ(Def introduced_by) const {
-    return introduced_by->as<AbsNode>()->var();
+App World::app(Def fun, Def arg) {
+    return cse(new AppNode(*this, gid_++, fun, arg, "app_"));
 }
 
-Def World::app(Def fun, Def arg) const {
-    return cse(new AppNode(this, gid_++, fun, arg, "app_"));
+PrimLit World::literal(int value) { 
+    return cse(new PrimLitNode(*this, gid_++, get_prim_const("Int"), value, "someint"));
 }
 
-Def World::literal(int value) const { 
-    return cse(new PrimLitNode(this, gid_++, get_prim_const("Int"), value, "someint"));
-}
-
-Def World::fun_type(Def from, Def to) const {
+Pi World::fun_type(Def from, Def to) {
     auto npi = pi("_", from);
-    npi.close_abs(to); // upon closing, cse should be fired automatically
+    npi->close(to); // upon closing, cse should be fired automatically
     return npi; // so there's no need to call cse again
 }
 
@@ -96,15 +93,15 @@ Def World::fun_type(Def from, Def to) const {
 /*
  * Utility methods -- sorted alphabetically
  */
-bool World::are_expressions_equal(Def expr1, Def expr2) const {
+
+bool World::are_expressions_equal(Def expr1, Def expr2) {
     reduce(expr1);
     reduce(expr2);
     are_expressions_equal_(expr1, expr2);
 }
 
-bool World::are_expressions_equal_(Def expr1, Def expr2) const {
-    if (!expr1.is_closed() || !expr2.is_closed())
-        throw std::runtime_error("in are_expr_equal one is not closed");
+bool World::are_expressions_equal_(Def expr1, Def expr2) {
+    assert(!expr1->is_closed() || !expr2->is_closed() && "in are_expr_equal one is not closed");
     
     auto e1 = *expr1;
     auto e2 = *expr2;
@@ -135,57 +132,53 @@ bool World::are_expressions_equal_(Def expr1, Def expr2) const {
         return false;
 }
 
-Def World::cse(Def e) const {
-    if (!e.is_closed()) {
-        garbage_.insert(*e);
-        //e->set_gid(gid_++);
-        return e;
+const DefNode* World::cse_base(const DefNode* def) const {
+    if (!def->is_closed()) {
+        garbage_.insert(def);
+        //def->set_gid(gid_++);
+        return def;
     }
-    auto expr = *e;
-    auto i = expressions_.find(expr);
-    if (i != expressions_.end() && *i != expr) {
+    auto i = expressions_.find(def);
+    if (i != expressions_.end() && *i != def) {
         // here probably we want to do gid_-- or gid_-=2 depending on whether
-        // expr is Abs or not
-        delete expr;
-        expr = *i;
+        // def is Abs or not
+        delete def;
+        def = *i;
     } else {
-       // expr->set_gid(gid_++);
-        auto p = expressions_.insert(expr);
+       // def->set_gid(gid_++);
+        auto p = expressions_.insert(def);
     }
     
-    return expr;
+    return def;
 }
 
 void World::dump(Def expr) const { dump(expr, std::cout); }
 
-void World::dump(Def e, std::ostream& stream) const {
-    auto expr = *e;
-    if (expr == nullptr) {
+void World::dump(Def def, std::ostream& stream) const {
+    if (!def) {
         stream << "'nullptr'";
-    } else if (auto int_value = expr->isa<PrimLitNode>()) {
+    } else if (auto int_value = def->isa<PrimLitNode>()) {
         stream << int_value->value();
-    } else if (auto var_occ = expr->isa<VarNode>()) {
-        stream << var_occ->name;
-    } else if (auto lambda = expr->isa<LambdaNode>()) {
+    } else if (auto var = def.isa<Var>()) {
+        stream << var->name;
+    } else if (auto lambda = def.isa<Lambda>()) {
         stream << "λ";
-        dump_body(e, stream);
-    } else if (auto pi = expr->isa<PiNode>()) {
-         if (pi->var()->name == "_" ||
-            !is_a_subexpression(pi->body(), pi->var())
-            ) {
+        dump_body(lambda, stream);
+    } else if (auto pi = def.isa<Pi>()) {
+         if (pi->var()->name == "_" || !is_a_subexpression(pi->body(), pi->var())) {
             stream << "(";
-            dump(pi->var()->as<VarNode>()->type(), stream);
+            dump(pi->var().as<Var>()->type(), stream);
             stream << ") -> (";
             dump(pi->body(), stream);
             stream << ")";
-        } else if (*(pi->var()->as<VarNode>()->type()) == *(get_prim_const("*"))) {
+        } else if (*(pi->var().as<Var>()->type()) == *(get_prim_const("*"))) {
             stream << "∀" << pi->var()->name << ". ";
             dump(pi->body(), stream);
         } else {
             stream << "Π";
-            dump_body(e, stream);
+            dump_body(pi, stream);
         }  
-    } else if (auto app = expr->isa<AppNode>()) {
+    } else if (auto app = def.isa<App>()) {
         stream << "(";
         dump(app->fun(), stream);
         stream << ") (";
@@ -194,18 +187,18 @@ void World::dump(Def e, std::ostream& stream) const {
     }
 }
 
-void World::dump_body(Def body, std::ostream& stream) const {
-    dump(body.abs_var(), stream);
+void World::dump_body(Abs abs, std::ostream& stream) const {
+    dump(abs->var(), stream);
     stream << ":";
-    dump(body.abs_var().var_type(), stream);
+    dump(abs->var()->type(), stream);
     stream << ". ";
-    dump(body.abs_body(), stream);
+    dump(abs->body(), stream);
 }
 
 bool World::is_a_subexpression(Def bexpr, Def bsub) const {
-    assert(!bsub.empty());
+    assert(bsub);
     
-    if (bexpr.empty())
+    if (!bexpr)
         return false;
     
     auto expr = *bexpr;
@@ -239,44 +232,44 @@ void World::move_from_garbage(const DefNode* def) const {
         throw std::runtime_error("move_from_garbage doesn't work");
 }
 
-void World::reduce(Def def) const { // should we allow non-closed exprs?
+void World::reduce(Def def) { // should we allow non-closed exprs?
     auto defn = *def;
-    auto M = new std::map<const DefNode*, const DefNode*>();
-    defn->set_representative(reduce(def, M));
-    delete M;
+    // TODO use hashmap
+    std::map<const DefNode*, const DefNode*> map;
+    defn->set_representative(reduce(def, map));
 }
 
-Def World::reduce(Def e, std::map<const DefNode*, const DefNode*>* M) const {
+Def World::reduce(Def e, std::map<const DefNode*, const DefNode*>& map) {
     auto expr = *e;
     if (auto var = expr->isa<VarNode>()) {
-        auto i = M->find(var);
-        if (i != M->end()) {
+        auto i = map.find(var);
+        if (i != map.end()) {
             return i->second;
         } else {
             return e; // expr
         }
     } else if (auto abs = expr->isa<AbsNode>()) {
-        auto i = M->find(abs->var());
-        if (i != M->end()) {
+        auto i = map.find(abs->var());
+        if (i != map.end()) {
             return e;
         } else {
             std::ostringstream nvarn;
             nvarn << abs->var()->name;
             if (nvarn.str() != "_")
                 nvarn << "'";
-            auto ntype = reduce(abs->var()->as<VarNode>()->type(), M);
+            auto ntype = reduce(abs->var().as<Var>()->type(), map);
             auto nabs = lambda(nvarn.str(), ntype);
-            (*M)[*(abs->var())] = *var_occ(nabs);
-            auto nbody = reduce(abs->body(), M);
-            nabs.close_abs(nbody);
+            map[abs->var()] = nabs->var();
+            auto nbody = reduce(abs->body(), map);
+            nabs->close(nbody);
             return nabs;
         }
     } else if (auto app = expr->isa<AppNode>()) {
-        auto rfun = reduce(app->fun(), M);
+        auto rfun = reduce(app->fun(), map);
         if (auto abs = (*rfun)->isa<AbsNode>()) {
-            auto rarg = reduce(app->arg(), M);
-            (*M)[*(abs->var())] = *rarg;
-            return reduce(abs->body(), M);
+            auto rarg = reduce(app->arg(), map);
+            map[*(abs->var())] = *rarg;
+            return reduce(abs->body(), map);
         } else
             throw std::runtime_error("app of non-lambda found in reduce");
     }
@@ -385,7 +378,7 @@ Def World::typecheck(Def e) {
 }
 
 Def World::typecheck_(Def e) { // assumption: e is reduced
-    if (!e.is_closed())
+    if (!e->is_closed())
         throw std::runtime_error("typechecking non closed expr");
     auto expr = *e;
     if (expr == nullptr) {
@@ -424,7 +417,7 @@ Def World::typecheck_(Def e) { // assumption: e is reduced
         // oh, here we probably really need a real substitution...... ;(
         // but let's risk for now and make lambda->var() a shared var between lambda and new pi
       //  auto body_type2 = substitute(body_type, lambda->var(), varocc);//new VarOcc(res));
-        res.close_abs(body_type/*2*/);
+        res->close(body_type/*2*/);
         auto type_of_pi = typecheck_(res);
         return res;
     } else if (auto pi = expr->isa<PiNode>()) {
