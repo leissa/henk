@@ -100,6 +100,7 @@ bool World::are_expressions_equal(Def expr1, Def expr2) {
     are_expressions_equal_(expr1, expr2);
 }
 
+// TODO make this a virtual function in DefNode
 bool World::are_expressions_equal_(Def def1, Def def2) {
     assert(!def1->is_closed() || !def2->is_closed() && "in are_expr_equal one is not closed");
     
@@ -212,6 +213,7 @@ void World::reduce(Def def) { // should we allow non-closed exprs?
     node->set_representative(reduce(def, map));
 }
 
+// TODO make this a virtual function in DefNode
 Def World::reduce(Def def, Def2Def& map) {
     if (auto var = def.isa<Var>()) {
         auto i = map.find(var);
@@ -247,6 +249,7 @@ Def World::reduce(Def def, Def2Def& map) {
     }
 }
 
+// TODO make this a method of DefNode
 void World::replace(Def olde, Def newe) const {
     (*olde)->set_representative(*newe);
 }
@@ -349,6 +352,7 @@ Def World::typecheck(Def e) {
     return typecheck_(e);
 }
 
+// TODO make this a virtual function in DefNode
 Def World::typecheck_(Def def) { // assumption: e is reduced
     assert(def->is_closed() && "typechecking non closed expr");
     
