@@ -34,7 +34,7 @@ public:
     {}
 
     bool operator == (const Proxy<T>& other) const {
-        assert(&node()->world() == &other.node()->world());
+        assert(&(node()->world()) == &(other.node()->world()));
         //return this->node()->unify() == other.node()->unify();
         return this->deref() == other.deref();
     }

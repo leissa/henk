@@ -119,7 +119,8 @@ bool DefNode::has_subexpr(Def sub) const {
                 queue.push(def);
         }
     };
-
+    
+    enqueue(this);
     while (!queue.empty()) {
         auto def = pop(queue);
         if (def == sub)
