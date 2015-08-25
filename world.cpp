@@ -93,7 +93,7 @@ Pi World::fun_type(Def from, Def to) {
 /*
  * Utility methods -- sorted alphabetically
  */
-
+#if 0
 bool World::are_expressions_equal(Def expr1, Def expr2) {
     reduce(expr1);
     reduce(expr2);
@@ -128,9 +128,12 @@ bool World::are_expressions_equal_(Def def1, Def def2) {
 
     return false;
 }
-
+#endif
 const DefNode* World::cse_base(const DefNode* def) const {
     if (!def->is_closed()) {
+        std::cout << "in cse: putting unclosed def: ";
+        dump(def);
+        std::cout << "\n to garbage" << std::endl;
         garbage_.insert(def);
         //def->set_gid(gid_++);
         return def;
@@ -138,14 +141,21 @@ const DefNode* World::cse_base(const DefNode* def) const {
     auto i = expressions_.find(def);
     if (i != expressions_.end() && *i != def) {
         // here probably we want to do gid_-- or gid_-=2 depending on whether
-        // def is Abs or not
+        // def is Abs or not (or do nothing if gids don't need to be continuous)
+        std::cout << "in cse found duplicate and deleteing: ";
+        dump(def);
+        std::cout << std::endl;
         delete def;
         def = *i;
     } else {
+        std::cout << "in cse bran new def: ";
+        dump(def);
+        std::cout << std::endl;
        // def->set_gid(gid_++);
         expressions_.insert(def);
     }
     
+  //  reduce(def);
     return def;
 }
 
@@ -162,7 +172,11 @@ void World::dump(Def def, std::ostream& stream) const {
         stream << "λ";
         dump_body(lambda, stream);
     } else if (auto pi = def.isa<Pi>()) {
-         if (pi->var()->name() == "_" || !pi->body()->has_subexpr(pi->var())) {
+        if(!pi->body()) {
+            stream << "Π";
+            dump_body(pi, stream);
+        }
+        else if (pi->var()->name() == "_" || !pi->body()->has_subexpr(pi->var())) {
             stream << "(";
             dump(pi->var().as<Var>()->type(), stream);
             stream << ") -> (";
@@ -193,13 +207,22 @@ void World::dump_body(Abs abs, std::ostream& stream) const {
 }
 
 void World::move_from_garbage(const DefNode* def) const {
+    assert(def->is_closed() && "attemp to move unclosed def from garbage");
     auto i = garbage_.find(def);
     if (i != garbage_.end()) {
         garbage_.erase(i);
+     //   std::cout << "will we find def?" << std::endl;
         auto j = expressions_.find(def);
+    //    std::cout << "time has come" << std::endl;
         if (j != expressions_.end()) {
+       //     std::cout << "moving from garbage: " << std::endl;
+       //     dump(def);
+       //     std::cout << "\n and found equivalent in exprs_" << std::endl;
             def->set_representative(*j);
         } else {
+      //      std::cout << "moving from garbage: " << std::endl;
+      //      dump(def);
+      //      std::cout << "\n and it's brand new garbage" << std::endl;
             expressions_.insert(def);
         }
     }
@@ -208,13 +231,26 @@ void World::move_from_garbage(const DefNode* def) const {
 }
 
 void World::reduce(Def def) { // should we allow non-closed exprs?
+    assert(def->is_closed() && "unclosed def in reduce");
+    if(!def->is_reduced()) {
+        auto node = def.node();
+        Def2Def map;
+        node->set_representative(reduce(def, map));
+    }
+}
+
+void World::reduce(Def def, Def oldd, Def newd) {
     auto node = def.node();
     Def2Def map;
+    map[*oldd] = *newd;
     node->set_representative(reduce(def, map));
 }
 
 // TODO make this a virtual function in DefNode
 Def World::reduce(Def def, Def2Def& map) {
+  //  std::cout << "reducing ";
+  //  dump(def);
+  //  std::cout << std::endl;
     if (auto var = def.isa<Var>()) {
         auto i = map.find(var);
         if (i != map.end()) {
@@ -224,20 +260,33 @@ Def World::reduce(Def def, Def2Def& map) {
         }
     } else if (auto abs = def.isa<Abs>()) {
         auto i = map.find(abs->var());
-        if (i != map.end()) { // TODO looks broken to me
-            return def;
-        } else {
-            std::ostringstream nvarn;
-            nvarn << abs->var()->name();
-            if (nvarn.str() != "_")
-                nvarn << "'";
-            auto ntype = reduce(abs->var().as<Var>()->type(), map);
-            auto nabs = lambda(nvarn.str(), ntype);
-            map[abs->var()] = nabs->var();
-            auto nbody = reduce(abs->body(), map);
-            nabs->close(nbody);
-            return nabs;
-        }
+        if (i != map.end()) { // TODO looks broken to me // FIXED?
+            map.erase(i);
+            //return def;
+        } //else {
+        std::ostringstream nvarn;
+        nvarn << abs->var()->name();
+        if (nvarn.str() != "_")
+            nvarn << "'";
+        auto ntype = reduce(abs->var().as<Var>()->type(), map);
+        Abs nabs;
+        if(abs->isa<LambdaNode>())
+            nabs = lambda(nvarn.str(), ntype);
+        else
+            nabs = pi(nvarn.str(), ntype);
+        // = lambda(nvarn.str(), ntype);
+  //      std::cout << "in reduce, created new abs: ";
+   //     dump(nabs);
+ //       std::cout << std::endl;
+        map[abs->var()] = nabs->var();
+        auto nbody = reduce(abs->body(), map);
+  //      std::cout << "and reduced its body to: ";
+ //       dump(nbody);
+ //       std::cout << std::endl;
+        nabs->close(nbody);
+ //       std::cout << "WEL" << std::endl;
+        return nabs;
+        //}
     } else if (auto app = def.isa<App>()) {
         auto rfun = reduce(app->fun(), map);
         if (auto abs = rfun.isa<Abs>()) {
@@ -245,10 +294,9 @@ Def World::reduce(Def def, Def2Def& map) {
             map[*(abs->var())] = *rarg;
             return reduce(abs->body(), map);
         } else
-            throw std::runtime_error("app of non-lambda found in reduce");
-    }
-
-    return Def(); // FIXME controll reaches end of void function
+            throw std::runtime_error("app of non-abs found in reduce");
+    } else
+        throw std::runtime_error("malformed def in reduce");
 }
 
 // TODO make this a method of DefNode
@@ -257,13 +305,14 @@ void World::replace(Def olde, Def newe) const {
 }
 
 void World::show_expressions(std::ostream& stream) const {
+    stream << "show expr: " << std::endl;
     for (auto e : expressions_) {
         dump(e, stream);
         stream << " at " << e << std::endl;
     }
     stream << "garbage:" << std::endl;
     for (auto e : garbage_) {
-       // dump(e, stream);
+        dump(e, stream);
         stream << " at " << e << std::endl;
     }
     stream << "prim consts:" << std::endl;
@@ -286,12 +335,12 @@ void World::show_prims(std::ostream& stream) const {
 }
 
 #if 0 // legacy code -- might be needed if general substitution turns out to be needed
-Def World::substitute(/*const Expr**/Def bexpr, /*const VarIntr**/Def bvar, 
-    /*const Expr**/Def bnval) {
+Def World::substitute(Def bexpr, Def bvar, Def bnval) {
     auto expr = *bexpr; auto var = *bvar; auto nval = *bnval;
     if (expr == var) {
         return bnval;
-    } if (auto varocc = expr.isa<Var>()) {
+    } else if (auto varocc = expr->isa<Var>()) {
+        int a;
         if (varocc == var) {
             return bnval;
         } else {
@@ -307,21 +356,19 @@ Def World::substitute(/*const Expr**/Def bexpr, /*const VarIntr**/Def bvar,
                 nvarn << "'";
             auto ntype = substitute(abs->var()->type(), bvar, bnval);
             auto nlambda = lambda(nvarn.str(), ntype);
-            auto nbody = substitute(Expression(lambda->body(), this), 
-                Expression(lambda->var(), this), varOcc_on_without_cse(nlambda));
+            auto nbody = substitute(lambda->body(), lambda->var(), nlambda->var());
             auto body_substituted = substitute(nbody, bvar, bnval);
             nlambda.close(body_substituted);
             return nlambda;
         }
     } else if (auto app = expr->isa<App>()) {
-        auto napply = substitute(Expression(app->apply(), this), bvar, bnval);
-        auto narg = substitute(Expression(app->arg(), this), bvar, bnval);
+        throw std::runtime_exception("App in substitute!");
+        auto napply = substitute(app->fun(), bvar, bnval);
+        auto narg = substitute(app->arg(), bvar, bnval);
         return app(napply, narg);//new App(napply, narg);
-    } else if (auto anne = expr->isa<AnnotatedExpr>()) {
-        // should there be a substitution on anne->type() or not?
-        return bexpr;
     } else {
-        return bexpr;
+        throw std::runtime_exception("malformed expr in substitute");
+        //return bexpr;
     }
 }
 #endif
@@ -358,6 +405,10 @@ Def World::typecheck(Def e) {
 Def World::typecheck_(Def def) { // assumption: e is reduced
     assert(def->is_closed() && "typechecking non closed expr");
     
+  //  std::cout << "typechecking: ";
+  //  dump(def);
+  //  std::cout << std::endl;
+    
     auto i = prim_rules_has_type.find(def);
     if (i != prim_rules_has_type.end())
         return i->second;
@@ -382,13 +433,20 @@ Def World::typecheck_(Def def) { // assumption: e is reduced
         return var->type();
     } else if (auto lambda = def.isa<Lambda>()) {
         // do we need to typecheck var?
-       // auto var_type = typecheck_(lambda->var());
+        //auto var_type = typecheck_(lambda->var());
         auto body_type = typecheck_(lambda->body());
         
-       // auto res = pi(lambda->var()->name(), var_type);
-        auto res = pi_share_var(lambda->var());
-        // oh, here we probably really need a real substitution...... ;(
-        // but let's risk for now and make lambda->var() a shared var between lambda and new pi
+        auto res = pi(lambda->var()->name(), lambda->var()->type());//var_type);
+                std::cout << "during typechecking lambda: ";
+        dump(lambda);
+        std::cout << "\nnclosed res type is: ";
+        dump(res);
+        std::cout << "\nand its unreduced body isgvvcvcc: ";
+       // dump(body_type);
+        std::cout << std::endl;
+        reduce(body_type, lambda->var(), res->var());
+    std::cout << " AFTER REDCTIONJ" << std::endl;
+       // auto res = pi_share_var(lambda->var());
       //  auto body_type2 = substitute(body_type, lambda->var(), varocc);//new VarOcc(res));
         res->close(body_type/*2*/);
         typecheck_(res);
@@ -396,6 +454,11 @@ Def World::typecheck_(Def def) { // assumption: e is reduced
     } else if (auto pi = def.isa<Pi>()) {
         auto var_type = typecheck_(pi->var());
         auto var_type_type = typecheck_(var_type);
+      /*  std::cout << "type of ";
+        dump(var_type);
+        std::cout << "  is ";
+        dump(var_type_type);
+        std::cout << std::endl;*/
         auto body_type = typecheck_(pi->body());
         auto p = wavy_arrow_rules.find(std::make_pair(
             *var_type_type,

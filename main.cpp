@@ -68,13 +68,13 @@ void test3(World* world) {
     std::cout << "f g = ";
     world->dump(app);
     std::cout << std::endl;
-    try {
+    //try {
         std::cout << "f g : ";
         auto apptype = world->typecheck(app);
         world->dump(apptype);
-    } catch (std::runtime_error& e) {
-        std::cout << "typecheck error: " << e.what() << std::endl;
-    }
+  //  } catch (std::runtime_error& e) {
+   //     std::cout << "typecheck error: " << e.what() << std::endl;
+  //  }
 }
 
 void test4(World* world) {

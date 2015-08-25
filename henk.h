@@ -36,7 +36,8 @@ public:
     bool operator == (const Proxy<T>& other) const {
         assert(&(node()->world()) == &(other.node()->world()));
         //return this->node()->unify() == other.node()->unify();
-        return this->deref() == other.deref();
+        return this->deref()->equal(*other.deref());
+        // *(this->deref()) == *(other.deref()) // ? because we want to compare values
     }
     bool operator != (const Proxy<T>& other) const { return !(*this == other); }
     const T* representative() const { return node_->representative_->template as<T>(); }
@@ -45,7 +46,7 @@ public:
     //const T* operator  * () const { return node()->is_unified() ? representative() : node(); }
     const T* operator  * () const { return deref(); }
     const T* operator -> () const { return *(*this); }
-
+    bool is_empty () const { return node_ == nullptr; }
     // casts
 
     operator bool() const { return node_; }
@@ -136,11 +137,11 @@ protected:
     void resize(size_t n) { ops_.resize(n, nullptr); }
     void unlink_representative() const;
     void set_representative(const DefNode* repr) const;
-    size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
     void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<DefNode*>(this)->gid_) = gid; }
     virtual size_t vhash() const = 0;
     
 public:
+    size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
  //   Def type() const { return type_.empty() ? type_ = typecheck(this) : type_; }
     size_t size() const { return ops_.size(); }
     bool empty() const { return ops_.empty(); }
@@ -158,6 +159,9 @@ public:
     Def op(size_t i) const { assert(i < ops().size() && "index out of bounds"); return ops_[i]; }
     const std::string& name() const { return name_; }
     virtual bool is_closed() const = 0;
+    virtual bool is_reduced() const = 0;
+    bool equal (const DefNode& other) const;
+    virtual bool eq (const DefNode& other, Def2Def& map) const;
 
 protected:
     mutable const DefNode* representative_;
@@ -183,11 +187,15 @@ protected:
     AbsNode(World& world, size_t gid, Def var_type, std::string name);
     AbsNode(World& world, size_t gid, Def var);
     
+    virtual ~AbsNode();
+    
 public:
-    Var var() const;
+    Var var() const { return op(0).as<Var>(); }
     Def body() const { return op(1); }
     void close(Def body) const;
     virtual bool is_closed() const override;
+    virtual bool is_reduced() const override;
+    virtual bool eq (const DefNode& other, Def2Def& map) const override;
 
 private:
     size_t vhash() const;
@@ -201,6 +209,8 @@ protected:
         : AbsNode(world, gid, var_type, name)
     {}
     
+public:
+    //virtual bool eq (const DefNode& other, Def2Def& map) const override;
     friend class World;
 };
 
@@ -214,6 +224,8 @@ private:
         : AbsNode(world, gid, var)
     {}
     
+public:
+   // virtual bool eq (const DefNode& other, Def2Def& map) const override;
     friend class World;
 };
 
@@ -230,6 +242,8 @@ public:
     Def type() const { return op(0); }
     Abs abs() const { return op(1).as<Abs>(); }
     virtual bool is_closed() const override;
+    virtual bool is_reduced() const override;
+    virtual bool eq (const DefNode& other, Def2Def& map) const override;
     
 private:
     size_t vhash() const;
@@ -249,6 +263,7 @@ private:
     
 public:
     int value() const { return value_; };
+    virtual bool eq (const DefNode& other, Def2Def& map) const override;
     
 private:
     int value_;
@@ -266,6 +281,8 @@ public:
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }
     virtual bool is_closed() const override;
+    virtual bool is_reduced() const override;
+    virtual bool eq (const DefNode& other, Def2Def& map) const override;
 
     friend class World;
 };

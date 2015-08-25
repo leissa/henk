@@ -30,7 +30,7 @@ public:
  * Utility methods
  */ 
     Def typecheck(Def def);
-    bool are_expressions_equal(Def expr1, Def expr2);
+    //bool are_expressions_equal(Def expr1, Def expr2);
     bool is_a_subexpression(Def expr, Def sub) const;
     void show_prims(std::ostream& stream) const;
     void dump(Def expr, std::ostream& stream) const;
@@ -43,10 +43,11 @@ public:
 protected:
     void dump_body(Abs abs, std::ostream& stream) const;
     Def typecheck_(Def def);
-   // Def substitute(Def expr, Def var, Def nval);
+    Def substitute(Def expr, Def var, Def nval);
     void reduce(Def);
+    void reduce(Def def, Def oldd, Def newd);
     Def reduce(Def, Def2Def&);
-    bool are_expressions_equal_(Def expr1, Def expr2);
+   // bool are_expressions_equal_(Def expr1, Def expr2);
     void replace(Def olde, Def newe) const;
     void move_from_garbage(const DefNode* def) const;
     template<class T> const T* cse(const T* def) { return cse_base(def)->template as<T>(); }
@@ -58,7 +59,8 @@ protected:
     struct ExprEqual {
         bool operator () (const DefNode* def1, const DefNode* def2) const {
             assert(&def1->world() == &def2->world_ && "testing for eq defs from different worlds");
-            return def1->world().are_expressions_equal(def1, def2);
+            return def1->equal(*def2);
+            //def1->world().are_expressions_equal(def1, def2);
         } 
     };
     
@@ -70,7 +72,8 @@ protected:
     mutable DefSet garbage_;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     
-    friend class DefNode; // DefNode uses move_from_garbage(const DefNode*)
+    friend class AbsNode; // AbsNode uses move_from_garbage(const DefNode*)
+    friend class DefNode; // DefNode uses reduce(Def)
 };
 
 }
