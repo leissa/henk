@@ -36,6 +36,13 @@ public:
     bool operator == (const Proxy<T>& other) const {
         assert(&(node()->world()) == &(other.node()->world()));
         //return this->node()->unify() == other.node()->unify();
+      //  auto w = &(node()->world());
+        
+     
+     
+     //   w->reduce(*this);
+    //    w->reduce(other);
+        
         return this->deref()->equal(*other.deref());
         // *(this->deref()) == *(other.deref()) // ? because we want to compare values
     }
@@ -53,7 +60,7 @@ public:
     operator const T*() const { return deref(); }
 
     /// Automatic up-cast in the class hierarchy.
-    template<class U> operator Proxy<U>() {
+    template<class U> operator Proxy<U>() const { // added const -- is it bad?
         static_assert(std::is_base_of<U, T>::value, "U is not a base type of T");
         return Proxy<U>((**this)->template as<T>());
     }
@@ -159,7 +166,7 @@ public:
     Def op(size_t i) const { assert(i < ops().size() && "index out of bounds"); return ops_[i]; }
     const std::string& name() const { return name_; }
     virtual bool is_closed() const = 0;
-    virtual bool is_reduced() const = 0;
+    //virtual bool is_reduced() const = 0;
     bool equal (const DefNode& other) const;
     virtual bool eq (const DefNode& other, Def2Def& map) const;
 
@@ -194,7 +201,7 @@ public:
     Def body() const { return op(1); }
     void close(Def body) const;
     virtual bool is_closed() const override;
-    virtual bool is_reduced() const override;
+    //virtual bool is_reduced() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;
 
 private:
@@ -242,7 +249,7 @@ public:
     Def type() const { return op(0); }
     Abs abs() const { return op(1).as<Abs>(); }
     virtual bool is_closed() const override;
-    virtual bool is_reduced() const override;
+   // virtual bool is_reduced() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;
     
 private:
@@ -281,7 +288,7 @@ public:
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }
     virtual bool is_closed() const override;
-    virtual bool is_reduced() const override;
+    //virtual bool is_reduced() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;
 
     friend class World;

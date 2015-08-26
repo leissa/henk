@@ -70,10 +70,10 @@ Pi World::pi(std::string name, Def var_type) {
     gid_ += 2; // world knows that Abs creates Var
     return cse(new PiNode(*this, g, var_type, name));
 }
-
+/*
 Pi World::pi_share_var(Def var) {
     return cse(new PiNode(*this, gid_++, var));
-}
+}*/
 
 App World::app(Def fun, Def arg) {
     return cse(new AppNode(*this, gid_++, fun, arg, "app_"));
@@ -101,6 +101,7 @@ bool World::are_expressions_equal(Def expr1, Def expr2) {
 }
 
 // TODO make this a virtual function in DefNode
+// LEGACY CODE -- DO NOT USE IT
 bool World::are_expressions_equal_(Def def1, Def def2) {
     assert((def1->is_closed() && def2->is_closed()) && "in are_expr_equal one is not closed");
     
@@ -121,36 +122,43 @@ bool World::are_expressions_equal_(Def def1, Def def2) {
             abs1->var()->equiv_ = nullptr;
             return res;
         }
-    } else if (auto app1 = def1.isa<App>())
-        throw std::runtime_error("bumped into app in are_expr_equal after reducing");
-    else if (auto app2 = def2.isa<App>()) // how to merge those branches? "||" doesn't work
+    } else if (def1.isa<App>() || def2.isa<App>())
         throw std::runtime_error("bumped into app in are_expr_equal after reducing");
 
     return false;
 }
 #endif
-const DefNode* World::cse_base(const DefNode* def) const {
+const DefNode* World::cse_base(const DefNode* def) {
     if (!def->is_closed()) {
-        std::cout << "in cse: putting unclosed def: ";
-        dump(def);
-        std::cout << "\n to garbage" << std::endl;
+   //     std::cout << "in cse: putting unclosed def: ";
+   //     dump(def);
+   //     std::cout << "\n to garbage" << std::endl;
         garbage_.insert(def);
         //def->set_gid(gid_++);
         return def;
     }
+    
+    Def proxdef(def);
+    reduce(proxdef);
+    auto rdef = *proxdef;
+    if(def != rdef)
+        delete def;
+    
+    def = rdef;
+    
     auto i = expressions_.find(def);
     if (i != expressions_.end() && *i != def) {
         // here probably we want to do gid_-- or gid_-=2 depending on whether
         // def is Abs or not (or do nothing if gids don't need to be continuous)
-        std::cout << "in cse found duplicate and deleteing: ";
-        dump(def);
-        std::cout << std::endl;
+  //      std::cout << "in cse found duplicate and deleteing: ";
+   //     dump(def);
+   //     std::cout << std::endl;
         delete def;
         def = *i;
     } else {
-        std::cout << "in cse bran new def: ";
-        dump(def);
-        std::cout << std::endl;
+    //    std::cout << "in cse bran new def: ";
+    //    dump(def);
+    //    std::cout << std::endl;
        // def->set_gid(gid_++);
         expressions_.insert(def);
     }
@@ -175,13 +183,12 @@ void World::dump(Def def, std::ostream& stream) const {
         if(!pi->body()) {
             stream << "Π";
             dump_body(pi, stream);
-        }
-        else if (pi->var()->name() == "_" || !pi->body()->has_subexpr(pi->var())) {
+     /*   } else if (pi->var()->name() == "_" || !pi->body()->has_subexpr(pi->var())) {
             stream << "(";
             dump(pi->var().as<Var>()->type(), stream);
             stream << ") -> (";
             dump(pi->body(), stream);
-            stream << ")";
+            stream << ")";*/
         } else if (*(pi->var().as<Var>()->type()) == *(get_prim_const("*"))) {
             stream << "∀" << pi->var()->name() << ". ";
             dump(pi->body(), stream);
@@ -211,18 +218,25 @@ void World::move_from_garbage(const DefNode* def) const {
     auto i = garbage_.find(def);
     if (i != garbage_.end()) {
         garbage_.erase(i);
-     //   std::cout << "will we find def?" << std::endl;
+        std::cout << "will we find def whose hash is " << def->hash() << std::endl;
+        std::cout << "and looks like: ";
+        dump(def);
+        std::cout << std::endl;
+        if(auto pid = def->isa<PiNode>()) {
+            std::cout << "var ma hash " << (*(pid->var()))->hash() << std::endl;
+            std::cout << "body zas " << (*(pid->body()))->hash() << std::endl;
+        }
         auto j = expressions_.find(def);
-    //    std::cout << "time has come" << std::endl;
+       // std::cout << "time has come" << std::endl;
         if (j != expressions_.end()) {
-       //     std::cout << "moving from garbage: " << std::endl;
-       //     dump(def);
-       //     std::cout << "\n and found equivalent in exprs_" << std::endl;
+            std::cout << "moved from garbage: " << std::endl;
+            dump(def);
+            std::cout << "\n and found equivalent in exprs_" << std::endl;
             def->set_representative(*j);
         } else {
-      //      std::cout << "moving from garbage: " << std::endl;
-      //      dump(def);
-      //      std::cout << "\n and it's brand new garbage" << std::endl;
+            std::cout << "moved from garbage: " << std::endl;
+            dump(def);
+            std::cout << "\n and it's brand new garbage" << std::endl;
             expressions_.insert(def);
         }
     }
@@ -230,16 +244,16 @@ void World::move_from_garbage(const DefNode* def) const {
         throw std::runtime_error("move_from_garbage doesn't work");
 }
 
-void World::reduce(Def def) { // should we allow non-closed exprs?
+void World::reduce(Def def)  { // should we allow non-closed exprs?
     assert(def->is_closed() && "unclosed def in reduce");
-    if(!def->is_reduced()) {
+   // if(!def->is_reduced()) {
         auto node = def.node();
         Def2Def map;
         node->set_representative(reduce(def, map));
-    }
+  //  }
 }
 
-void World::reduce(Def def, Def oldd, Def newd) {
+void World::reduce(Def def, Def oldd, Def newd)  { // works as substitution
     auto node = def.node();
     Def2Def map;
     map[*oldd] = *newd;
@@ -247,8 +261,8 @@ void World::reduce(Def def, Def oldd, Def newd) {
 }
 
 // TODO make this a virtual function in DefNode
-Def World::reduce(Def def, Def2Def& map) {
-  //  std::cout << "reducing ";
+Def World::reduce(Def def, Def2Def& map)  {
+   // std::cout << "reducing " << std::endl;
   //  dump(def);
   //  std::cout << std::endl;
     if (auto var = def.isa<Var>()) {
@@ -287,14 +301,17 @@ Def World::reduce(Def def, Def2Def& map) {
  //       std::cout << "WEL" << std::endl;
         return nabs;
         //}
-    } else if (auto app = def.isa<App>()) {
-        auto rfun = reduce(app->fun(), map);
+    } else if (auto appd = def.isa<App>()) {
+        Def rfun = reduce(appd->fun(), map);
+        Def rarg = reduce(appd->arg(), map);
         if (auto abs = rfun.isa<Abs>()) {
-            auto rarg = reduce(app->arg(), map);
             map[*(abs->var())] = *rarg;
             return reduce(abs->body(), map);
-        } else
-            throw std::runtime_error("app of non-abs found in reduce");
+        } else {
+            // throw std::runtime_error("app of non-abs found in reduce");
+            // it can happen that fun is not a lambda -- consider λx.λy.x y
+            return app(rfun, rarg);
+        }
     } else
         throw std::runtime_error("malformed def in reduce");
 }
@@ -397,7 +414,7 @@ void World::to_whnf(/*const Expr**/Def e) const {
 #endif
 
 Def World::typecheck(Def e) {
-    reduce(e);
+    //reduce(e);
     return typecheck_(e);
 }
 
@@ -437,15 +454,15 @@ Def World::typecheck_(Def def) { // assumption: e is reduced
         auto body_type = typecheck_(lambda->body());
         
         auto res = pi(lambda->var()->name(), lambda->var()->type());//var_type);
-                std::cout << "during typechecking lambda: ";
-        dump(lambda);
-        std::cout << "\nnclosed res type is: ";
-        dump(res);
-        std::cout << "\nand its unreduced body isgvvcvcc: ";
+    //            std::cout << "during typechecking lambda: ";
+  //      dump(lambda);
+  //      std::cout << "\nnclosed res type is: ";
+  //      dump(res);
+  //      std::cout << "\nand its unreduced body isgvvcvcc: ";
        // dump(body_type);
-        std::cout << std::endl;
+  //      std::cout << std::endl;
         reduce(body_type, lambda->var(), res->var());
-    std::cout << " AFTER REDCTIONJ" << std::endl;
+  //  std::cout << " AFTER REDCTIONJ" << std::endl;
        // auto res = pi_share_var(lambda->var());
       //  auto body_type2 = substitute(body_type, lambda->var(), varocc);//new VarOcc(res));
         res->close(body_type/*2*/);

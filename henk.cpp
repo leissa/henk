@@ -127,15 +127,14 @@ bool DefNode::has_subexpr(Def sub) const {
     enqueue(this);
     while (!queue.empty()) {
         auto def = pop(queue);
-        if (def->is_closed())
-            if (def == sub)
+        if (def->is_closed()) {
+            if (def == sub) {
                 return true;
-
-        for (auto op : ops_)
+            }
+        }
+        for (auto op : def->ops_)
             enqueue(op);
-
     }
-
     return false;
 }
 
@@ -158,20 +157,20 @@ AbsNode::AbsNode(World& world, size_t gid, Def var)
 AbsNode::~AbsNode() { delete *var(); }
 
 void AbsNode::close(Def body) const {
-   // assert(body->is_closed() && "closing AbsNode with unclosed body");
+    assert(body->is_closed() && "closing AbsNode with unclosed body");
     world_.reduce(body);
-    std::cout << "will close ";
-    world_.dump(this);
-    std::cout << "  with  ";
-    world_.dump(body);
-    std::cout << std::endl;
+ //   std::cout << "will close ";
+ //   world_.dump(this);
+ //   std::cout << "  with  ";
+ //   world_.dump(body);
+ //   std::cout << std::endl;
     set_op(1, body);
-    Def a = this;
-    world_.reduce(a);
-    *a;
-    std::cout << "after repre ";
-    world_.dump(a);
-    world_.move_from_garbage(a);
+//    Def a = this;
+  //  world_.reduce(a);
+  //  *a;
+  //  std::cout << "after repre ";
+ //   world_.dump(a);
+    world_.move_from_garbage(this);
 }
 
 AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
@@ -184,23 +183,22 @@ AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
  * equal
  */
 bool DefNode::equal (const DefNode& other) const {
-  /*  std::cout << "are equal: ";
-    world_.dump(this);
-    std::cout << "  and  ";
-    world_.dump(&other);
-    std::cout << "  ?" << std::endl;
-    world_.reduce(this);
-    std::cout << "AAAAA" << std::endl;*/
-    world_.reduce(this);
-    world_.reduce(&other);
-    assert(!other.isa<AppNode>() && "testing AppNode for equality contradicts" 
-        " eager normalizing (reducing) policy");
+   // assert(!other.isa<AppNode>() && "testing AppNode for equality contradicts" 
+   //     " eager normalizing (reducing) policy");
+   std::cout << "are ";
+   world_.dump(this);
+   std::cout << "  and  ";
+   world_.dump(&other);
+   std::cout << "  equal? -- " << std::endl;
     Def2Def map;
- //   std::cout << "will invoke eq now" << std::endl;
-    bool res = this->eq(other, map);
-   //             std::cout << "SZTOP" << std::endl;
-    return res;
-    //return this->eq(other, map);
+   bool res = this->eq(other, map);
+    if(res)
+        std::cout << "yes!";
+    else
+        std::cout << "nope!";
+    std::cout << std::endl;
+    
+    return res;// this->eq(other, map);
 }
 
 bool DefNode::eq (const DefNode& other, Def2Def& map) const {
@@ -209,9 +207,10 @@ bool DefNode::eq (const DefNode& other, Def2Def& map) const {
 }
 
 bool VarNode::eq (const DefNode& other, Def2Def& map) const {
-   // std::cout << "VarNode::eq" << std::endl;
+  //  std::cout << "VarNode::eq" << std::endl;
     auto eqto = map[this];
-    return DefNode::eq(other, map) && (this == &other || this == eqto);
+  //  std::cout << "var at " << this << " and we know its eq to " << eqto << std::endl;
+    return DefNode::eq(other, map) && (this == &other || eqto == &other);
 }
 
 bool PrimLitNode::eq (const DefNode& other, Def2Def& map) const {
@@ -220,14 +219,20 @@ bool PrimLitNode::eq (const DefNode& other, Def2Def& map) const {
 }
 
 bool AbsNode::eq (const DefNode& other, Def2Def& map) const {
-  //  std::cout << "AbsNode::eq" << std::endl;
+   // std::cout << "AbsNode::eq" << std::endl;
     if (DefNode::eq(other, map)) {
         auto aother = other.as<AbsNode>();
-        map[this] = aother;
+        map[*(this->var())] = *(aother->var());
+     //   std::cout << "this = " << *(this->var()) << " and aother = " << *(aother->var()) << std::endl;
+      //  auto eqto = map[this->var()];
+     //   std::cout << "retrieving " << eqto << std::endl;
         //var()->equiv_ = aother->var();
-        bool res = (var()->type()->eq(**(aother->var()->type()), map)) &&
+        bool typeq = var()->type()->eq(**(aother->var()->type()), map);
+    //    std::cout << "types: " << typeq << std::endl;
+  //      std::cout << "body is at " << *body() << " and " << *(aother->body()) << std::endl;
+        bool res = typeq && //(var()->type()->eq(**(aother->var()->type()), map)) &&
             (body()->eq(**(aother->body()), map));
-        map.erase(map.find(this));
+        map.erase(map.find(*(this->var())));
         //var()->equiv_ = nullptr;
         return res;
     }
@@ -235,8 +240,14 @@ bool AbsNode::eq (const DefNode& other, Def2Def& map) const {
 }
 
 bool AppNode::eq (const DefNode& other, Def2Def& map) const {
-    throw std::runtime_error("testing AppNode for equality contradicts "
-        " eager normalizing (reducing) policy");
+  //  std::cout << "AppNode::eq" << std::endl;
+   // throw std::runtime_error("testing AppNode for equality contradicts "
+    //    " eager normalizing (reducing) policy");
+    assert(!this->isa<AbsNode>() && !other.isa<AbsNode>() && "an abstraction in fun position in AppNode::eq"
+        " contradicts strong normalization (reduction) policy");
+    return DefNode::eq(other, map)
+        && fun()->eq(**(other.as<AppNode>()->fun()), map)
+        && arg()->eq(**(other.as<AppNode>()->arg()), map);
 }
 
 /*
@@ -256,6 +267,7 @@ bool AbsNode::is_closed() const { return body(); }
 bool VarNode::is_closed() const { return type() ? type()->is_closed() : true; }
 bool AppNode::is_closed() const { return fun()->is_closed() && arg()->is_closed(); }
 
+#if 0 // wrong and probably unnecessary
 /*
  * is_reduced
  */
@@ -263,5 +275,6 @@ bool AppNode::is_closed() const { return fun()->is_closed() && arg()->is_closed(
 bool AbsNode::is_reduced() const { return body()->is_reduced() && var()->is_reduced(); }
 bool VarNode::is_reduced() const { return type() ? type()->is_reduced() : true; }
 bool AppNode::is_reduced() const { return false; }
+#endif
 
 }

@@ -22,13 +22,14 @@ public:
     Lambda lambda(std::string var_name, Def var_type);
     Pi fun_type(Def from, Def to);
     Pi pi(std::string var_name, Def var_type);
-    Pi pi_share_var(Def var);
+   // Pi pi_share_var(Def var);
     App app(Def appl, Def arg);
     PrimLit literal(int value);
 
 /*
  * Utility methods
  */ 
+    void reduce(Def) ;
     Def typecheck(Def def);
     //bool are_expressions_equal(Def expr1, Def expr2);
     bool is_a_subexpression(Def expr, Def sub) const;
@@ -44,21 +45,21 @@ protected:
     void dump_body(Abs abs, std::ostream& stream) const;
     Def typecheck_(Def def);
     Def substitute(Def expr, Def var, Def nval);
-    void reduce(Def);
-    void reduce(Def def, Def oldd, Def newd);
-    Def reduce(Def, Def2Def&);
+    void reduce(Def def, Def oldd, Def newd) ;
+    Def reduce(Def, Def2Def&) ;
    // bool are_expressions_equal_(Def expr1, Def expr2);
     void replace(Def olde, Def newe) const;
     void move_from_garbage(const DefNode* def) const;
     template<class T> const T* cse(const T* def) { return cse_base(def)->template as<T>(); }
 
 protected:
-    const DefNode* cse_base(const DefNode*) const;
+    const DefNode* cse_base(const DefNode*) ;
 
     struct ExprHash { size_t operator () (const DefNode* e) const { return e->hash(); } };
     struct ExprEqual {
         bool operator () (const DefNode* def1, const DefNode* def2) const {
             assert(&def1->world() == &def2->world_ && "testing for eq defs from different worlds");
+           // assert(def1->is_reduced() && def2->is_reduced() && "some def not reduced in ExprEqual");
             return def1->equal(*def2);
             //def1->world().are_expressions_equal(def1, def2);
         } 
