@@ -28,7 +28,8 @@ void test2(World* world) {
     auto u = world->lambda("y", world->get_prim_const("*"));
 
     u->close(world->get_prim_const("Int"));
-
+    auto bla = world->app(u, world->get_prim_const("Bool"));
+    
     auto lambda = world->lambda("x", world->app(
         u, world->get_prim_const("Bool")
         )

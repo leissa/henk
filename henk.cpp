@@ -96,7 +96,8 @@ void DefNode::unlink_representative() const {
 void DefNode::set_representative(const DefNode* repr) const {
     unlink_representative();
     representative_ = repr;
-    repr->representative_of_.insert(this);
+    if(this != repr)
+        repr->representative_of_.insert(this);
 }
 
 void DefNode::unset_op(size_t i) {
@@ -132,8 +133,12 @@ bool DefNode::has_subexpr(Def sub) const {
                 return true;
             }
         }
-        for (auto op : def->ops_)
+        if(auto v = def->isa<VarNode>()) {
+            enqueue(v->type());
+        }
+        else for (auto op : def->ops_) {
             enqueue(op);
+        }
     }
     return false;
 }
@@ -185,7 +190,7 @@ AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
 bool DefNode::equal (const DefNode& other) const {
    // assert(!other.isa<AppNode>() && "testing AppNode for equality contradicts" 
    //     " eager normalizing (reducing) policy");
-   std::cout << "are ";
+ /*  std::cout << "are ";
    world_.dump(this);
    std::cout << "  and  ";
    world_.dump(&other);
@@ -196,18 +201,23 @@ bool DefNode::equal (const DefNode& other) const {
         std::cout << "yes!";
     else
         std::cout << "nope!";
-    std::cout << std::endl;
+    std::cout << std::endl;*/
+    Def2Def map;
     
-    return res;// this->eq(other, map);
+    return this->eq(other, map);
 }
 
 bool DefNode::eq (const DefNode& other, Def2Def& map) const {
-  //  std::cout << "DefNode::eq" << std::endl;
+   // std::cout << "DefNode::eq";
+  //  bool res = typeid(*this) == typeid(other);
+  //  std::cout << " " << res << std::endl;
     return typeid(*this) == typeid(other);
 }
 
 bool VarNode::eq (const DefNode& other, Def2Def& map) const {
-  //  std::cout << "VarNode::eq" << std::endl;
+   // std::cout << "VarNode::eq: ";
+  //  world_.dump(this); std::cout << " at " << this << "  and  ";
+  //  world_.dump(&other); std::cout << " at " << &other << std::endl;
     auto eqto = map[this];
   //  std::cout << "var at " << this << " and we know its eq to " << eqto << std::endl;
     return DefNode::eq(other, map) && (this == &other || eqto == &other);
@@ -219,16 +229,16 @@ bool PrimLitNode::eq (const DefNode& other, Def2Def& map) const {
 }
 
 bool AbsNode::eq (const DefNode& other, Def2Def& map) const {
-   // std::cout << "AbsNode::eq" << std::endl;
+  //  std::cout << "AbsNode::eq" << std::endl;
     if (DefNode::eq(other, map)) {
         auto aother = other.as<AbsNode>();
         map[*(this->var())] = *(aother->var());
-     //   std::cout << "this = " << *(this->var()) << " and aother = " << *(aother->var()) << std::endl;
+  //      std::cout << "this = " << *(this->var()) << " and aother = " << *(aother->var()) << std::endl;
       //  auto eqto = map[this->var()];
      //   std::cout << "retrieving " << eqto << std::endl;
         //var()->equiv_ = aother->var();
         bool typeq = var()->type()->eq(**(aother->var()->type()), map);
-    //    std::cout << "types: " << typeq << std::endl;
+ //       std::cout << "types: " << typeq << std::endl;
   //      std::cout << "body is at " << *body() << " and " << *(aother->body()) << std::endl;
         bool res = typeq && //(var()->type()->eq(**(aother->var()->type()), map)) &&
             (body()->eq(**(aother->body()), map));
@@ -254,7 +264,7 @@ bool AppNode::eq (const DefNode& other, Def2Def& map) const {
  * vhash
  */
 
-size_t VarNode::vhash() const { return hash_combine(type() ? type()->gid() : 9, 5/*abs()->gid()*/); }
+size_t VarNode::vhash() const { return hash_combine(type() ? type()->/*gid*/hash() : 9, 5/*abs()->gid()*/); }
 size_t PrimLitNode::vhash() const { return hash_combine(value(), 7); }
 size_t AbsNode::vhash() const { return hash_combine(var()->hash(), body() ? body()->/*gid*/hash() : 13); }
 size_t AppNode::vhash() const { return hash_combine(fun()->gid(), arg()->gid()); }

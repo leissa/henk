@@ -150,13 +150,13 @@ const DefNode* World::cse_base(const DefNode* def) {
     if (i != expressions_.end() && *i != def) {
         // here probably we want to do gid_-- or gid_-=2 depending on whether
         // def is Abs or not (or do nothing if gids don't need to be continuous)
-  //      std::cout << "in cse found duplicate and deleteing: ";
-   //     dump(def);
-   //     std::cout << std::endl;
+    //    std::cout << "in cse found duplicate and deleteing: ";
+    //    dump(def);
+    //    std::cout << std::endl;
         delete def;
         def = *i;
     } else {
-    //    std::cout << "in cse bran new def: ";
+     //   std::cout << "in cse bran new def: ";
     //    dump(def);
     //    std::cout << std::endl;
        // def->set_gid(gid_++);
@@ -183,12 +183,12 @@ void World::dump(Def def, std::ostream& stream) const {
         if(!pi->body()) {
             stream << "Π";
             dump_body(pi, stream);
-     /*   } else if (pi->var()->name() == "_" || !pi->body()->has_subexpr(pi->var())) {
+        } else if (pi->var()->name() == "_" || !pi->body()->has_subexpr(pi->var())) {
             stream << "(";
             dump(pi->var().as<Var>()->type(), stream);
             stream << ") -> (";
             dump(pi->body(), stream);
-            stream << ")";*/
+            stream << ")";
         } else if (*(pi->var().as<Var>()->type()) == *(get_prim_const("*"))) {
             stream << "∀" << pi->var()->name() << ". ";
             dump(pi->body(), stream);
@@ -214,29 +214,29 @@ void World::dump_body(Abs abs, std::ostream& stream) const {
 }
 
 void World::move_from_garbage(const DefNode* def) const {
-    assert(def->is_closed() && "attemp to move unclosed def from garbage");
+    assert(def->is_closed() && "attempt to move unclosed def from garbage");
     auto i = garbage_.find(def);
     if (i != garbage_.end()) {
         garbage_.erase(i);
-        std::cout << "will we find def whose hash is " << def->hash() << std::endl;
-        std::cout << "and looks like: ";
-        dump(def);
-        std::cout << std::endl;
-        if(auto pid = def->isa<PiNode>()) {
+ //       std::cout << "will we find def whose hash is " << def->hash() << std::endl;
+  //      std::cout << "and looks like: ";
+  //      dump(def);
+  //      std::cout << std::endl;
+  /*      if(auto pid = def->isa<PiNode>()) {
             std::cout << "var ma hash " << (*(pid->var()))->hash() << std::endl;
             std::cout << "body zas " << (*(pid->body()))->hash() << std::endl;
-        }
+        }*/
         auto j = expressions_.find(def);
        // std::cout << "time has come" << std::endl;
         if (j != expressions_.end()) {
-            std::cout << "moved from garbage: " << std::endl;
-            dump(def);
-            std::cout << "\n and found equivalent in exprs_" << std::endl;
+         //   std::cout << "moved from garbage: " << std::endl;
+         //   dump(def);
+         //   std::cout << "\n and found equivalent in exprs_" << std::endl;
             def->set_representative(*j);
         } else {
-            std::cout << "moved from garbage: " << std::endl;
-            dump(def);
-            std::cout << "\n and it's brand new garbage" << std::endl;
+            //std::cout << "moved from garbage: " << std::endl;
+         ////   dump(def);
+         //   std::cout << "\n and it's brand new garbage" << std::endl;
             expressions_.insert(def);
         }
     }
@@ -247,9 +247,10 @@ void World::move_from_garbage(const DefNode* def) const {
 void World::reduce(Def def)  { // should we allow non-closed exprs?
     assert(def->is_closed() && "unclosed def in reduce");
    // if(!def->is_reduced()) {
+     //   std::cout << "reducing: "; dump(def); 
         auto node = def.node();
         Def2Def map;
-        node->set_representative(reduce(def, map));
+        node->set_representative(*reduce(def, map));
   //  }
 }
 
@@ -257,7 +258,7 @@ void World::reduce(Def def, Def oldd, Def newd)  { // works as substitution
     auto node = def.node();
     Def2Def map;
     map[*oldd] = *newd;
-    node->set_representative(reduce(def, map));
+    node->set_representative(*reduce(def, map));
 }
 
 // TODO make this a virtual function in DefNode
@@ -265,15 +266,16 @@ Def World::reduce(Def def, Def2Def& map)  {
    // std::cout << "reducing " << std::endl;
   //  dump(def);
   //  std::cout << std::endl;
-    if (auto var = def.isa<Var>()) {
+    if (auto var = def->isa<VarNode>()) {
         auto i = map.find(var);
         if (i != map.end()) {
             return i->second;
         } else {
             return def;
         }
-    } else if (auto abs = def.isa<Abs>()) {
-        auto i = map.find(abs->var());
+    } else if (auto abs = def->isa<AbsNode>()) { // TODO make sure we cannot fall into infinite loop
+        // if body is already reduced and we create a new unnecessary abstraction
+        auto i = map.find(*(abs->var()));
         if (i != map.end()) { // TODO looks broken to me // FIXED?
             map.erase(i);
             //return def;
@@ -289,10 +291,10 @@ Def World::reduce(Def def, Def2Def& map)  {
         else
             nabs = pi(nvarn.str(), ntype);
         // = lambda(nvarn.str(), ntype);
-  //      std::cout << "in reduce, created new abs: ";
+    //    std::cout << "in reduce, created new abs: ";
    //     dump(nabs);
  //       std::cout << std::endl;
-        map[abs->var()] = nabs->var();
+        map[*(abs->var())] = *(nabs->var());
         auto nbody = reduce(abs->body(), map);
   //      std::cout << "and reduced its body to: ";
  //       dump(nbody);
@@ -310,7 +312,13 @@ Def World::reduce(Def def, Def2Def& map)  {
         } else {
             // throw std::runtime_error("app of non-abs found in reduce");
             // it can happen that fun is not a lambda -- consider λx.λy.x y
-            return app(rfun, rarg);
+            // FIXME infinite loop if fun and arg are already reduced
+            // POTENTIAL FIX is_reduced_ flag ?
+            std::cout << "helo" << std::endl;
+            if(*rfun != *(appd->fun()) || *rarg != *(appd->arg()))
+                return app(rfun, rarg);
+            else
+                return def;
         }
     } else
         throw std::runtime_error("malformed def in reduce");
@@ -452,8 +460,11 @@ Def World::typecheck_(Def def) { // assumption: e is reduced
         // do we need to typecheck var?
         //auto var_type = typecheck_(lambda->var());
         auto body_type = typecheck_(lambda->body());
-        
-        auto res = pi(lambda->var()->name(), lambda->var()->type());//var_type);
+        std::ostringstream nvarn;
+        nvarn << lambda->var()->name();
+        if (nvarn.str() != "_")
+            nvarn << "'";
+        auto res = pi(nvarn.str(), lambda->var()->type());//var_type);
     //            std::cout << "during typechecking lambda: ";
   //      dump(lambda);
   //      std::cout << "\nnclosed res type is: ";
