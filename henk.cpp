@@ -277,14 +277,64 @@ bool AbsNode::is_closed() const { return body(); }
 bool VarNode::is_closed() const { return type() ? type()->is_closed() : true; }
 bool AppNode::is_closed() const { return fun()->is_closed() && arg()->is_closed(); }
 
-#if 0 // wrong and probably unnecessary
 /*
- * is_reduced
+ * dump
  */
 
-bool AbsNode::is_reduced() const { return body()->is_reduced() && var()->is_reduced(); }
-bool VarNode::is_reduced() const { return type() ? type()->is_reduced() : true; }
-bool AppNode::is_reduced() const { return false; }
-#endif
+template<class T>
+void Proxy<T>::dump (std::ostream& stream) const {
+    if(is_empty())
+        stream << "'nullptr'";
+    else
+        deref()->dump(stream);
+}
+
+void LambdaNode::dump (std::ostream& stream) const {
+    stream << "λ";
+    dump_body(stream);
+}
+
+void PiNode::dump (std::ostream& stream) const {
+    if(body().is_empty()) {
+        stream << "Π";
+        dump_body(stream);
+    } else if (var()->name() == "_" || !body()->has_subexpr(var())) {
+        stream << "(";
+        var().as<Var>()->type().dump(stream);
+        stream << ") -> (";
+        body().dump(stream);
+        stream << ")";
+    } else if (*(var().as<Var>()->type()) == *(world_.get_prim_const("*"))) {
+        stream << "∀" << var()->name() << ". ";
+        body().dump(stream);
+    } else {
+        stream << "Π";
+        dump_body(stream);
+    }  
+}
+
+void AbsNode::dump_body (std::ostream& stream) const {
+    var().dump(stream);
+    stream << ":";
+    var()->type().dump(stream);
+    stream << ". ";
+    body().dump(stream);
+}
+
+void VarNode::dump (std::ostream& stream) const {
+    stream << name();
+}
+
+void PrimLitNode::dump (std::ostream& stream) const {
+    stream << value();
+}
+
+void AppNode::dump (std::ostream& stream) const {
+    stream << "(";
+    fun().dump(stream);
+    stream << ") (";
+    arg().dump(stream);
+    stream << ")";
+}
 
 }

@@ -70,10 +70,6 @@ Pi World::pi(std::string name, Def var_type) {
     gid_ += 2; // world knows that Abs creates Var
     return cse(new PiNode(*this, g, var_type, name));
 }
-/*
-Pi World::pi_share_var(Def var) {
-    return cse(new PiNode(*this, gid_++, var));
-}*/
 
 App World::app(Def fun, Def arg) {
     return cse(new AppNode(*this, gid_++, fun, arg, "app_"));
@@ -93,41 +89,7 @@ Pi World::fun_type(Def from, Def to) {
 /*
  * Utility methods -- sorted alphabetically
  */
-#if 0
-bool World::are_expressions_equal(Def expr1, Def expr2) {
-    reduce(expr1);
-    reduce(expr2);
-    return are_expressions_equal_(expr1, expr2);
-}
 
-// TODO make this a virtual function in DefNode
-// LEGACY CODE -- DO NOT USE IT
-bool World::are_expressions_equal_(Def def1, Def def2) {
-    assert((def1->is_closed() && def2->is_closed()) && "in are_expr_equal one is not closed");
-    
-    if (def1 == def2)
-        return true;
-    if (auto int1 = def1.isa<PrimLit>()) {
-        if (auto int2 = def2.isa<PrimLit>())
-            return int1->value() == int2->value();
-    } else if (auto v1 = def1.isa<Var>()) {
-        if (auto v2 = def2.isa<Var>())
-            return v1 == v2 || v1->equiv_ == v2;
-    } else if (auto abs1 = def1.isa<Abs>()) {
-        if (auto abs2 = def2.isa<Abs>()) {
-            abs1->var()->equiv_ = abs2;
-            auto res = are_expressions_equal_(abs1->var()->as<VarNode>()->type(), 
-                abs2->var()->as<VarNode>()->type()) &&
-                are_expressions_equal_(abs1->body(), abs2->body());
-            abs1->var()->equiv_ = nullptr;
-            return res;
-        }
-    } else if (def1.isa<App>() || def2.isa<App>())
-        throw std::runtime_error("bumped into app in are_expr_equal after reducing");
-
-    return false;
-}
-#endif
 const DefNode* World::cse_base(const DefNode* def) {
     if (!def->is_closed()) {
    //     std::cout << "in cse: putting unclosed def: ";
@@ -165,52 +127,6 @@ const DefNode* World::cse_base(const DefNode* def) {
     
   //  reduce(def);
     return def;
-}
-
-void World::dump(Def expr) const { dump(expr, std::cout); }
-
-void World::dump(Def def, std::ostream& stream) const {
-    if (!def) {
-        stream << "'nullptr'";
-    } else if (auto int_value = def.isa<PrimLit>()) {
-        stream << int_value->value();
-    } else if (auto var = def.isa<Var>()) {
-        stream << var->name();
-    } else if (auto lambda = def.isa<Lambda>()) {
-        stream << "λ";
-        dump_body(lambda, stream);
-    } else if (auto pi = def.isa<Pi>()) {
-        if(!pi->body()) {
-            stream << "Π";
-            dump_body(pi, stream);
-        } else if (pi->var()->name() == "_" || !pi->body()->has_subexpr(pi->var())) {
-            stream << "(";
-            dump(pi->var().as<Var>()->type(), stream);
-            stream << ") -> (";
-            dump(pi->body(), stream);
-            stream << ")";
-        } else if (*(pi->var().as<Var>()->type()) == *(get_prim_const("*"))) {
-            stream << "∀" << pi->var()->name() << ". ";
-            dump(pi->body(), stream);
-        } else {
-            stream << "Π";
-            dump_body(pi, stream);
-        }  
-    } else if (auto app = def.isa<App>()) {
-        stream << "(";
-        dump(app->fun(), stream);
-        stream << ") (";
-        dump(app->arg(), stream);
-        stream << ")";
-    }
-}
-
-void World::dump_body(Abs abs, std::ostream& stream) const {
-    dump(abs->var(), stream);
-    stream << ":";
-    dump(abs->var()->type(), stream);
-    stream << ". ";
-    dump(abs->body(), stream);
 }
 
 void World::move_from_garbage(const DefNode* def) const {
@@ -314,7 +230,6 @@ Def World::reduce(Def def, Def2Def& map)  {
             // it can happen that fun is not a lambda -- consider λx.λy.x y
             // FIXME infinite loop if fun and arg are already reduced
             // POTENTIAL FIX is_reduced_ flag ?
-            std::cout << "helo" << std::endl;
             if(*rfun != *(appd->fun()) || *rarg != *(appd->arg()))
                 return app(rfun, rarg);
             else
@@ -332,12 +247,12 @@ void World::replace(Def olde, Def newe) const {
 void World::show_expressions(std::ostream& stream) const {
     stream << "show expr: " << std::endl;
     for (auto e : expressions_) {
-        dump(e, stream);
+        Def(e).dump(stream);
         stream << " at " << e << std::endl;
     }
     stream << "garbage:" << std::endl;
     for (auto e : garbage_) {
-        dump(e, stream);
+        Def(e).dump(stream);
         stream << " at " << e << std::endl;
     }
     stream << "prim consts:" << std::endl;
@@ -358,68 +273,6 @@ void World::show_prims(std::ostream& stream) const {
         stream << p.second->name() << "(" << p.second << ")" << std::endl;
     }  
 }
-
-#if 0 // legacy code -- might be needed if general substitution turns out to be needed
-Def World::substitute(Def bexpr, Def bvar, Def bnval) {
-    auto expr = *bexpr; auto var = *bvar; auto nval = *bnval;
-    if (expr == var) {
-        return bnval;
-    } else if (auto varocc = expr->isa<Var>()) {
-        int a;
-        if (varocc == var) {
-            return bnval;
-        } else {
-            return bexpr;
-        }
-    } else if (auto abs = expr->isa<Abs>()) {
-        if (abs->var() == var) {
-            return bexpr;
-        } else {
-            std::ostringstream nvarn;
-            nvarn << abs->var()->name();
-            if (nvarn.str() != "_")
-                nvarn << "'";
-            auto ntype = substitute(abs->var()->type(), bvar, bnval);
-            auto nlambda = lambda(nvarn.str(), ntype);
-            auto nbody = substitute(lambda->body(), lambda->var(), nlambda->var());
-            auto body_substituted = substitute(nbody, bvar, bnval);
-            nlambda.close(body_substituted);
-            return nlambda;
-        }
-    } else if (auto app = expr->isa<App>()) {
-        throw std::runtime_exception("App in substitute!");
-        auto napply = substitute(app->fun(), bvar, bnval);
-        auto narg = substitute(app->arg(), bvar, bnval);
-        return app(napply, narg);//new App(napply, narg);
-    } else {
-        throw std::runtime_exception("malformed expr in substitute");
-        //return bexpr;
-    }
-}
-#endif
-
-#if 0 // legacy code -- if strong normalization turns out to be 'too much' then
-      // will get back to whnf
-void World::to_whnf(/*const Expr**/Def e) const {
-    auto expr = *e;
-    if (expr == nullptr) {
-        return;
-        //throw std::runtime_error("nullptr has no weak head normal form");
-        // but may be useful?
-    } else if (auto app = expr->isa<App>()) {
-        auto f = app->fun();
-        auto ff = *f; // done just to trigger path compression
-        to_whnf(f);
-        if (auto flambda = f->isa<Lambda>()) {
-            auto nbody = substitute(flambda->body(), flambda->var(), app->arg());
-            to_whnf(nbody);
-            expr->set_representative(*nbody);
-        }
-        else
-            throw std::runtime_error("app of non-lambdabda");
-    }
-}
-#endif
 
 Def World::typecheck(Def e) {
     //reduce(e);

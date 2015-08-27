@@ -22,7 +22,6 @@ public:
     Lambda lambda(std::string var_name, Def var_type);
     Pi fun_type(Def from, Def to);
     Pi pi(std::string var_name, Def var_type);
-   // Pi pi_share_var(Def var);
     App app(Def appl, Def arg);
     PrimLit literal(int value);
 
@@ -31,18 +30,14 @@ public:
  */ 
     void reduce(Def) ;
     Def typecheck(Def def);
-    //bool are_expressions_equal(Def expr1, Def expr2);
     bool is_a_subexpression(Def expr, Def sub) const;
     void show_prims(std::ostream& stream) const;
-    void dump(Def expr, std::ostream& stream) const;
-    void dump(Def expr) const;
     void show_expressions(std::ostream& stream) const;
     void show_expressions() const { show_expressions(std::cout); }
     Def get_prim_const(std::string s) const { return prim_consts.at(s); }
     size_t gid() const { return gid_; }
 
 protected:
-    void dump_body(Abs abs, std::ostream& stream) const;
     Def typecheck_(Def def);
     Def substitute(Def expr, Def var, Def nval);
     void reduce(Def def, Def oldd, Def newd) ;

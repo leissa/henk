@@ -16,9 +16,9 @@ void test1(World* world) {
 
     auto atype = world->typecheck(type_lambda);
     std::cout << std::endl;
-    world->dump(type_lambda);
+    type_lambda.dump();
     std::cout << " : ";
-    world->dump(atype);
+    atype.dump();
 }
 
 void test2(World* world) {
@@ -28,7 +28,7 @@ void test2(World* world) {
     auto u = world->lambda("y", world->get_prim_const("*"));
 
     u->close(world->get_prim_const("Int"));
-    auto bla = world->app(u, world->get_prim_const("Bool"));
+    auto bla = world->app(u, world->get_prim_const("Int"));
     
     auto lambda = world->lambda("x", world->app(
         u, world->get_prim_const("Bool")
@@ -37,10 +37,10 @@ void test2(World* world) {
     lambda->close(world->literal(42));
 
     auto app = world->app(lambda, world->literal(33));//get_prim_const("Int"));
-    world->dump(app);
+    app.dump();
     auto tapp = world->typecheck(app);
     std::cout << " : ";
-    world->dump(tapp);
+    tapp.dump();
 }
 
 void test3(World* world) {
@@ -59,20 +59,20 @@ void test3(World* world) {
         )
     );
     std::cout << "f = ";
-    world->dump(f);
+    f.dump();
     std::cout << std::endl;
     std::cout << "g = ";
-    world->dump(forallb);
+    forallb.dump();
     
     std::cout << std::endl;
     auto app = world->app(f, forallb);
     std::cout << "f g = ";
-    world->dump(app);
+    app.dump();
     std::cout << std::endl;
     //try {
         std::cout << "f g : ";
         auto apptype = world->typecheck(app);
-        world->dump(apptype);
+        apptype.dump();
   //  } catch (std::runtime_error& e) {
    //     std::cout << "typecheck error: " << e.what() << std::endl;
   //  }
@@ -87,12 +87,13 @@ void test4(World* world) {
     
     auto id1 = poly_id(world, "α", "x");
     std::cout << "id1 = ";
-    world->dump(id1);
+    id1.dump();
     std::cout << std::endl;
     std::cout << "id2 = ";
     auto id2 = poly_id(world, "β", "y");
-    world->dump(id2);
+    id2.dump();
     std::cout << "\nin memory: id1 = " << *id1 << ", id2 = " << *id2 << std::endl;
+    assert(*id1 == *id2 && "id functions have different addresses");
 }
 
 int main(int argc, char* argv[]) {

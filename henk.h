@@ -1,6 +1,7 @@
 #ifndef HENK_IR_H
 #define HENK_IR_H
 
+#include <iostream>
 #include <set>
 #include <vector>
 
@@ -36,13 +37,6 @@ public:
     bool operator == (const Proxy<T>& other) const {
         assert(&(node()->world()) == &(other.node()->world()));
         //return this->node()->unify() == other.node()->unify();
-      //  auto w = &(node()->world());
-        
-     
-     
-     //   w->reduce(*this);
-    //    w->reduce(other);
-        
         return this->deref()->equal(*other.deref());
         // *(this->deref()) == *(other.deref()) // ? because we want to compare values
     }
@@ -54,6 +48,10 @@ public:
     const T* operator  * () const { return deref(); }
     const T* operator -> () const { return *(*this); }
     bool is_empty () const { return node_ == nullptr; }
+    
+    void dump (std::ostream& stream) const;
+    void dump () const { dump(std::cout); }
+    
     // casts
 
     operator bool() const { return node_; }
@@ -148,6 +146,7 @@ protected:
     virtual size_t vhash() const = 0;
     
 public:
+    virtual void dump (std::ostream& stream) const = 0;
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
  //   Def type() const { return type_.empty() ? type_ = typecheck(this) : type_; }
     size_t size() const { return ops_.size(); }
@@ -197,6 +196,8 @@ protected:
     virtual ~AbsNode();
     
 public:
+    virtual void dump (std::ostream& stream) const = 0;
+    void dump_body (std::ostream& stream) const;
     Var var() const { return op(0).as<Var>(); }
     Def body() const { return op(1); }
     void close(Def body) const;
@@ -206,7 +207,7 @@ public:
 
 private:
     size_t vhash() const;
-
+    
     friend class World;
 };
 
@@ -217,12 +218,12 @@ protected:
     {}
     
 public:
-    //virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    virtual void dump (std::ostream& stream) const;
     friend class World;
 };
 
 class PiNode : public AbsNode {
-private:
+protected:
     PiNode(World& world, size_t gid, Def var_type, std::string name)
         : AbsNode(world, gid, var_type, name)
     {}
@@ -232,7 +233,7 @@ private:
     {}
     
 public:
-   // virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    virtual void dump (std::ostream& stream) const;
     friend class World;
 };
 
@@ -246,6 +247,7 @@ protected:
     }
     
 public:
+    virtual void dump (std::ostream& stream) const;
     Def type() const { return op(0); }
     Abs abs() const { return op(1).as<Abs>(); }
     virtual bool is_closed() const override;
@@ -260,7 +262,7 @@ private:
 };
 
 class PrimLitNode : public VarNode {
-private:
+protected:
     PrimLitNode(World& world, size_t gid, Def type, int/*will become Box later on*/ value, std::string name)
         : VarNode(world, gid, type, nullptr, name)
         , value_(value)
@@ -269,6 +271,7 @@ private:
     size_t vhash() const;
     
 public:
+    virtual void dump (std::ostream& stream) const;
     int value() const { return value_; };
     virtual bool eq (const DefNode& other, Def2Def& map) const override;
     
@@ -285,6 +288,7 @@ private:
     size_t vhash() const;
     
 public:
+    virtual void dump (std::ostream& stream) const;
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }
     virtual bool is_closed() const override;
