@@ -1,7 +1,6 @@
 #ifndef HENK_IR_H
 #define HENK_IR_H
 
-#include <iostream>
 #include <set>
 #include <vector>
 
@@ -36,9 +35,11 @@ public:
 
     bool operator == (const Proxy<T>& other) const {
         assert(&(node()->world()) == &(other.node()->world()));
+        // here it would be nice to have an assert stating that both
+        // sides are already reduced
+        
         //return this->node()->unify() == other.node()->unify();
         return this->deref()->equal(*other.deref());
-        // *(this->deref()) == *(other.deref()) // ? because we want to compare values
     }
     bool operator != (const Proxy<T>& other) const { return !(*this == other); }
     const T* representative() const { return node_->representative_->template as<T>(); }
@@ -58,7 +59,7 @@ public:
     operator const T*() const { return deref(); }
 
     /// Automatic up-cast in the class hierarchy.
-    template<class U> operator Proxy<U>() const { // added const -- is it bad?
+    template<class U> operator Proxy<U>() {
         static_assert(std::is_base_of<U, T>::value, "U is not a base type of T");
         return Proxy<U>((**this)->template as<T>());
     }

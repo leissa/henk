@@ -42,9 +42,8 @@ protected:
     Def substitute(Def expr, Def var, Def nval);
     void reduce(Def def, Def oldd, Def newd) ;
     Def reduce(Def, Def2Def&) ;
-   // bool are_expressions_equal_(Def expr1, Def expr2);
     void replace(Def olde, Def newe) const;
-    void move_from_garbage(const DefNode* def) const;
+    void introduce(const DefNode* def) const;
     template<class T> const T* cse(const T* def) { return cse_base(def)->template as<T>(); }
 
 protected:
@@ -65,7 +64,6 @@ protected:
     std::map<const DefNode*, const DefNode*> prim_rules_has_type;
     std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
     std::list<Def> prim_consts_boxes_;
-    mutable DefSet garbage_;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     
     friend class AbsNode; // AbsNode uses move_from_garbage(const DefNode*)

@@ -170,12 +170,7 @@ void AbsNode::close(Def body) const {
  //   world_.dump(body);
  //   std::cout << std::endl;
     set_op(1, body);
-//    Def a = this;
-  //  world_.reduce(a);
-  //  *a;
-  //  std::cout << "after repre ";
- //   world_.dump(a);
-    world_.move_from_garbage(this);
+    world_.introduce(this);
 }
 
 AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)

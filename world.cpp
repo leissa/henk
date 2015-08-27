@@ -30,7 +30,6 @@ World::World()
         std::make_pair(std::make_pair(prim_consts.at("⬜"), prim_consts.at("⬜")), prim_consts.at("⬜"))
     }
     , prim_consts_boxes_{}
-    , garbage_{}
 {
     prim_consts_boxes_ = std::list<Def>();
     for (auto& kv : prim_consts) {
@@ -42,11 +41,6 @@ World::World()
 World::~World() {
     std::cout << "deleting expressions_..." << std::endl;
     for (auto& e : expressions_) {
-        std::cout << "at " << e << std::endl;
-        delete e;
-    }
-    std::cout << "deleting garbage_..." << std::endl;
-    for (auto& e: garbage_) {
         std::cout << "at " << e << std::endl;
         delete e;
     }
@@ -95,7 +89,7 @@ const DefNode* World::cse_base(const DefNode* def) {
    //     std::cout << "in cse: putting unclosed def: ";
    //     dump(def);
    //     std::cout << "\n to garbage" << std::endl;
-        garbage_.insert(def);
+    //    garbage_.insert(def);
         //def->set_gid(gid_++);
         return def;
     }
@@ -129,48 +123,23 @@ const DefNode* World::cse_base(const DefNode* def) {
     return def;
 }
 
-void World::move_from_garbage(const DefNode* def) const {
-    assert(def->is_closed() && "attempt to move unclosed def from garbage");
-    auto i = garbage_.find(def);
-    if (i != garbage_.end()) {
-        garbage_.erase(i);
- //       std::cout << "will we find def whose hash is " << def->hash() << std::endl;
-  //      std::cout << "and looks like: ";
-  //      dump(def);
-  //      std::cout << std::endl;
-  /*      if(auto pid = def->isa<PiNode>()) {
-            std::cout << "var ma hash " << (*(pid->var()))->hash() << std::endl;
-            std::cout << "body zas " << (*(pid->body()))->hash() << std::endl;
-        }*/
-        auto j = expressions_.find(def);
-       // std::cout << "time has come" << std::endl;
-        if (j != expressions_.end()) {
-         //   std::cout << "moved from garbage: " << std::endl;
-         //   dump(def);
-         //   std::cout << "\n and found equivalent in exprs_" << std::endl;
-            def->set_representative(*j);
-        } else {
-            //std::cout << "moved from garbage: " << std::endl;
-         ////   dump(def);
-         //   std::cout << "\n and it's brand new garbage" << std::endl;
-            expressions_.insert(def);
-        }
-    }
+void World::introduce(const DefNode* def) const {
+    auto j = expressions_.find(def);
+    if (j != expressions_.end())
+        def->set_representative(*j);
     else
-        throw std::runtime_error("move_from_garbage doesn't work");
+        expressions_.insert(def);
 }
 
 void World::reduce(Def def)  { // should we allow non-closed exprs?
     assert(def->is_closed() && "unclosed def in reduce");
-   // if(!def->is_reduced()) {
-     //   std::cout << "reducing: "; dump(def); 
-        auto node = def.node();
-        Def2Def map;
-        node->set_representative(*reduce(def, map));
-  //  }
+
+    auto node = def.node();
+    Def2Def map;
+    node->set_representative(*reduce(def, map));
 }
 
-void World::reduce(Def def, Def oldd, Def newd)  { // works as substitution
+void World::reduce(Def def, Def oldd, Def newd)  { // acts as substitution
     auto node = def.node();
     Def2Def map;
     map[*oldd] = *newd;
@@ -250,11 +219,11 @@ void World::show_expressions(std::ostream& stream) const {
         Def(e).dump(stream);
         stream << " at " << e << std::endl;
     }
-    stream << "garbage:" << std::endl;
-    for (auto e : garbage_) {
+  //  stream << "garbage:" << std::endl;
+  /*  for (auto e : garbage_) {
         Def(e).dump(stream);
         stream << " at " << e << std::endl;
-    }
+    }*/
     stream << "prim consts:" << std::endl;
     for (auto& e: prim_consts_boxes_) {
         //dump(e, stream);
