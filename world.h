@@ -24,7 +24,11 @@ public:
     Pi pi(std::string var_name, Def var_type);
     Def app(Def appl, Def arg);
     PrimLit literal(int value);
+    
+protected:
+    Bottom bottom(std::string info);
 
+public:
 /*
  * Utility methods
  */ 

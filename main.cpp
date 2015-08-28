@@ -36,6 +36,7 @@ void test2(World* world) {
     lambda->close(world->literal(42));
 
     auto app = world->app(lambda, world->literal(33));//get_prim_const("Int"));
+    std::cout << app->non_reduced_repr() << " reduced to ";
     app.dump();
     auto tapp = app->inftype();
     std::cout << " : ";
@@ -60,9 +61,13 @@ void test3(World* world) {
     );
     std::cout << "f = ";
     f.dump();
+    std::cout << " : ";
+    f->inftype().dump();
     std::cout << std::endl;
     std::cout << "g = ";
     forallb.dump();
+    std::cout << " : ";
+    forallb->inftype().dump();
     
     std::cout << std::endl;
     auto app = world->app(f, forallb);

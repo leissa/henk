@@ -70,7 +70,15 @@ DefNode::DefNode(World& world, size_t gid, size_t size, std::string name)
     , ops_(size)
     , gid_(gid)
     , name_(name)
-{}
+{
+   // update_non_reduced_repr();
+}
+
+void DefNode::update_non_reduced_repr() const {
+    std::ostringstream r;
+    Def(this).dump(r);
+    non_reduced_repr_ = r.str();
+}
 
 thorin::HashSet<Use, UseHash, UseEq> DefNode::uses() const { return uses_; }
 
@@ -117,8 +125,10 @@ void DefNode::unlink_representative() const {
 void DefNode::set_representative(const DefNode* repr) const {
     unlink_representative();
     representative_ = repr;
-    if(this != repr)
+    if(this != repr) {
         repr->representative_of_.insert(this);
+        repr->non_reduced_repr_ = non_reduced_repr();
+    }
 }
 
 void DefNode::unset_op(size_t i) {
@@ -171,7 +181,9 @@ bool DefNode::has_subexpr(Def sub) const {
 AbsNode::AbsNode(World& world, size_t gid, Def var_type, std::string name)
     : DefNode(world, gid, 2, name)
 {
-    set_op(0, new VarNode(world, gid + 1, var_type, this, name));
+    auto v = new VarNode(world, gid + 1, var_type, this, name);
+    v->update_non_reduced_repr();
+    set_op(0, v);//new VarNode(world, gid + 1, var_type, this, name));
 }
 
 AbsNode::AbsNode(World& world, size_t gid, Def var)

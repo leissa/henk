@@ -2,6 +2,7 @@
 #define HENK_IR_H
 
 #include <set>
+#include <sstream>
 #include <vector>
 
 #include "thorin/util/cast.h"
@@ -39,7 +40,6 @@ public:
         // here it would be nice to have an assert stating that both
         // sides are already reduced
         
-        //return this->node()->unify() == other.node()->unify();
         return this->deref()->equal(*other.deref());
     }
     bool operator != (const Proxy<T>& other) const { return !(*this == other); }
@@ -143,8 +143,10 @@ protected:
     void set_representative(const DefNode* repr) const;
     void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<DefNode*>(this)->gid_) = gid; }
     virtual size_t vhash() const = 0;
+    void update_non_reduced_repr () const;
     
 public:
+    std::string non_reduced_repr () const { return non_reduced_repr_; }
     virtual void dump (std::ostream& stream) const = 0;
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
     Def inftype() const;
@@ -169,6 +171,7 @@ public:
     virtual bool eq (const DefNode& other, Def2Def& map) const;
 
 protected:
+    mutable std::string non_reduced_repr_;
     mutable const DefNode* representative_;
     World& world_;
     mutable std::vector<Def> ops_;
@@ -180,7 +183,7 @@ protected:
     mutable bool live_ = false;
   //  mutable /*Def*/ const DefNode* equiv_ = nullptr; // hack-ptr useful when testing for equality
   //  mutable bool is_closed_;
-    mutable Def inftype_ = nullptr; // will change it to 'type_' later
+    mutable Def inftype_ = nullptr; // probably will change it to 'type_' later
 
     
     friend class World;

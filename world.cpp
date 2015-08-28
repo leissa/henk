@@ -21,6 +21,15 @@ World::World()
     auto box2 = new VarNode(*this, gid_++, botbox2, nullptr, "⬜⬜");
     auto star2 = new VarNode(*this, gid_++, box2, nullptr, "**");
     
+    botbox->update_non_reduced_repr();
+    box->update_non_reduced_repr();
+    star->update_non_reduced_repr();
+    pint->update_non_reduced_repr();
+    pbool->update_non_reduced_repr();
+    botbox2->update_non_reduced_repr();
+    box2->update_non_reduced_repr();
+    star2->update_non_reduced_repr();
+    
     expressions_.insert(botbox); expressions_.insert(box);
     expressions_.insert(star); expressions_.insert(pint);
     expressions_.insert(pbool); expressions_.insert(botbox2);
@@ -83,12 +92,19 @@ Pi World::fun_type(Def from, Def to) {
     return npi; // so there's no need to call cse again
 }
 
+Bottom World::bottom(std::string info) {
+    return cse(new BottomNode(*this, gid_++, info));
+}
+
 
 /*
  * Utility methods -- sorted alphabetically
  */
 
 const DefNode* World::cse_base(const DefNode* def) {
+    
+    def->update_non_reduced_repr();
+    
     if (!def->is_closed()) {
    //     std::cout << "in cse: putting unclosed def: ";
    //     dump(def);
@@ -139,6 +155,8 @@ const DefNode* World::cse_base(const DefNode* def) {
 }
 
 void World::introduce(const DefNode* def)  {
+    
+    def->update_non_reduced_repr();
     
     auto type = typecheck(def);
     def->inftype_ = type;
@@ -218,17 +236,15 @@ Def World::reduce(Def def, Def2Def& map)  {
             map[*(abs->var())] = *rarg;
             return reduce(abs->body(), map);
         } else {
-            // throw std::runtime_error("app of non-abs found in reduce");
-            // it can happen that fun is not a lambda -- consider λx.λy.x y
-            // FIXME infinite loop if fun and arg are already reduced
-            // POTENTIAL FIX is_reduced_ flag ?
             if(*rfun != *(appd->fun()) || *rarg != *(appd->arg()))
                 return app(rfun, rarg);
             else
                 return def;
         }
-    } else
-        throw std::runtime_error("malformed def in reduce");
+    } else if(auto bt = def.isa<Bottom>())
+        return def;
+    else
+        throw std::runtime_error("in reduce malformed expression");
 }
 
 // TODO make this a method of DefNode
@@ -254,31 +270,16 @@ void World::show_prims(std::ostream& stream) const {
 
 // TODO make this a virtual function in DefNode
 // invariant: result of typecheck is reduced expression
-// assumption: subexpressions of def have already been typechecked
-Def World::typecheck(Def def) { // def may or may not be reduced!
+Def World::typecheck(Def def) { // def may or may not be reduced
     assert(def->is_closed() && "typechecking non closed expr");
     
-   // auto i = prim_rules_has_type.find(def);
-  //  if (i != prim_rules_has_type.end())
-   //     return i->second;
-
-   /* for (auto& kv : prim_consts) {
-        if (kv.second == def) {
-            if (i == prim_rules_has_type.end()) {
-                std::ostringstream msg;
-                msg << "typechecking " << kv.second->name() << "  shouldn't happen" << std::endl;
-                throw std::runtime_error(msg.str());
-            }
-        }
-    }*/
     if (auto bot = def.isa<Bottom>()) {
         return bot;
     }
-    if (auto int_value = def.isa<PrimLit>()) {
+    else if (auto int_value = def.isa<PrimLit>()) {
         return get_prim_const("Int");
     } else if (auto var = def.isa<Var>()) {
-        //return var->inftype();
-        return var->type(); // ?
+        return var->type();
     } else if (auto lambda = def.isa<Lambda>()) {
         auto body_type = lambda->body()->inftype();
         std::ostringstream nvarn;
@@ -305,122 +306,38 @@ Def World::typecheck(Def def) { // def may or may not be reduced!
             std::ostringstream msg;
             msg << "no wavy arrow rule for " << var_type_type->name();
             msg << " ⤳  " << body_type->name();
-            throw std::runtime_error(msg.str());
+            return bottom(msg.str());
         }
     } else if (auto appl = def.isa<App>()) {
-        auto funt = appl->fun()->inftype().as<Pi>();
+        auto funt = appl->fun()->inftype();
         auto argt = appl->arg()->inftype();
-       // assert(funt->isa<PiNode> && "typecheck: application of non lambda");
-        if(funt->var()->inftype() == argt) {
-            auto res = reduce_bot_dont_replace(funt->body(), funt->var(), appl->arg());
-            return res;
-            
-        } else
-            throw std::runtime_error("typecheck: in app type of arg is wrong");
-        
-    } else {
-        std::ostringstream msg;
-        msg << "malformed expression: ";
-        throw std::runtime_error(msg.str());
-    }
-}
-
-
-#if 0 // LEGACY TYPECHECK
-Def World::typecheck(Def def) { // def may or may not be reduced!
-    assert(def->is_closed() && "typechecking non closed expr");
-    
-  //  std::cout << "typechecking: ";
-  //  dump(def);
-  //  std::cout << std::endl;
-    
-    auto i = prim_rules_has_type.find(def);
-    if (i != prim_rules_has_type.end())
-        return i->second;
-
-    for (auto& kv : prim_consts) {
-        if (kv.second == def) {
-            if (i == prim_rules_has_type.end()) {
+        if(auto pifunt = funt.isa<Pi>()) {
+            if(pifunt->var()->inftype() == argt) {
+                return reduce_bot_dont_replace(pifunt->body(), pifunt->var(), appl->arg());
+            } else {
                 std::ostringstream msg;
-                msg << "typechecking " << kv.second->name() << "  shouldn't happen" << std::endl;
-                throw std::runtime_error(msg.str());
+                msg << "in application: (";
+                appl->fun().dump(msg); msg << ") ("; appl->arg().dump(msg);
+                msg << ") -- type of argument (";
+                argt.dump(msg); msg << ") != type of fun's var (";
+                pifunt->var()->inftype().dump(msg);
+                msg << ")";
+                return bottom(msg.str());
             }
-        }
-    }
-    if (auto int_value = def.isa<PrimLit>()) {
-        return get_prim_const("Int");
-    } else if (auto var = def.isa<Var>()) { // will probably typecheck such things many times
-        // so maybe some caching? keepin inferred type in every DefNode after typechecking?
-        
-        // probably not use that line -- what if var is a star? then we typecheck box...
-        //auto type_type = typecheck(var->type());
-        
-        //return var->type();
-        return reduce(var->type());
-    } else if (auto lambda = def.isa<Lambda>()) {
-        // do we need to typecheck var?
-        //auto var_type = typecheck_(lambda->var());
-        auto body_type = typecheck(lambda->body());
-        std::ostringstream nvarn;
-        nvarn << lambda->var()->name();
-        if (nvarn.str() != "_")
-            nvarn << "'";
-        auto res = pi(nvarn.str(), lambda->var()->type());//var_type);
-    //            std::cout << "during typechecking lambda: ";
-  //      dump(lambda);
-  //      std::cout << "\nnclosed res type is: ";
-  //      dump(res);
-  //      std::cout << "\nand its unreduced body isgvvcvcc: ";
-       // dump(body_type);
-  //      std::cout << std::endl;
-        auto body_type2 = reduce_bot_dont_replace(body_type, lambda->var(), res->var());
-  //  std::cout << " AFTER REDCTIONJ" << std::endl;
-       // auto res = pi_share_var(lambda->var());
-      //  auto body_type2 = substitute(body_type, lambda->var(), varocc);//new VarOcc(res));
-        res->close(body_type2);
-        typecheck(res);
-        return res;
-    } else if (auto pi = def.isa<Pi>()) {
-        auto var_type = typecheck(pi->var());
-        auto var_type_type = typecheck(var_type);
-      /*  std::cout << "type of ";
-        dump(var_type);
-        std::cout << "  is ";
-        dump(var_type_type);
-        std::cout << std::endl;*/
-        auto body_type = typecheck(pi->body());
-        auto p = wavy_arrow_rules.find(std::make_pair(
-            *var_type_type,
-            *body_type)
-        );
-        if (p != wavy_arrow_rules.end()) {
-            return p->second;
-        }
-        else {
+        } else {
             std::ostringstream msg;
-            msg << "no wavy arrow rule for " << var_type_type->name();
-            msg << " ⤳  " << body_type->name();
-            throw std::runtime_error(msg.str());
+            msg << "in application: (";
+            appl->fun().dump(msg); msg << ") ("; appl->arg().dump(msg);
+            msg << ") -- type of fun is not Pi, but: ";
+            funt.dump(msg);
+            return bottom(msg.str());
         }
-    } else if (auto appl = def.isa<App>()) {
-        //throw std::runtime_error("bumped into app in typechecker");
-        auto funt = typecheck(appl->fun());
-        auto argt = typecheck(appl->arg());
-        assert(funt->isa<PiNode> && "typecheck: application of non lambda");
-        if(funt->var()->type() == argt) {
-            auto funtnode = funt->as<PiNode>();
-            auto res = reduce_bot_dont_replace(funtnode->body(), funtnode->var(), appl->arg());
-            
-        } else
-            throw std::runtime_error("typecheck: in app type of arg is wrong");
-        
     } else {
         std::ostringstream msg;
-        msg << "malformed expression: ";
+        msg << "malformed expression in typecheck: ";
         throw std::runtime_error(msg.str());
     }
 }
-#endif
 
 }
 
