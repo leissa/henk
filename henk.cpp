@@ -161,7 +161,7 @@ bool DefNode::has_subexpr(Def sub) const {
 
 void AbsNode::close(Def body) const {
     assert(body->is_closed() && "closing AbsNode with unclosed body");
-    world_.reduce(body);
+   // world_.reduce(body); // unnecessary?
     set_op(1, body);
     world_.introduce(this);
 }
@@ -204,6 +204,76 @@ AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
  */
 
 AbsNode::~AbsNode() { delete *var(); }
+
+/*
+ * reduce
+ */ 
+void DefNode::reduce() const {
+    assert(is_closed() && "unclosed def in reduce");
+    Def2Def map;
+    set_representative(*reduce(map));
+}
+
+void DefNode::reduce(Def oldd, Def newd) const {
+    assert(is_closed() && "unclosed def in reduce");
+    Def2Def map;
+    map[*oldd] = *newd;
+    set_representative(*reduce(map));
+}
+
+Def DefNode::reduce_but_dont_replace(Def oldd, Def newd) const {
+    Def2Def map;
+    map[*oldd] = *newd;
+    return reduce(map);
+}
+
+Def AbsNode::reduce(Def2Def& map) const {
+    auto i = map.find(*(var()));
+    if (i != map.end()) { // TODO looks broken to me // FIXED?
+        map.erase(i);
+    }
+    std::ostringstream nvarn;
+    nvarn << var()->name();
+    if (nvarn.str() != "_")
+        nvarn << "'";
+    auto ntype = var().as<Var>()->type()->reduce(map);
+    Abs nabs;
+    if(this->isa<LambdaNode>())
+        nabs = world_.lambda(nvarn.str(), ntype);
+    else
+        nabs = world_.pi(nvarn.str(), ntype);
+    map[*(var())] = *(nabs->var());
+    auto nbody = body()->reduce(map);
+    nabs->close(nbody);
+    return nabs;
+}
+
+Def BottomNode::reduce(Def2Def& map) const {
+    return this;
+}
+
+Def VarNode::reduce(Def2Def& map) const {
+    auto i = map.find(this);
+    if (i != map.end()) {
+        return i->second;
+    } else {
+        return this;
+    }
+}
+
+Def AppNode::reduce(Def2Def& map) const {
+    Def rfun = fun()->reduce(map);
+    Def rarg = arg()->reduce(map);
+    if (auto abs = rfun.isa<Abs>()) {
+        map[*(abs->var())] = *rarg;
+        return abs->body()->reduce(map);
+    } else {
+        if(*rfun != *(fun()) || *rarg != *(arg()))
+            return world_.app(rfun, rarg);
+        else
+            return this;
+    }
+}
 
 /*
  * equal

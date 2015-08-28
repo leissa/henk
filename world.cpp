@@ -26,13 +26,13 @@ World::World()
     star2->update_non_reduced_repr();
     
     expressions_.insert(botbox); expressions_.insert(box);
-    expressions_.insert(star); expressions_.insert(pint);
-    expressions_.insert(pbool); expressions_.insert(botbox2);
-    expressions_.insert(box2); expressions_.insert(star2);
+    expressions_.insert(star);   expressions_.insert(pint);
+    expressions_.insert(pbool);  expressions_.insert(botbox2);
+    expressions_.insert(box2);   expressions_.insert(star2);
     
-    prim_consts["*"] = star;    prim_consts["**"] = star2;
-    prim_consts["⬜"] = box;     prim_consts["⬜⬜"] = box2;
-    prim_consts["Int"] = pint;  prim_consts["Bool"] = pbool;
+    prim_consts["*"] = star;     prim_consts["**"] = star2;
+    prim_consts["⬜"] = box;      prim_consts["⬜⬜"] = box2;
+    prim_consts["Int"] = pint;   prim_consts["Bool"] = pbool;
     prim_consts["⊥ ⬜"] = botbox; prim_consts["⊥ ⬜⬜"] = botbox2;
     
     wavy_arrow_rules[std::make_pair(star, star)]   = star;
@@ -103,9 +103,6 @@ const DefNode* World::cse_base(const DefNode* def) {
     if (!def->is_closed()) {
    //     std::cout << "in cse: putting unclosed def: ";
    //     dump(def);
-   //     std::cout << "\n to garbage" << std::endl;
-    //    garbage_.insert(def);
-        //def->set_gid(gid_++);
         return def;
     }
     
@@ -113,7 +110,7 @@ const DefNode* World::cse_base(const DefNode* def) {
     def->inftype_ = type;
     
     Def proxdef(def);
-    reduce(proxdef);
+    proxdef->reduce();
     auto rdef = *proxdef;
     if(def != rdef)
         delete def;
@@ -128,7 +125,6 @@ const DefNode* World::cse_base(const DefNode* def) {
       //  std::cout << "cse: found duplicate and deleteing: ";
       //  Def(def).dump();
      //   std::cout << std::endl;
-       // assert(*i != def);
         delete def;
         def = *i;
     } else if (i != expressions_.end()) {
@@ -136,8 +132,6 @@ const DefNode* World::cse_base(const DefNode* def) {
      //   Def(def).dump();
       //  std::cout << " at " << def;
     //    std::cout << std::endl;
-       // def->set_gid(gid_++);
-      //  expressions_.insert(def);
     } else {
       //  std::cout << "cse: brand new def: ";
       //  Def(def).dump();
@@ -145,7 +139,7 @@ const DefNode* World::cse_base(const DefNode* def) {
         expressions_.insert(def);
     }
     
-    def->inftype_ = type;
+    def->inftype_ = type; // unnecessary?
     return def;
 }
 
@@ -161,85 +155,6 @@ void World::introduce(const DefNode* def)  {
         def->set_representative(*j);
         
     expressions_.insert(def);
-}
-
-void World::reduce(Def def)  { // should we allow non-closed exprs?
-    assert(def->is_closed() && "unclosed def in reduce");
-
-    auto node = *def;
-    Def2Def map;
-    node->set_representative(*reduce(def, map));
-}
-
-Def World::reduce_bot_dont_replace(Def def, Def oldd, Def newd) { // acts as substitution
-    Def2Def map;
-    map[*oldd] = *newd;
-    return reduce(def, map);
-}
-
-void World::reduce(Def def, Def oldd, Def newd)  { // acts as substitution
-    auto node = *def;
-    Def2Def map;
-    map[*oldd] = *newd;
-    node->set_representative(*reduce(def, map));
-}
-
-// TODO make this a virtual function in DefNode
-Def World::reduce(Def def, Def2Def& map)  {
-   // std::cout << "reducing " << std::endl;
-  //  dump(def);
-  //  std::cout << std::endl;
-    if (auto var = def->isa<VarNode>()) {
-        auto i = map.find(var);
-        if (i != map.end()) {
-            return i->second;
-        } else {
-            return def;
-        }
-    } else if (auto abs = def->isa<AbsNode>()) { // TODO make sure we cannot fall into infinite loop
-        // if body is already reduced and we create a new unnecessary abstraction
-        auto i = map.find(*(abs->var()));
-        if (i != map.end()) { // TODO looks broken to me // FIXED?
-            map.erase(i);
-            //return def;
-        }
-        std::ostringstream nvarn;
-        nvarn << abs->var()->name();
-        if (nvarn.str() != "_")
-            nvarn << "'";
-        auto ntype = reduce(abs->var().as<Var>()->type(), map);
-        Abs nabs;
-        if(abs->isa<LambdaNode>())
-            nabs = lambda(nvarn.str(), ntype);
-        else
-            nabs = pi(nvarn.str(), ntype);
-        // = lambda(nvarn.str(), ntype);
-    //    std::cout << "in reduce, created new abs: ";
-   //     dump(nabs);
- //       std::cout << std::endl;
-        map[*(abs->var())] = *(nabs->var());
-        auto nbody = reduce(abs->body(), map);
-  //      std::cout << "and reduced its body to: ";
- //       dump(nbody);
- //       std::cout << std::endl;
-        nabs->close(nbody);
-        return nabs;
-    } else if (auto appd = def.isa<App>()) {
-        Def rfun = reduce(appd->fun(), map);
-        Def rarg = reduce(appd->arg(), map);
-        if (auto abs = rfun.isa<Abs>()) {
-            map[*(abs->var())] = *rarg;
-            return reduce(abs->body(), map);
-        } else {
-            if(*rfun != *(appd->fun()) || *rarg != *(appd->arg()))
-                return app(rfun, rarg);
-            else
-                return def;
-        }
-    } else if(auto bt = def.isa<Bottom>())
-        return def;
-    else
-        throw std::runtime_error("in reduce malformed expression");
 }
 
 // TODO make this a method of DefNode
@@ -282,7 +197,9 @@ Def World::typecheck(Def def) { // def may or may not be reduced
         if (nvarn.str() != "_")
             nvarn << "'";
         auto res = pi(nvarn.str(), lambda->var()->inftype());
-        auto body_type2 = reduce_bot_dont_replace(body_type, lambda->var(), res->var());
+        auto body_type2 = body_type->reduce_but_dont_replace(
+            lambda->var(), res->var()
+        );
         res->close(body_type2);
        // typecheck(res);
         return res;
@@ -308,7 +225,9 @@ Def World::typecheck(Def def) { // def may or may not be reduced
         auto argt = appl->arg()->inftype();
         if(auto pifunt = funt.isa<Pi>()) {
             if(pifunt->var()->inftype() == argt) {
-                return reduce_bot_dont_replace(pifunt->body(), pifunt->var(), appl->arg());
+                return pifunt->body()->reduce_but_dont_replace(
+                    pifunt->var(), appl->arg()
+                );
             } else {
                 std::ostringstream msg;
                 msg << "in application: (";

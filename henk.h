@@ -50,7 +50,8 @@ public:
     const T* operator  * () const { return deref(); }
     const T* operator -> () const { return *(*this); }
     bool is_empty () const { return node_ == nullptr; }
-    
+
+public:
     void dump (std::ostream& stream) const;
     void dump () const { dump(std::cout); }
     void vdump () const { dump(); std::cout << std::endl; }
@@ -146,6 +147,10 @@ protected:
     void update_non_reduced_repr () const;
     
 public:
+    void reduce() const;
+    void reduce(Def oldd, Def newd) const; // acts as substitution
+    Def reduce_but_dont_replace(Def oldd, Def newd) const; // acts as substitution
+    virtual Def reduce(Def2Def& map) const = 0;
     std::string non_reduced_repr () const { return non_reduced_repr_; }
     virtual void dump (std::ostream& stream) const = 0;
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
@@ -196,6 +201,7 @@ protected:
     virtual ~AbsNode();
     
 public:
+    virtual Def reduce(Def2Def& map) const;
     virtual void dump (std::ostream& stream) const = 0;
     void dump_body (std::ostream& stream) const;
     Var var() const { return op(0).as<Var>(); }
@@ -244,6 +250,7 @@ protected:
     {}
     
 public:
+    virtual Def reduce(Def2Def& map) const;
     std::string info() const { return info_; }
     virtual void dump (std::ostream& stream) const;
     virtual bool is_closed() const override;
@@ -267,6 +274,7 @@ protected:
     }
     
 public:
+    virtual Def reduce(Def2Def& map) const;
     virtual void dump (std::ostream& stream) const;
     Def type() const { return op(0); }
     Abs abs() const { return op(1).as<Abs>(); }
@@ -301,12 +309,13 @@ private:
 };
 
 class AppNode : public DefNode {
-private:
+protected:
     AppNode(World& world, size_t gid, Def fun, Def arg, std::string name);
     
     size_t vhash() const;
     
 public:
+    virtual Def reduce(Def2Def& map) const;
     virtual void dump (std::ostream& stream) const;
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }

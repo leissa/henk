@@ -113,7 +113,8 @@ int main(int argc, char* argv[]) {
             case 4: test4(world); break;
             default: throw std::runtime_error("wrong number of test case");
         }
-    }
+    } else
+        throw std::runtime_error("give number of test case from 1 to 4");
     std::cout << std::endl << "world has expressions: " << std::endl;
     world->show_expressions();
     std::cout << std::endl;
