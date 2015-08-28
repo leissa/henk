@@ -64,21 +64,7 @@ size_t UseEq::operator () (Use use1, Use use2) const {
  * DefNode
  * ------------------------------------------------- */
 
-DefNode::DefNode(World& world, size_t gid, size_t size, std::string name)
-    : representative_(this)
-    , world_(world)
-    , ops_(size)
-    , gid_(gid)
-    , name_(name)
-{}
-
-thorin::HashSet<Use, UseHash, UseEq> DefNode::uses() const { return uses_; }
-
 Def DefNode::inftype() const { return inftype_.is_empty() ? inftype_ = world_.typecheck(this) : inftype_; }
-
-bool DefNode::has_uses() const { return !uses_.empty(); }
-
-size_t DefNode::num_uses() const { return uses().size(); }
 
 void DefNode::set_op(size_t i, Def def) const { // weird constness?
     assert(!op(i) && "already set");
@@ -164,9 +150,29 @@ bool DefNode::has_subexpr(Def sub) const {
     return false;
 }
 
-/* ----------------------------------------------------
- * Classes B where B : DefNode
- * ------------------------------------------------- */
+void AbsNode::close(Def body) const {
+    assert(body->is_closed() && "closing AbsNode with unclosed body");
+    world_.reduce(body);
+ //   std::cout << "will close ";
+ //   world_.dump(this);
+ //   std::cout << "  with  ";
+ //   world_.dump(body);
+ //   std::cout << std::endl;
+    set_op(1, body);
+    world_.introduce(this);
+}
+
+/*
+ * constructors
+ */
+
+DefNode::DefNode(World& world, size_t gid, size_t size, std::string name)
+    : representative_(this)
+    , world_(world)
+    , ops_(size)
+    , gid_(gid)
+    , name_(name)
+{}
 
 AbsNode::AbsNode(World& world, size_t gid, Def var_type, std::string name)
     : DefNode(world, gid, 2, name)
@@ -180,20 +186,6 @@ AbsNode::AbsNode(World& world, size_t gid, Def var)
     set_op(0, var);
 }
 
-AbsNode::~AbsNode() { delete *var(); }
-
-void AbsNode::close(Def body) const {
-    assert(body->is_closed() && "closing AbsNode with unclosed body");
-    world_.reduce(body);
- //   std::cout << "will close ";
- //   world_.dump(this);
- //   std::cout << "  with  ";
- //   world_.dump(body);
- //   std::cout << std::endl;
-    set_op(1, body);
-    world_.introduce(this);
-}
-
 AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
     : DefNode(world, gid, 2, name)
 {
@@ -202,8 +194,15 @@ AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
 }
 
 /*
+ * destructors
+ */
+
+AbsNode::~AbsNode() { delete *var(); }
+
+/*
  * equal
  */
+
 bool DefNode::equal (const DefNode& other) const {
     Def2Def map;
     return this->eq(other, map);

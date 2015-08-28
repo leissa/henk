@@ -153,11 +153,11 @@ public:
     void set_op(size_t i, Def def) const; // weird constness?
     void unset_op(size_t i);
     void unset_ops();
-    thorin::HashSet<Use, UseHash, UseEq> uses() const;
+    const thorin::HashSet<Use, UseHash, UseEq>& uses() const { return uses_; }
+    size_t num_uses() const { return uses().size(); }
     bool is_proxy() const { return representative_ != this; }
     bool has_uses() const;
     bool has_subexpr(Def) const;
-    size_t num_uses() const;
     size_t gid() const { return gid_; }
     World& world() const { return world_; }
     std::vector<Def> ops() const { return ops_; }
