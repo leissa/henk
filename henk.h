@@ -152,7 +152,7 @@ public:
     Def inftype() const;
     size_t size() const { return ops_.size(); }
     bool empty() const { return ops_.empty(); }
-    void set_op(size_t i, Def def) const; // weird constness?
+    void set_op(size_t i, Def def) const;
     void unset_op(size_t i);
     void unset_ops();
     const thorin::HashSet<Use, UseHash, UseEq>& uses() const { return uses_; }
@@ -166,7 +166,6 @@ public:
     Def op(size_t i) const { assert(i < ops().size() && "index out of bounds"); return ops_[i]; }
     const std::string& name() const { return name_; }
     virtual bool is_closed() const = 0;
-    //virtual bool is_reduced() const = 0;
     bool equal (const DefNode& other) const;
     virtual bool eq (const DefNode& other, Def2Def& map) const;
 
@@ -182,7 +181,6 @@ protected:
     mutable size_t hash_ = 0;
     mutable bool live_ = false;
   //  mutable /*Def*/ const DefNode* equiv_ = nullptr; // hack-ptr useful when testing for equality
-  //  mutable bool is_closed_;
     mutable Def inftype_ = nullptr; // probably will change it to 'type_' later
 
     
@@ -204,7 +202,6 @@ public:
     Def body() const { return op(1); }
     void close(Def body) const;
     virtual bool is_closed() const override;
-    //virtual bool is_reduced() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;
 
 private:
@@ -314,7 +311,6 @@ public:
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }
     virtual bool is_closed() const override;
-    //virtual bool is_reduced() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;
 
     friend class World;

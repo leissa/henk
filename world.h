@@ -60,18 +60,15 @@ protected:
             assert(&def1->world() == &def2->world_ && "testing for eq defs from different worlds");
            // assert(def1->is_reduced() && def2->is_reduced() && "some def not reduced in ExprEqual");
             return def1->equal(*def2);
-            //def1->world().are_expressions_equal(def1, def2);
         } 
     };
     
     mutable size_t gid_; // global id for expressions
     std::map<std::string, const DefNode*> prim_consts;
-   // std::map<const DefNode*, const DefNode*> prim_rules_has_type;
     std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
-   // std::list<Def> prim_consts_boxes_;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     
-    friend class AbsNode; // AbsNode uses move_from_garbage(const DefNode*)
+    friend class AbsNode; // AbsNode uses introduce(const DefNode*)
     friend class DefNode; // DefNode uses reduce(Def)
 };
 

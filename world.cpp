@@ -7,11 +7,6 @@ namespace henk {
 World::World()
     : gid_(0)
 {
-  /*  prim_consts_boxes_ = std::list<Def>();
-    for (auto& kv : prim_consts) {
-        prim_consts_boxes_.push_back(kv.second);
-    }*/
-    
     auto botbox = new BottomNode(*this, gid_++, "⬜ doesn't have a type");
     auto box = new VarNode(*this, gid_++, botbox, nullptr, "⬜");
     auto star = new VarNode(*this, gid_++, box, nullptr, "*");
