@@ -71,9 +71,6 @@ void DefNode::update_non_reduced_repr() const {
     non_reduced_repr_ = r.str();
 }
 
-thorin::HashSet<Use, UseHash, UseEq> DefNode::uses() const { return uses_; }
-
-
 Def DefNode::inftype() const { return inftype_.is_empty() ? inftype_ = world_.typecheck(this) : inftype_; }
 
 void DefNode::set_op(size_t i, Def def) const { // weird constness?
