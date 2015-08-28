@@ -147,6 +147,7 @@ protected:
     void update_non_reduced_repr () const;
     
 public:
+    virtual Def typecheck() const = 0;
     void reduce() const;
     void reduce(Def oldd, Def newd) const; // acts as substitution
     Def reduce_but_dont_replace(Def oldd, Def newd) const; // acts as substitution
@@ -223,6 +224,7 @@ protected:
     {}
     
 public:
+    virtual Def typecheck() const;
     virtual void dump (std::ostream& stream) const;
     friend class World;
 };
@@ -238,6 +240,7 @@ protected:
     {}
     
 public:
+    virtual Def typecheck() const;
     virtual void dump (std::ostream& stream) const;
     friend class World;
 };
@@ -250,6 +253,7 @@ protected:
     {}
     
 public:
+    virtual Def typecheck() const;
     virtual Def reduce(Def2Def& map) const;
     std::string info() const { return info_; }
     virtual void dump (std::ostream& stream) const;
@@ -274,6 +278,7 @@ protected:
     }
     
 public:
+    virtual Def typecheck() const;
     virtual Def reduce(Def2Def& map) const;
     virtual void dump (std::ostream& stream) const;
     Def type() const { return op(0); }
@@ -315,6 +320,7 @@ protected:
     size_t vhash() const;
     
 public:
+    virtual Def typecheck() const;
     virtual Def reduce(Def2Def& map) const;
     virtual void dump (std::ostream& stream) const;
     Def fun() const { return op(0); }

@@ -32,9 +32,6 @@ public:
 /*
  * Utility methods
  */ 
-    void reduce(Def) ;
-    Def typecheck(Def def);
-    bool is_a_subexpression(Def expr, Def sub) const;
     void show_prims(std::ostream& stream) const;
     void show_expressions(std::ostream& stream) const;
     void show_expressions() const { show_expressions(std::cout); }
@@ -68,8 +65,13 @@ protected:
     std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     
-    friend class AbsNode; // AbsNode uses introduce(const DefNode*)
-    friend class DefNode; // DefNode uses reduce(Def)
+    friend class DefNode; // virtual methods in DefNode and B : DefNode
+    friend class AbsNode; // use protected things in World -- how to
+    friend class LambdaNode; // make it better?
+    friend class PiNode;
+    friend class VarNode;
+    friend class PrimLitNode;
+    friend class AppNode;
 };
 
 }

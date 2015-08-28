@@ -106,7 +106,7 @@ const DefNode* World::cse_base(const DefNode* def) {
         return def;
     }
     
-    auto type = typecheck(def);
+    auto type = def->typecheck();
     def->inftype_ = type;
     
     Def proxdef(def);
@@ -147,7 +147,7 @@ void World::introduce(const DefNode* def)  {
     
     def->update_non_reduced_repr();
     
-    auto type = typecheck(def);
+    auto type = def->typecheck();
     def->inftype_ = type;
     
     auto j = expressions_.find(def);
@@ -155,11 +155,6 @@ void World::introduce(const DefNode* def)  {
         def->set_representative(*j);
         
     expressions_.insert(def);
-}
-
-// TODO make this a method of DefNode
-void World::replace(Def olde, Def newe) const {
-    (*olde)->set_representative(*newe);
 }
 
 void World::show_expressions(std::ostream& stream) const {
@@ -176,81 +171,6 @@ void World::show_prims(std::ostream& stream) const {
         p.second->inftype().dump(stream); 
         stream << std::endl;
     } 
-}
-
-// TODO make this a virtual function in DefNode
-// invariant: result of typecheck is reduced expression
-Def World::typecheck(Def def) { // def may or may not be reduced
-    assert(def->is_closed() && "typechecking non closed expr");
-    
-    if (auto bot = def.isa<Bottom>()) {
-        return bot;
-    }
-    else if (auto int_value = def.isa<PrimLit>()) {
-        return get_prim_const("Int");
-    } else if (auto var = def.isa<Var>()) {
-        return var->type();
-    } else if (auto lambda = def.isa<Lambda>()) {
-        auto body_type = lambda->body()->inftype();
-        std::ostringstream nvarn;
-        nvarn << lambda->var()->name();
-        if (nvarn.str() != "_")
-            nvarn << "'";
-        auto res = pi(nvarn.str(), lambda->var()->inftype());
-        auto body_type2 = body_type->reduce_but_dont_replace(
-            lambda->var(), res->var()
-        );
-        res->close(body_type2);
-       // typecheck(res);
-        return res;
-    } else if (auto pi = def.isa<Pi>()) {
-        auto var_type = pi->var()->inftype();
-        auto var_type_type = var_type->inftype();
-        auto body_type = pi->body()->inftype();
-        auto p = wavy_arrow_rules.find(std::make_pair(
-            *var_type_type,
-            *body_type)
-        );
-        if (p != wavy_arrow_rules.end()) {
-            return p->second;
-        }
-        else {
-            std::ostringstream msg;
-            msg << "no wavy arrow rule for " << var_type_type->name();
-            msg << " ⤳  " << body_type->name();
-            return bottom(msg.str());
-        }
-    } else if (auto appl = def.isa<App>()) {
-        auto funt = appl->fun()->inftype();
-        auto argt = appl->arg()->inftype();
-        if(auto pifunt = funt.isa<Pi>()) {
-            if(pifunt->var()->inftype() == argt) {
-                return pifunt->body()->reduce_but_dont_replace(
-                    pifunt->var(), appl->arg()
-                );
-            } else {
-                std::ostringstream msg;
-                msg << "in application: (";
-                appl->fun().dump(msg); msg << ") ("; appl->arg().dump(msg);
-                msg << ") -- type of argument (";
-                argt.dump(msg); msg << ") != type of fun's var (";
-                pifunt->var()->inftype().dump(msg);
-                msg << ")";
-                return bottom(msg.str());
-            }
-        } else {
-            std::ostringstream msg;
-            msg << "in application: (";
-            appl->fun().dump(msg); msg << ") ("; appl->arg().dump(msg);
-            msg << ") -- type of fun is not Pi, but: ";
-            funt.dump(msg);
-            return bottom(msg.str());
-        }
-    } else {
-        std::ostringstream msg;
-        msg << "malformed expression in typecheck: ";
-        throw std::runtime_error(msg.str());
-    }
 }
 
 }

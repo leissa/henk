@@ -71,7 +71,7 @@ void DefNode::update_non_reduced_repr() const {
     non_reduced_repr_ = r.str();
 }
 
-Def DefNode::inftype() const { return inftype_.is_empty() ? inftype_ = world_.typecheck(this) : inftype_; }
+Def DefNode::inftype() const { return inftype_.is_empty() ? inftype_ = typecheck() : inftype_; }
 
 void DefNode::set_op(size_t i, Def def) const { // weird constness?
     assert(!op(i) && "already set");
@@ -274,6 +274,80 @@ Def AppNode::reduce(Def2Def& map) const {
             return this;
     }
 }
+
+/*
+ * typecheck
+ */ 
+
+Def LambdaNode::typecheck() const {
+    auto body_type = body()->inftype();
+    std::ostringstream nvarn;
+    nvarn << var()->name();
+    if (nvarn.str() != "_")
+        nvarn << "'";
+    auto res = world_.pi(nvarn.str(), var()->inftype());
+    auto body_type2 = body_type->reduce_but_dont_replace(
+        var(), res->var()
+    );
+    res->close(body_type2);
+    return res;
+}
+
+Def PiNode::typecheck() const {
+    auto var_type = var()->inftype();
+    auto var_type_type = var_type->inftype();
+    auto body_type = body()->inftype();
+    auto p = world_.wavy_arrow_rules.find(std::make_pair(
+        *var_type_type,
+        *body_type)
+    );
+    if (p != world_.wavy_arrow_rules.end()) {
+        return p->second;
+    }
+    else {
+        std::ostringstream msg;
+        msg << "no wavy arrow rule for " << var_type_type->name();
+        msg << " ⤳  " << body_type->name();
+        return world_.bottom(msg.str());
+    }
+}
+
+Def BottomNode::typecheck() const {
+    return this;
+}
+
+Def VarNode::typecheck() const {
+    return type();
+}
+
+Def AppNode::typecheck() const {
+    auto funt = fun()->inftype();
+    auto argt = arg()->inftype();
+    if(auto pifunt = funt.isa<Pi>()) {
+        if(pifunt->var()->inftype() == argt) {
+            return pifunt->body()->reduce_but_dont_replace(
+                pifunt->var(), arg()
+            );
+        } else {
+            std::ostringstream msg;
+            msg << "in application: (";
+            fun().dump(msg); msg << ") ("; arg().dump(msg);
+            msg << ") -- type of argument (";
+            argt.dump(msg); msg << ") != type of fun's var (";
+            pifunt->var()->inftype().dump(msg);
+            msg << ")";
+            return world_.bottom(msg.str());
+        }
+    } else {
+        std::ostringstream msg;
+        msg << "in application: (";
+        fun().dump(msg); msg << ") ("; arg().dump(msg);
+        msg << ") -- type of fun is not Pi, but: ";
+        funt.dump(msg);
+        return world_.bottom(msg.str());
+    }
+}
+
 
 /*
  * equal
