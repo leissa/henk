@@ -22,7 +22,7 @@ public:
     Lambda lambda(std::string var_name, Def var_type);
     Pi fun_type(Def from, Def to);
     Pi pi(std::string var_name, Def var_type);
-    App app(Def appl, Def arg);
+    Def app(Def appl, Def arg);
     PrimLit literal(int value);
 
 /*
@@ -40,10 +40,11 @@ public:
 protected:
     Def typecheck_(Def def);
     Def substitute(Def expr, Def var, Def nval);
-    void reduce(Def def, Def oldd, Def newd) ;
+    void reduce(Def def, Def oldd, Def newd);
+    Def reduce_bot_dont_replace(Def def, Def oldd, Def newd);
     Def reduce(Def, Def2Def&) ;
     void replace(Def olde, Def newe) const;
-    void introduce(const DefNode* def) const;
+    void introduce(const DefNode* def) ;
     template<class T> const T* cse(const T* def) { return cse_base(def)->template as<T>(); }
 
 protected:
@@ -61,9 +62,9 @@ protected:
     
     mutable size_t gid_; // global id for expressions
     std::map<std::string, const DefNode*> prim_consts;
-    std::map<const DefNode*, const DefNode*> prim_rules_has_type;
+   // std::map<const DefNode*, const DefNode*> prim_rules_has_type;
     std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
-    std::list<Def> prim_consts_boxes_;
+   // std::list<Def> prim_consts_boxes_;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     
     friend class AbsNode; // AbsNode uses move_from_garbage(const DefNode*)

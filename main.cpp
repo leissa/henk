@@ -14,11 +14,12 @@ Lambda poly_id(World* world, std::string tvar, std::string var) {
 void test1(World* world) {
     auto type_lambda = poly_id(world, "a", "x");
 
-    auto atype = world->typecheck(type_lambda);
+    auto atype = type_lambda->inftype();
     std::cout << std::endl;
     type_lambda.dump();
     std::cout << " : ";
     atype.dump();
+    std::cout << std::endl;
 }
 
 void test2(World* world) {
@@ -26,9 +27,7 @@ void test2(World* world) {
     // (lambda x: (u Bool). 42) (Int)
     
     auto u = world->lambda("y", world->get_prim_const("*"));
-
     u->close(world->get_prim_const("Int"));
-    auto bla = world->app(u, world->get_prim_const("Int"));
     
     auto lambda = world->lambda("x", world->app(
         u, world->get_prim_const("Bool")
@@ -38,9 +37,10 @@ void test2(World* world) {
 
     auto app = world->app(lambda, world->literal(33));//get_prim_const("Int"));
     app.dump();
-    auto tapp = world->typecheck(app);
+    auto tapp = app->inftype();
     std::cout << " : ";
     tapp.dump();
+    std::cout << std::endl;
 }
 
 void test3(World* world) {
@@ -69,13 +69,12 @@ void test3(World* world) {
     std::cout << "f g = ";
     app.dump();
     std::cout << std::endl;
-    //try {
-        std::cout << "f g : ";
-        auto apptype = world->typecheck(app);
-        apptype.dump();
-  //  } catch (std::runtime_error& e) {
-   //     std::cout << "typecheck error: " << e.what() << std::endl;
-  //  }
+    
+    std::cout << "f g : ";
+    auto apptype = app->inftype();
+    apptype.dump();
+    std::cout << std::endl;
+
 }
 
 void test4(World* world) {
@@ -111,7 +110,7 @@ int main(int argc, char* argv[]) {
         }
     }
     std::cout << std::endl << "world has expressions: " << std::endl;
-   // world->show_expressions();
+    world->show_expressions();
     std::cout << std::endl;
     delete world;
     

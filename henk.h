@@ -14,6 +14,7 @@ class World;
 
 template<class T> class Proxy;
 class DefNode;     typedef Proxy<DefNode>     Def;
+class BottomNode;  typedef Proxy<BottomNode>  Bottom;
 class VarNode;     typedef Proxy<VarNode>     Var;
 class PrimLitNode; typedef Proxy<PrimLitNode> PrimLit;
 class AbsNode;     typedef Proxy<AbsNode>     Abs;
@@ -52,6 +53,7 @@ public:
     
     void dump (std::ostream& stream) const;
     void dump () const { dump(std::cout); }
+    void vdump () const { dump(); std::cout << std::endl; }
     
     // casts
 
@@ -100,10 +102,13 @@ private:
     Def def_;
 };
 
-struct UseLT {
-    inline bool operator () (Use use1, Use use2) const;
+struct UseHash {
+    size_t operator () (Use u) const;
 };
 
+struct UseEq {
+    size_t operator () (Use use1, Use use2) const;
+};
 
 //------------------------------------------------------------------------------
 
@@ -127,16 +132,9 @@ using Def2Def = DefMap<const DefNode*>;
 /// Base class for all @p Def%s.
 class DefNode : public thorin::MagicCast<DefNode> {
 protected:   
-    DefNode(World& world, size_t gid, size_t size, std::string name)
-        : representative_(this)
-        , world_(world)
-        , ops_(size)
-        , gid_(gid)
-        , name_(name)
-        , uses_{}
-    {}
+    DefNode(World& world, size_t gid, size_t size, std::string name);
     
-    virtual ~DefNode() {}
+    virtual ~DefNode() { /*unregister_uses();*/ }
 
     void unregister_use(size_t i) const;
     void unregister_uses() const;
@@ -149,17 +147,17 @@ protected:
 public:
     virtual void dump (std::ostream& stream) const = 0;
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
- //   Def type() const { return type_.empty() ? type_ = typecheck(this) : type_; }
+    Def inftype() const;
     size_t size() const { return ops_.size(); }
     bool empty() const { return ops_.empty(); }
     void set_op(size_t i, Def def) const; // weird constness?
     void unset_op(size_t i);
     void unset_ops();
-    std::set<Use, UseLT> uses() const { return uses_; }
+    thorin::HashSet<Use, UseHash, UseEq> uses() const;
     bool is_proxy() const { return representative_ != this; }
-    bool has_uses() const { return !uses_.empty(); }
+    bool has_uses() const;
     bool has_subexpr(Def) const;
-    size_t num_uses() const { return uses().size(); }
+    size_t num_uses() const;
     size_t gid() const { return gid_; }
     World& world() const { return world_; }
     std::vector<Def> ops() const { return ops_; }
@@ -176,13 +174,13 @@ protected:
     mutable std::vector<Def> ops_;
     mutable size_t gid_;
     mutable std::string name_;
-    mutable std::set<Use, UseLT> uses_; // TODO use HashSet
+    mutable thorin::HashSet<Use, UseHash, UseEq> uses_;
     mutable DefSet representative_of_;
     mutable size_t hash_ = 0;
     mutable bool live_ = false;
-    mutable /*Def*/ const DefNode* equiv_ = nullptr; // hack-ptr useful when testing for equality
-    mutable bool is_closed_;
- //   mutable Def type_ = nullptr;
+  //  mutable /*Def*/ const DefNode* equiv_ = nullptr; // hack-ptr useful when testing for equality
+  //  mutable bool is_closed_;
+    mutable Def inftype_ = nullptr; // will change it to 'type_' later
 
     
     friend class World;
@@ -238,6 +236,27 @@ public:
     friend class World;
 };
 
+class BottomNode : public DefNode {
+protected:
+    BottomNode(World& world, size_t gid, std::string info)
+        : DefNode(world, gid, 0, "⊥")
+        , info_(info)
+    {}
+    
+public:
+    std::string info() const { return info_; }
+    virtual void dump (std::ostream& stream) const;
+    virtual bool is_closed() const override;
+    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    
+private:
+    size_t vhash() const;
+    
+    std::string info_;
+
+    friend class World;
+};
+
 class VarNode : public DefNode {
 protected:
     VarNode(World& world, size_t gid, Def type, Def of_abs, std::string name)
@@ -252,7 +271,6 @@ public:
     Def type() const { return op(0); }
     Abs abs() const { return op(1).as<Abs>(); }
     virtual bool is_closed() const override;
-   // virtual bool is_reduced() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;
     
 private:

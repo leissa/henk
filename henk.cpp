@@ -38,6 +38,7 @@ const T* Proxy<T>::deref() const {
 
 // instantiate templates - but maybe we should place above method simply into the header
 template class Proxy<DefNode>;
+template class Proxy<BottomNode>;
 template class Proxy<VarNode>;
 template class Proxy<PrimLitNode>;
 template class Proxy<AbsNode>;
@@ -48,16 +49,36 @@ template class Proxy<AppNode>;
 /* ----------------------------------------------------
  * Use
  * ------------------------------------------------- */
- 
-bool UseLT::operator () (Use use1, Use use2) const {
+
+size_t UseHash::operator () (Use u) const { 
+    return hash_combine(u.def().node()->gid(), u.index());
+}
+
+size_t UseEq::operator () (Use use1, Use use2) const {
     auto gid1 = use1.def().node()->gid();
     auto gid2 = use2.def().node()->gid();
-    return (gid1 < gid2 || (gid1 == gid2 && use1.index() < use2.index()));
+    return (gid1 == gid2) && (use1.index() == use2.index());
 }
 
 /* ----------------------------------------------------
  * DefNode
  * ------------------------------------------------- */
+
+DefNode::DefNode(World& world, size_t gid, size_t size, std::string name)
+    : representative_(this)
+    , world_(world)
+    , ops_(size)
+    , gid_(gid)
+    , name_(name)
+{}
+
+thorin::HashSet<Use, UseHash, UseEq> DefNode::uses() const { return uses_; }
+
+Def DefNode::inftype() const { return inftype_.is_empty() ? inftype_ = world_.typecheck(this) : inftype_; }
+
+bool DefNode::has_uses() const { return !uses_.empty(); }
+
+size_t DefNode::num_uses() const { return uses().size(); }
 
 void DefNode::set_op(size_t i, Def def) const { // weird constness?
     assert(!op(i) && "already set");
@@ -150,7 +171,7 @@ bool DefNode::has_subexpr(Def sub) const {
 AbsNode::AbsNode(World& world, size_t gid, Def var_type, std::string name)
     : DefNode(world, gid, 2, name)
 {
-    set_op(0, new VarNode(world, gid + 1 /* gid ? */, var_type, this, name));
+    set_op(0, new VarNode(world, gid + 1, var_type, this, name));
 }
 
 AbsNode::AbsNode(World& world, size_t gid, Def var)
@@ -176,29 +197,15 @@ void AbsNode::close(Def body) const {
 AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
     : DefNode(world, gid, 2, name)
 {
-    set_op(0, fun); set_op(1, arg);
+    set_op(0, fun);
+    set_op(1, arg);
 }
 
 /*
  * equal
  */
 bool DefNode::equal (const DefNode& other) const {
-   // assert(!other.isa<AppNode>() && "testing AppNode for equality contradicts" 
-   //     " eager normalizing (reducing) policy");
- /*  std::cout << "are ";
-   world_.dump(this);
-   std::cout << "  and  ";
-   world_.dump(&other);
-   std::cout << "  equal? -- " << std::endl;
     Def2Def map;
-   bool res = this->eq(other, map);
-    if(res)
-        std::cout << "yes!";
-    else
-        std::cout << "nope!";
-    std::cout << std::endl;*/
-    Def2Def map;
-    
     return this->eq(other, map);
 }
 
@@ -207,6 +214,10 @@ bool DefNode::eq (const DefNode& other, Def2Def& map) const {
   //  bool res = typeid(*this) == typeid(other);
   //  std::cout << " " << res << std::endl;
     return typeid(*this) == typeid(other);
+}
+
+bool BottomNode::eq (const DefNode& other, Def2Def& map) const {
+    return this == &other;
 }
 
 bool VarNode::eq (const DefNode& other, Def2Def& map) const {
@@ -259,15 +270,17 @@ bool AppNode::eq (const DefNode& other, Def2Def& map) const {
  * vhash
  */
 
-size_t VarNode::vhash() const { return hash_combine(type() ? type()->/*gid*/hash() : 9, 5/*abs()->gid()*/); }
+size_t BottomNode::vhash() const { return hash_begin(101); }
+size_t VarNode::vhash() const { return hash_combine(type() ? type()->hash() : 9, 5); }
 size_t PrimLitNode::vhash() const { return hash_combine(value(), 7); }
-size_t AbsNode::vhash() const { return hash_combine(var()->hash(), body() ? body()->/*gid*/hash() : 13); }
+size_t AbsNode::vhash() const { return hash_combine(var()->hash(), body() ? body()->hash() : 13); }
 size_t AppNode::vhash() const { return hash_combine(fun()->gid(), arg()->gid()); }
 
 /*
  * is_closed
  */
 
+bool BottomNode::is_closed() const { return true; }
 bool AbsNode::is_closed() const { return body(); }
 bool VarNode::is_closed() const { return type() ? type()->is_closed() : true; }
 bool AppNode::is_closed() const { return fun()->is_closed() && arg()->is_closed(); }
@@ -314,6 +327,10 @@ void AbsNode::dump_body (std::ostream& stream) const {
     var()->type().dump(stream);
     stream << ". ";
     body().dump(stream);
+}
+
+void BottomNode::dump (std::ostream& stream) const {
+    stream << name() << " { " << info() << " }";
 }
 
 void VarNode::dump (std::ostream& stream) const {
