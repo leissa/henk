@@ -1,4 +1,5 @@
 #include <typeinfo>
+#include <sstream>
 
 #include "world.h"
 

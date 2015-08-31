@@ -1,8 +1,6 @@
 #ifndef HENK_IR_H
 #define HENK_IR_H
 
-#include <set>
-#include <sstream>
 #include <vector>
 
 #include "thorin/util/cast.h"

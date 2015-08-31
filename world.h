@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <map>
-#include <list>
 
 #include "thorin/util/hash.h"
 

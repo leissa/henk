@@ -1,7 +1,5 @@
 #include "world.h"
 
-#include <sstream>
-
 namespace henk {
 
 World::World()
