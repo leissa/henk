@@ -37,8 +37,7 @@ void test2(World* world) {
     
     world->add_external(lambda);
     world->cleanup();
-    world->show_expressions();
-    //return ;
+    //world->show_expressions();
 
     auto app = world->app(lambda, world->literal(33));//get_prim_const("Int"));
     std::cout << app->non_reduced_repr() << " reduced to ";

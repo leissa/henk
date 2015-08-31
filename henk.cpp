@@ -476,6 +476,8 @@ void AppNode::update_non_reduced_repr() const {
  * dump
  */
 
+void DefNode::dump () const { dump(std::cout); std::cout << std::endl; }
+
 template<class T>
 void Proxy<T>::dump (std::ostream& stream) const {
     if(is_empty())

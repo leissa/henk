@@ -125,6 +125,9 @@ void World::cleanup() {
         if(def->is_proxy()) {
             enqueue(def->representative_);
         } else {
+            if(def->inftype_)
+                enqueue(def->inftype_);
+            
             if (auto v = def->isa<VarNode>()) {
                 enqueue(v->type());
             } else for (auto op : def->ops_) {
@@ -133,14 +136,18 @@ void World::cleanup() {
         }
     }
     
+    std::cout << "in cleanup, garbage is:" << std::endl;
     //std::queue<decltype(expressions_)::iterator> garbage; // why doesn't it work? :(
     std::list<thorin::HashSet<const DefNode*, ExprHash, ExprEqual>::iterator> garbage;
     for (auto i = expressions_.begin(); i != expressions_.end(); ++i) {
         if(!((*i)->live_)) {
+            Def(*i).dump();
+            std::cout << " at " << *i << std::endl;
             garbage.push_back(i);
             delete *i;
         }
     }
+    
     for (auto i : garbage)
         expressions_.erase(i);
 }
