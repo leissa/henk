@@ -47,9 +47,8 @@ public:
     //const T* operator  * () const { return node()->is_unified() ? representative() : node(); }
     const T* operator  * () const { return deref(); }
     const T* operator -> () const { return *(*this); }
+    
     bool is_empty () const { return node_ == nullptr; }
-
-public:
     void dump (std::ostream& stream) const;
     void dump () const { dump(std::cout); }
     void vdump () const { dump(); std::cout << std::endl; }
@@ -142,7 +141,8 @@ protected:
     void set_representative(const DefNode* repr) const;
     void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<DefNode*>(this)->gid_) = gid; }
     virtual size_t vhash() const = 0;
-    void update_non_reduced_repr () const;
+    virtual void update_non_reduced_repr () const;
+    std::string __get_non_reduced_repr (const DefNode& def) const;
     virtual Def typecheck() const = 0;
     
     void reduce() const;
@@ -161,10 +161,9 @@ protected:
      * // and: __reduce(const DefNode& def, ...) { def.reduce(...); }
      */ 
     Def __reduce_but_dont_replace(const DefNode& def, Def oldd, Def newd) const;
-    Def __reduce(const DefNode& def, Def2Def& map) const; // a workaround to having protected virtual reduce
+    Def __reduce(const DefNode& def, Def2Def& map) const; 
     
 public:
-
     std::string non_reduced_repr () const { return non_reduced_repr_; }
     virtual void dump (std::ostream& stream) const = 0;
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
@@ -199,7 +198,7 @@ protected:
     mutable DefSet representative_of_;
     mutable size_t hash_ = 0;
     mutable bool live_ = false;
-  //  mutable /*Def*/ const DefNode* equiv_ = nullptr; // hack-ptr useful when testing for equality
+  //  mutable const DefNode* equiv_ = nullptr; // hack-ptr useful when testing for equality
     mutable Def inftype_ = nullptr; // probably will change it to 'type_' later
 
     
@@ -215,6 +214,7 @@ protected:
     virtual ~AbsNode();
     
     virtual Def reduce(Def2Def& map) const;
+    void __update_non_reduced_repr_body (std::ostringstream& r) const;
     
 public:
     virtual void dump (std::ostream& stream) const = 0;
@@ -238,6 +238,7 @@ protected:
     {}
     
     virtual Def typecheck() const;
+    virtual void update_non_reduced_repr () const;
     
 public:
     virtual void dump (std::ostream& stream) const;
@@ -255,6 +256,7 @@ protected:
     {}
     
     virtual Def typecheck() const;
+    virtual void update_non_reduced_repr () const;
     
 public:
     virtual void dump (std::ostream& stream) const;
@@ -340,7 +342,7 @@ protected:
     size_t vhash() const;
     
     virtual Def typecheck() const;
-    
+    virtual void update_non_reduced_repr () const;
     virtual Def reduce(Def2Def& map) const;
     
 public:

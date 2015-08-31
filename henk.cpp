@@ -65,13 +65,6 @@ size_t UseEq::operator () (Use use1, Use use2) const {
  * DefNode
  * ------------------------------------------------- */
 
-
-void DefNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    Def(this).dump(r);
-    non_reduced_repr_ = r.str();
-}
-
 Def DefNode::inftype() const { return inftype_.is_empty() ? inftype_ = typecheck() : inftype_; }
 
 void DefNode::set_op(size_t i, Def def) const { // weird constness?
@@ -423,6 +416,61 @@ bool BottomNode::is_closed() const { return true; }
 bool AbsNode::is_closed() const { return body(); }
 bool VarNode::is_closed() const { return type() ? type()->is_closed() : true; }
 bool AppNode::is_closed() const { return fun()->is_closed() && arg()->is_closed(); }
+
+/*
+ * update_non_reduced_repr
+ */
+
+std::string DefNode::__get_non_reduced_repr (const DefNode& def) const {
+    return def.non_reduced_repr_;
+}
+
+void DefNode::update_non_reduced_repr() const {
+    std::ostringstream r;
+    Def(this).dump(r);
+    non_reduced_repr_ = r.str();
+}
+
+void LambdaNode::update_non_reduced_repr() const {
+    std::ostringstream r;
+    r << "λ";
+    __update_non_reduced_repr_body(r);
+}
+
+void PiNode::update_non_reduced_repr() const {
+    std::ostringstream r;
+    r << "Π";
+    __update_non_reduced_repr_body(r);
+}
+
+void AbsNode::__update_non_reduced_repr_body (std::ostringstream& r) const {
+    r << __get_non_reduced_repr(**var()) << ":";
+    if(var()->type().is_empty())
+        r << "'nullptr'";
+    else
+        r << __get_non_reduced_repr(**var()->type());
+    r << ". ";
+    if(body().is_empty())
+        r << "'nullptr'";
+    else
+        r << __get_non_reduced_repr(**body());
+    
+    non_reduced_repr_ = r.str();
+}
+
+void AppNode::update_non_reduced_repr() const {
+    std::ostringstream r;
+    r << "(";
+    if(fun().is_empty())
+        r << "'nullptr'";
+    else r << __get_non_reduced_repr(**fun()) << ") (";
+    if(arg().is_empty())
+        r << "'nullptr'";
+    else
+        r << __get_non_reduced_repr(**arg()) << ")";
+    non_reduced_repr_ = r.str();
+}
+
 
 /*
  * dump

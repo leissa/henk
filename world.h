@@ -31,8 +31,9 @@ public:
 /*
  * Utility methods
  */ 
+    void cleanup();
     void add_external(Lambda lambda) const;
-    void remove_external(Lambda lambda) const;
+    void remove_external(Lambda lambda) const { externals_.erase(lambda); }
     void show_prims(std::ostream& stream) const;
     void show_expressions(std::ostream& stream) const;
     void show_expressions() const { show_expressions(std::cout); }
@@ -42,8 +43,6 @@ public:
 protected:
     void introduce(const DefNode* def) ;
     template<class T> const T* cse(const T* def) { return cse_base(def)->template as<T>(); }
-
-protected:
     const DefNode* cse_base(const DefNode*) ;
 
     struct ExprHash { size_t operator () (const DefNode* e) const { return e->hash(); } };

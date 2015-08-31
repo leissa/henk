@@ -94,6 +94,16 @@ Bottom World::bottom(std::string info) {
  * Utility methods -- sorted alphabetically
  */
 
+void World::add_external(Lambda lambda) const {
+    assert(expressions_.contains(lambda) && "adding external outside world");
+    // but maybe that's the point of externals -- they are outside world?
+    externals_.insert(lambda);
+}
+
+void World::cleanup() {
+    
+}
+
 const DefNode* World::cse_base(const DefNode* def) {
     
     def->update_non_reduced_repr();
