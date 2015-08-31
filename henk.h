@@ -145,9 +145,9 @@ protected:
     void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<DefNode*>(this)->gid_) = gid; }
     virtual size_t vhash() const = 0;
     void update_non_reduced_repr () const;
+    virtual Def typecheck() const = 0;
     
 public:
-    virtual Def typecheck() const = 0;
     void reduce() const;
     void reduce(Def oldd, Def newd) const; // acts as substitution
     Def reduce_but_dont_replace(Def oldd, Def newd) const; // acts as substitution
@@ -223,8 +223,9 @@ protected:
         : AbsNode(world, gid, var_type, name)
     {}
     
-public:
     virtual Def typecheck() const;
+    
+public:
     virtual void dump (std::ostream& stream) const;
     friend class World;
 };
@@ -239,8 +240,9 @@ protected:
         : AbsNode(world, gid, var)
     {}
     
-public:
     virtual Def typecheck() const;
+    
+public:
     virtual void dump (std::ostream& stream) const;
     friend class World;
 };
@@ -252,8 +254,9 @@ protected:
         , info_(info)
     {}
     
-public:
     virtual Def typecheck() const;
+    
+public:
     virtual Def reduce(Def2Def& map) const;
     std::string info() const { return info_; }
     virtual void dump (std::ostream& stream) const;
@@ -277,8 +280,9 @@ protected:
         set_op(1, of_abs);
     }
     
-public:
     virtual Def typecheck() const;
+    
+public:
     virtual Def reduce(Def2Def& map) const;
     virtual void dump (std::ostream& stream) const;
     Def type() const { return op(0); }
@@ -319,8 +323,9 @@ protected:
     
     size_t vhash() const;
     
-public:
     virtual Def typecheck() const;
+    
+public:
     virtual Def reduce(Def2Def& map) const;
     virtual void dump (std::ostream& stream) const;
     Def fun() const { return op(0); }

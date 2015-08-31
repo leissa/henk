@@ -32,6 +32,8 @@ public:
 /*
  * Utility methods
  */ 
+    void add_external(Lambda lambda) const;
+    void remove_external(Lambda lambda) const;
     void show_prims(std::ostream& stream) const;
     void show_expressions(std::ostream& stream) const;
     void show_expressions() const { show_expressions(std::cout); }
@@ -64,6 +66,7 @@ protected:
     std::map<std::string, const DefNode*> prim_consts;
     std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
+    mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> externals_;
     
     friend class DefNode; // virtual methods in DefNode and B : DefNode
     friend class AbsNode; // use protected things in World -- how to
