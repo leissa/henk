@@ -225,7 +225,7 @@ public:
     virtual bool is_closed() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;
 
-private:
+protected:
     size_t vhash() const;
     
     friend class World;
@@ -280,7 +280,7 @@ public:
     virtual bool is_closed() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;
     
-private:
+protected:
     size_t vhash() const;
     
     std::string info_;
@@ -308,7 +308,7 @@ public:
     virtual bool is_closed() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;
     
-private:
+protected:
     size_t vhash() const;
 
     friend class World;

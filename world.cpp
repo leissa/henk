@@ -1,5 +1,8 @@
 #include "world.h"
 
+#include <list>
+#include "thorin/util/queue.h"
+
 namespace henk {
 
 World::World()
@@ -45,9 +48,9 @@ World::World()
 }
 
 World::~World() {
-    std::cout << "deleting expressions_..." << std::endl;
+    std::cout << "deleting world at " << this << std::endl;
     for (auto& e : expressions_) {
-        std::cout << "at " << e << std::endl;
+        std::cout << "expr at " << e << std::endl;
         delete e;
     }
 }
@@ -94,14 +97,41 @@ Bottom World::bottom(std::string info) {
  * Utility methods -- sorted alphabetically
  */
 
-void World::add_external(Lambda lambda) const {
-    assert(expressions_.contains(lambda) && "adding external outside world");
-    // but maybe that's the point of externals -- they are outside world?
-    externals_.insert(lambda);
-}
-
 void World::cleanup() {
+    std::queue<const DefNode*> queue;
     
+    for (auto def : expressions_) {
+        def->live_ = false;
+    }
+    
+    for (auto edef : externals_) {
+        edef->live_ = true;
+        queue.push(edef);
+    }
+    
+    while (!queue.empty()) {
+        auto def = pop(queue);
+        if (!def->live_) {
+            def->live_ = true;
+            if (auto v = def->isa<VarNode>()) {
+                queue.push(v->type());
+            }
+            else for (auto op : def->ops_) {
+                queue.push(op);
+            }
+        }
+    }
+    
+    //std::queue<decltype(expressions_)::iterator> garbage; // why doesn't it work? :(
+    std::list<thorin::HashSet<const DefNode*, ExprHash, ExprEqual>::iterator> garbage;
+    for (auto i = expressions_.begin(); i != expressions_.end(); ++i) {
+        if(!((*i)->live_)) {
+            garbage.push_back(i);
+            delete *i;
+        }
+    }
+    for (auto i : garbage)
+        expressions_.erase(i);
 }
 
 const DefNode* World::cse_base(const DefNode* def) {
@@ -167,6 +197,11 @@ void World::introduce(const DefNode* def)  {
 
 void World::show_expressions(std::ostream& stream) const {
     for (auto e : expressions_) {
+        Def(e).dump(stream);
+        stream << " at " << e << std::endl;
+    }
+    stream << "externals: " << std::endl;
+    for (auto e : externals_) {
         Def(e).dump(stream);
         stream << " at " << e << std::endl;
     }

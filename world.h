@@ -32,7 +32,7 @@ public:
  * Utility methods
  */ 
     void cleanup();
-    void add_external(Lambda lambda) const;
+    void add_external(Lambda lambda) const { externals_.insert(lambda); }
     void remove_external(Lambda lambda) const { externals_.erase(lambda); }
     void show_prims(std::ostream& stream) const;
     void show_expressions(std::ostream& stream) const;
