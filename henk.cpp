@@ -207,7 +207,16 @@ AbsNode::~AbsNode() { delete *var(); }
 
 /*
  * reduce
- */ 
+ */
+
+Def DefNode::__reduce_but_dont_replace(const DefNode& def, Def oldd, Def newd) const {
+    return def.reduce_but_dont_replace(oldd, newd);
+}
+ 
+Def DefNode::__reduce(const DefNode& def, Def2Def& map) const {
+    return def.reduce(map);
+}
+ 
 void DefNode::reduce() const {
     assert(is_closed() && "unclosed def in reduce");
     Def2Def map;
@@ -236,14 +245,14 @@ Def AbsNode::reduce(Def2Def& map) const {
     nvarn << var()->name();
     if (nvarn.str() != "_")
         nvarn << "'";
-    auto ntype = var().as<Var>()->type()->reduce(map);
+    auto ntype = __reduce(**var()->type(), map);
     Abs nabs;
     if(this->isa<LambdaNode>())
         nabs = world_.lambda(nvarn.str(), ntype);
     else
         nabs = world_.pi(nvarn.str(), ntype);
     map[*(var())] = *(nabs->var());
-    auto nbody = body()->reduce(map);
+    auto nbody = __reduce(**body(), map);
     nabs->close(nbody);
     return nabs;
 }
@@ -262,11 +271,11 @@ Def VarNode::reduce(Def2Def& map) const {
 }
 
 Def AppNode::reduce(Def2Def& map) const {
-    Def rfun = fun()->reduce(map);
-    Def rarg = arg()->reduce(map);
+    Def rfun = __reduce(**fun(), map);
+    Def rarg = __reduce(**arg(), map);
     if (auto abs = rfun.isa<Abs>()) {
         map[*(abs->var())] = *rarg;
-        return abs->body()->reduce(map);
+        return __reduce(**abs->body(), map);
     } else {
         if(*rfun != *(fun()) || *rarg != *(arg()))
             return world_.app(rfun, rarg);
@@ -286,7 +295,7 @@ Def LambdaNode::typecheck() const {
     if (nvarn.str() != "_")
         nvarn << "'";
     auto res = world_.pi(nvarn.str(), var()->inftype());
-    auto body_type2 = body_type->reduce_but_dont_replace(
+    auto body_type2 = __reduce_but_dont_replace(**body_type,
         var(), res->var()
     );
     res->close(body_type2);
@@ -325,7 +334,7 @@ Def AppNode::typecheck() const {
     auto argt = arg()->inftype();
     if(auto pifunt = funt.isa<Pi>()) {
         if(pifunt->var()->inftype() == argt) {
-            return pifunt->body()->reduce_but_dont_replace(
+            return __reduce_but_dont_replace(**pifunt->body(),
                 pifunt->var(), arg()
             );
         } else {

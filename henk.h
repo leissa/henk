@@ -147,11 +147,26 @@ protected:
     void update_non_reduced_repr () const;
     virtual Def typecheck() const = 0;
     
-public:
     void reduce() const;
     void reduce(Def oldd, Def newd) const; // acts as substitution
-    Def reduce_but_dont_replace(Def oldd, Def newd) const; // acts as substitution
     virtual Def reduce(Def2Def& map) const = 0;
+    Def reduce_but_dont_replace(Def oldd, Def newd) const; // acts as substitution
+    // those '__reduce...' methods are a workaround to being able to call protected methods
+    // from derived classes on objects not necessarily of their type, i.e.
+    /*  class A : public DefNode {
+     *      void foo() {
+     *          DefNode* d = this->bar();
+     *          // d->reduce(...); // fails
+     *          __reduce(*d, ...); // works
+     *      }
+     *  }
+     * // and: __reduce(const DefNode& def, ...) { def.reduce(...); }
+     */ 
+    Def __reduce_but_dont_replace(const DefNode& def, Def oldd, Def newd) const;
+    Def __reduce(const DefNode& def, Def2Def& map) const; // a workaround to having protected virtual reduce
+    
+public:
+
     std::string non_reduced_repr () const { return non_reduced_repr_; }
     virtual void dump (std::ostream& stream) const = 0;
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
@@ -201,8 +216,9 @@ protected:
     
     virtual ~AbsNode();
     
-public:
     virtual Def reduce(Def2Def& map) const;
+    
+public:
     virtual void dump (std::ostream& stream) const = 0;
     void dump_body (std::ostream& stream) const;
     Var var() const { return op(0).as<Var>(); }
@@ -256,8 +272,9 @@ protected:
     
     virtual Def typecheck() const;
     
-public:
     virtual Def reduce(Def2Def& map) const;
+    
+public:
     std::string info() const { return info_; }
     virtual void dump (std::ostream& stream) const;
     virtual bool is_closed() const override;
@@ -282,8 +299,9 @@ protected:
     
     virtual Def typecheck() const;
     
-public:
     virtual Def reduce(Def2Def& map) const;
+    
+public:
     virtual void dump (std::ostream& stream) const;
     Def type() const { return op(0); }
     Abs abs() const { return op(1).as<Abs>(); }
@@ -325,8 +343,9 @@ protected:
     
     virtual Def typecheck() const;
     
-public:
     virtual Def reduce(Def2Def& map) const;
+    
+public:
     virtual void dump (std::ostream& stream) const;
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }

@@ -41,12 +41,6 @@ public:
     size_t gid() const { return gid_; }
 
 protected:
-    Def typecheck_(Def def);
-    Def substitute(Def expr, Def var, Def nval);
-    void reduce(Def def, Def oldd, Def newd);
-    Def reduce_bot_dont_replace(Def def, Def oldd, Def newd);
-    Def reduce(Def, Def2Def&) ;
-    void replace(Def olde, Def newe) const;
     void introduce(const DefNode* def) ;
     template<class T> const T* cse(const T* def) { return cse_base(def)->template as<T>(); }
 
@@ -68,13 +62,9 @@ protected:
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> externals_;
     
-    friend class DefNode; // virtual methods in DefNode and B : DefNode
-    friend class AbsNode; // use protected things in World -- how to
-    friend class LambdaNode; // make it better?
-    friend class PiNode;
-    friend class VarNode;
-    friend class PrimLitNode;
-    friend class AppNode;
+    friend void AbsNode::close(Def) const; // uses introduce(DefNode*)
+    friend Def PiNode::typecheck() const; // uses wavy_arrow_rules
+    friend Def AppNode::typecheck() const; // uses bottom(std::string)
 };
 
 }
