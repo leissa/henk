@@ -100,8 +100,19 @@ Bottom World::bottom(std::string info) {
 void World::cleanup() {
     std::queue<const DefNode*> queue;
     
+    auto enqueue = [&] (const DefNode* def) {
+        if(!def->live_) {
+            def->live_ = true;
+            queue.push(def);
+        }
+    };
+    
     for (auto def : expressions_) {
         def->live_ = false;
+    }
+    
+    for (auto kv : prim_consts) {
+        kv.second->live_ = true;
     }
     
     for (auto edef : externals_) {
@@ -111,13 +122,13 @@ void World::cleanup() {
     
     while (!queue.empty()) {
         auto def = pop(queue);
-        if (!def->live_) {
-            def->live_ = true;
+        if(def->is_proxy()) {
+            enqueue(def->representative_);
+        } else {
             if (auto v = def->isa<VarNode>()) {
-                queue.push(v->type());
-            }
-            else for (auto op : def->ops_) {
-                queue.push(op);
+                enqueue(v->type());
+            } else for (auto op : def->ops_) {
+                enqueue(op);
             }
         }
     }

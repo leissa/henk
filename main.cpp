@@ -36,7 +36,7 @@ void test2(World* world) {
     lambda->close(world->literal(42));
     
     world->add_external(lambda);
-    //world->cleanup();
+    world->cleanup();
     world->show_expressions();
     //return ;
 
