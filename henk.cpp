@@ -98,6 +98,7 @@ void DefNode::unlink_representative() const {
     if (is_proxy()) {
         auto num = representative_->representative_of_.erase(this);
         assert(num == 1);
+        representative_ = this;
     }
 }
 

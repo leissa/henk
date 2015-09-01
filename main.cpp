@@ -29,10 +29,12 @@ void test2(World* world) {
     auto u = world->lambda("y", world->get_prim_const("*"));
     u->close(world->get_prim_const("Int"));
     
+    std::cout << "CAREFUL NOW" << std::endl;
     auto lambda = world->lambda("x", world->app(
         u, world->get_prim_const("Bool")
         )
     );
+    std::cout << "LEAK BEFORE" << std::endl;
     lambda->close(world->literal(42));
     
     world->add_external(lambda);

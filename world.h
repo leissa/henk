@@ -23,7 +23,6 @@ public:
     Pi pi(std::string var_name, Def var_type);
     Def app(Def appl, Def arg);
     PrimLit literal(int value);
-    
 protected:
     Bottom bottom(std::string info);
 
@@ -59,6 +58,7 @@ protected:
     std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> externals_;
+    mutable DefSet duplicates_;
     
     friend void AbsNode::close(Def) const; // uses introduce(DefNode*)
     friend Def PiNode::typecheck() const; // uses wavy_arrow_rules

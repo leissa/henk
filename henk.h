@@ -76,6 +76,7 @@ public:
 
 private:
     const T* node_;
+    friend class World;
 };
 
 /**

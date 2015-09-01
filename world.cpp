@@ -53,6 +53,10 @@ World::~World() {
         std::cout << "expr at " << e << std::endl;
         delete e;
     }
+    for (auto& e : duplicates_) {
+        std::cout << "dup expr at " << e << std::endl;
+        delete e;
+    }
 }
 
 
@@ -107,13 +111,12 @@ void World::cleanup() {
         }
     };
     
-    for (auto def : expressions_) {
+    for (auto def : expressions_)
         def->live_ = false;
-    }
-    
-    for (auto kv : prim_consts) {
+    for (auto def : duplicates_)
+        def->live_ = false;
+    for (auto kv : prim_consts)
         kv.second->live_ = true;
-    }
     
     for (auto edef : externals_) {
         edef->live_ = true;
@@ -136,29 +139,65 @@ void World::cleanup() {
         }
     }
     
+    for (auto def : expressions_) {
+        if(!def->live_) {
+            def->unregister_uses();
+            def->unlink_representative();
+        }
+    }
+    for (auto def : duplicates_) {
+        if(!def->live_) {
+            def->unregister_uses();
+            std::cout << def << " has repr " << def->representative_ << std::endl;
+            def->unlink_representative();
+            std::cout << "after unlink it has " << def->representative_ << std::endl;
+        }
+    }
+    
     std::cout << "in cleanup, garbage is:" << std::endl;
     //std::queue<decltype(expressions_)::iterator> garbage; // why doesn't it work? :(
-    std::list<thorin::HashSet<const DefNode*, ExprHash, ExprEqual>::iterator> garbage;
+    std::list<thorin::HashSet<const DefNode*, ExprHash, ExprEqual>::iterator> exprs_garbage;
     for (auto i = expressions_.begin(); i != expressions_.end(); ++i) {
         if(!((*i)->live_)) {
             Def(*i).dump();
             std::cout << " at " << *i << std::endl;
-            garbage.push_back(i);
+            exprs_garbage.push_back(i);
             delete *i;
         }
     }
     
-    for (auto i : garbage)
+    for (auto i : exprs_garbage)
         expressions_.erase(i);
+    
+    std::cout << "and duplicates_ garbage:" << std::endl;
+    std::list<DefSet::iterator> dups_garbage;
+    for (auto i = duplicates_.begin(); i != duplicates_.end(); ++i) {
+        std::cout << " at " << *i << " : " << std::endl;
+        if(!((*i)->live_)) {
+            assert((*i)->representative_ == *i);
+            Def(*i).dump();
+            std::cout << " at " << *i << std::endl;
+            dups_garbage.push_back(i);
+            delete *i;
+        }
+    }
+    
+    for (auto i : dups_garbage)
+        duplicates_.erase(i);
+    
+    std::cout << "done cleaning" << std::endl;
 }
 
 const DefNode* World::cse_base(const DefNode* def) {
-    
+    std::cout << "cse: def is ";
+    Def(def).dump();
+    std::cout << " at " << def << std::endl;
     def->update_non_reduced_repr();
     
     if (!def->is_closed()) {
-   //     std::cout << "in cse: putting unclosed def: ";
-   //     dump(def);
+        std::cout << "in cse: putting unclosed def: ";
+        Def(def).dump();
+        std::cout << " at " << def << std::endl;
         return def;
     }
     
@@ -167,9 +206,13 @@ const DefNode* World::cse_base(const DefNode* def) {
     
     Def proxdef(def);
     proxdef->reduce();
+    std::cout << "after reduction node_= " << proxdef.node_ << std::endl;
     auto rdef = *proxdef;
-    if(def != rdef)
+    std::cout << "and repr at " << rdef << std::endl;
+    if(def != rdef) {
+        rdef->inftype_ = type;
         delete def;
+    }
     
     def = rdef;
     
@@ -192,7 +235,8 @@ const DefNode* World::cse_base(const DefNode* def) {
       //  std::cout << "cse: brand new def: ";
       //  Def(def).dump();
       //  std::cout << " at " << def << std::endl;
-        expressions_.insert(def);
+        auto p = expressions_.insert(def);
+        assert(p.second);
     }
     
     def->inftype_ = type; // unnecessary?
@@ -203,18 +247,37 @@ void World::introduce(const DefNode* def)  {
     
     def->update_non_reduced_repr();
     
+    std::cout << "introduce ";
+    Def(def).dump();
+    std::cout << " at " << def << std::endl;
+    
     auto type = def->typecheck();
     def->inftype_ = type;
     
     auto j = expressions_.find(def);
-    if (j != expressions_.end())
-        def->set_representative(*j);
+    if (j != expressions_.end()) {
         
-    expressions_.insert(def);
+        std::cout << "introduce ";
+        Def(def).dump();
+        std::cout << " found duplicate and setting repr to: ";
+        std::cout << *j << std::endl;
+        def->set_representative(*j);
+        duplicates_.insert(def);
+    } else {
+        std::cout << "introduce: put to expressions_" << std::endl;
+        auto p = expressions_.insert(def);
+        assert(p.second);
+    }
 }
 
 void World::show_expressions(std::ostream& stream) const {
+    stream << "expressions_:" << std::endl;
     for (auto e : expressions_) {
+        Def(e).dump(stream);
+        stream << " at " << e << std::endl;
+    }
+    stream << "duplicates_:" << std::endl;
+    for (auto e : duplicates_) {
         Def(e).dump(stream);
         stream << " at " << e << std::endl;
     }
