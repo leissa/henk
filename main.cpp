@@ -106,7 +106,7 @@ void test4(World* world) {
 
 int main(int argc, char* argv[]) {
     auto world = new World();
-    world->show_prims(std::cout);
+    world->dump_prims(std::cout);
     std::cout << std::endl;
     if (argc == 2) {
         std::string arg = argv[1];
@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) {
     } else
         throw std::runtime_error("give number of test case from 1 to 4");
     std::cout << std::endl << "world has expressions: " << std::endl;
-    world->show_expressions();
+    world->dump();
     std::cout << std::endl;
     delete world;
     

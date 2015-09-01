@@ -33,9 +33,9 @@ public:
     void cleanup();
     void add_external(Lambda lambda) const { externals_.insert(lambda); }
     void remove_external(Lambda lambda) const { externals_.erase(lambda); }
-    void show_prims(std::ostream& stream) const;
-    void show_expressions(std::ostream& stream) const;
-    void show_expressions() const { show_expressions(std::cout); }
+    void dump_prims(std::ostream& stream) const;
+    void dump(std::ostream& stream) const;
+    void dump() const { dump(std::cout); }
     Def get_prim_const(std::string s) const { return prim_consts.at(s); }
     size_t gid() const { return gid_; }
 
@@ -43,7 +43,12 @@ protected:
     void introduce(const DefNode* def) ;
     template<class T> const T* cse(const T* def) { return cse_base(def)->template as<T>(); }
     const DefNode* cse_base(const DefNode*) ;
-
+    
+    template<class T>
+    void unlink_and_unregister(T& expr);
+    template<class T>
+    void delete_garbage(T& exprs);
+    
     struct ExprHash { size_t operator () (const DefNode* e) const { return e->hash(); } };
     struct ExprEqual {
         bool operator () (const DefNode* def1, const DefNode* def2) const {

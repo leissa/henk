@@ -98,8 +98,37 @@ Bottom World::bottom(std::string info) {
 
 
 /*
- * Utility methods -- sorted alphabetically
+ * Utility methods
  */
+ 
+ 
+/*
+ * Cleanup
+ */
+
+template<class T>
+void World::unlink_and_unregister(T& exprs) {
+    for (auto def : exprs) {
+        if(!def->live_) {
+            def->unregister_uses();
+            def->unlink_representative();
+        }
+    }
+}
+
+template<class T>
+void World::delete_garbage(T& exprs) {
+    std::list<typename T::iterator> exprs_garbage;
+    for (auto i = exprs.begin(); i != exprs.end(); ++i) {
+        if(!((*i)->live_)) {
+            exprs_garbage.push_back(i);
+            delete *i;
+        }
+    }
+    
+    for (auto i : exprs_garbage)
+        exprs.erase(i);
+}
 
 void World::cleanup() {
     std::queue<const DefNode*> queue;
@@ -117,7 +146,6 @@ void World::cleanup() {
         def->live_ = false;
     for (auto kv : prim_consts)
         kv.second->live_ = true;
-    
     for (auto edef : externals_) {
         edef->live_ = true;
         queue.push(edef);
@@ -139,44 +167,16 @@ void World::cleanup() {
         }
     }
     
-    for (auto def : expressions_) {
-        if(!def->live_) {
-            def->unregister_uses();
-            def->unlink_representative();
-        }
-    }
-    for (auto def : duplicates_) {
-        if(!def->live_) {
-            def->unregister_uses();
-            def->unlink_representative();
-        }
-    }
+    unlink_and_unregister(expressions_);
+    unlink_and_unregister(duplicates_);
     
-    //std::queue<decltype(expressions_)::iterator> garbage; // why doesn't it work? :(
-    std::list<thorin::HashSet<const DefNode*, ExprHash, ExprEqual>::iterator> exprs_garbage;
-    for (auto i = expressions_.begin(); i != expressions_.end(); ++i) {
-        if(!((*i)->live_)) {
-            exprs_garbage.push_back(i);
-            delete *i;
-        }
-    }
-    
-    for (auto i : exprs_garbage)
-        expressions_.erase(i);
-    
-    std::list<DefSet::iterator> dups_garbage;
-    for (auto i = duplicates_.begin(); i != duplicates_.end(); ++i) {
-        if(!((*i)->live_)) {
-            assert((*i)->representative_ == *i);
-            dups_garbage.push_back(i);
-            delete *i;
-        }
-    }
-    
-    for (auto i : dups_garbage)
-        duplicates_.erase(i);
-    
+    delete_garbage(expressions_);
+    delete_garbage(duplicates_);
 }
+
+/*
+ * Putting expressions inside World
+ */
 
 const DefNode* World::cse_base(const DefNode* def) {
     
@@ -199,24 +199,12 @@ const DefNode* World::cse_base(const DefNode* def) {
     def = rdef;
     
     auto i = expressions_.find(def);
-  //  assert(i != expressions_.end() && "in cse reduced def is outside world");
     if (i != expressions_.end() && *i != def) {
-        // here probably we want to do gid_-- or gid_-=2 depending on whether
-        // def is Abs or not (or do nothing if gids don't need to be continuous)
-      //  std::cout << "cse: found duplicate and deleteing: ";
-      //  Def(def).dump();
-     //   std::cout << std::endl;
         delete def;
         def = *i;
     } else if (i != expressions_.end()) {
-      //  std::cout << "cse: reduced def already in expressions_ (physically): ";
-     //   Def(def).dump();
-      //  std::cout << " at " << def;
-    //    std::cout << std::endl;
+        // reduced already resides in expressions_
     } else {
-      //  std::cout << "cse: brand new def: ";
-      //  Def(def).dump();
-      //  std::cout << " at " << def << std::endl;
         auto p = expressions_.insert(def);
         assert(p.second);
     }
@@ -242,7 +230,11 @@ void World::introduce(const DefNode* def)  {
     }
 }
 
-void World::show_expressions(std::ostream& stream) const {
+/*
+ * Dump
+ */
+
+void World::dump(std::ostream& stream) const {
     stream << "expressions_:" << std::endl;
     for (auto e : expressions_) {
         Def(e).dump(stream);
@@ -260,7 +252,7 @@ void World::show_expressions(std::ostream& stream) const {
     }
 }
 
-void World::show_prims(std::ostream& stream) const {
+void World::dump_prims(std::ostream& stream) const {
     stream << "prim consts: \n";
     for (auto& p : prim_consts) {
         stream << p.first << " at (" << p.second << ") : ";
