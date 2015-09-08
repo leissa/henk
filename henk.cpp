@@ -33,7 +33,7 @@ const T* Proxy<T>::deref() const {
         assert(p.second);
         n = representative;
     }
-
+    
     return target->template as<T>();
 }
 
@@ -45,6 +45,9 @@ template class Proxy<PrimLitNode>;
 template class Proxy<AbsNode>;
 template class Proxy<LambdaNode>;
 template class Proxy<PiNode>;
+template class Proxy<TupleNode>;
+template class Proxy<DimNode>;
+template class Proxy<ProjNode>;
 template class Proxy<AppNode>;
 
 /* ----------------------------------------------------
@@ -187,6 +190,12 @@ AbsNode::AbsNode(World& world, size_t gid, Def var)
     set_op(0, var);
 }
 
+TupleNode::TupleNode(World& world, size_t gid, int size, std::string name,
+    std::vector<Def> components)//, int tag, bool is_type);
+    : DefNode(world, gid, size, name)
+    //, ops_(components)
+{ ops_ = components; }
+
 AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
     : DefNode(world, gid, 2, name)
 {
@@ -219,7 +228,7 @@ void DefNode::reduce() const {
 }
 
 void DefNode::reduce(Def oldd, Def newd) const {
-    assert(is_closed() && "unclosed def in reduce");
+    assert(is_closed() && "unclosed def in reduce/subst");
     Def2Def map;
     map[*oldd] = *newd;
     set_representative(*reduce(map));
@@ -250,6 +259,28 @@ Def AbsNode::reduce(Def2Def& map) const {
     auto nbody = __reduce(**body(), map);
     nabs->close(nbody);
     return nabs;
+}
+
+Def TupleNode::reduce(Def2Def& map) const {
+    bool changed = false;
+    std::vector<Def> nops(ops_.size());
+    for (auto& d : ops_) {
+        auto nd = __reduce(**d, map);
+        nops.push_back(nd);
+        changed &= *nd == *d;
+    }
+    if (changed) {
+        return world_.tuple(nops);
+    } else
+        return this;
+}
+
+Def DimNode::reduce(Def2Def& map) const {
+    return this;
+}
+
+Def ProjNode::reduce(Def2Def& map) const {
+    return this;
 }
 
 Def BottomNode::reduce(Def2Def& map) const {
@@ -314,6 +345,24 @@ Def PiNode::typecheck() const {
         msg << " ⤳  " << body_type->name();
         return world_.bottom(msg.str());
     }
+}
+
+Def TupleNode::typecheck() const {
+    auto t = world_.pi("i", world_.dimension(size()));
+    std::vector<Def> comptypes(size());
+    for (auto& d : ops_)
+        comptypes.push_back(d->inftype());
+    auto b = world_.app(world_.tuple(comptypes), t->var());
+    t->close(b);
+    return t;
+}
+
+Def DimNode::typecheck() const {
+    return world_.get_prim_const("D");
+}
+
+Def ProjNode::typecheck() const {
+    return world_.dimension(n_);
 }
 
 Def BottomNode::typecheck() const {
@@ -391,6 +440,27 @@ bool AbsNode::eq (const DefNode& other, Def2Def& map) const {
     return false;
 }
 
+bool TupleNode::eq (const DefNode& other, Def2Def& map) const {
+    if (DefNode::eq(other, map) && size() == other.size()) {
+        bool compeq = true;
+        //auto tother = other.as<TupleNode>();
+        for (size_t i = 0; i < size(); ++i) {
+            compeq &= ops_[i]->eq(**(other.op(i)), map);
+        }
+        return compeq;
+    }
+    return false;
+}
+
+bool DimNode::eq (const DefNode& other, Def2Def& map) const {
+    return DefNode::eq(other, map) && n_ == other.as<DimNode>()->n_;
+}
+
+bool ProjNode::eq (const DefNode& other, Def2Def& map) const {
+    return DefNode::eq(other, map) && n_ == other.as<ProjNode>()->n_
+        && m_ == other.as<ProjNode>()->m_;
+}
+
 bool AppNode::eq (const DefNode& other, Def2Def& map) const {
     assert(!this->isa<AbsNode>() && !other.isa<AbsNode>() && "an abstraction in fun position in AppNode::eq"
         " contradicts strong normalization (reduction) policy");
@@ -407,6 +477,15 @@ size_t BottomNode::vhash() const { return hash_begin(101); }
 size_t VarNode::vhash() const { return hash_combine(type() ? type()->hash() : 9, 5); }
 size_t PrimLitNode::vhash() const { return hash_combine(value(), 7); }
 size_t AbsNode::vhash() const { return hash_combine(var()->hash(), body() ? body()->hash() : 13); }
+size_t TupleNode::vhash() const {
+    size_t r = hash_begin(42);
+    for (auto& d: ops_) {
+        hash_combine(r, d->hash());
+    }
+    return r;
+}
+size_t DimNode::vhash() const { return hash_combine(hash_begin(197), n_); }
+size_t ProjNode::vhash() const { return hash_combine(hash_begin(73), hash_combine(n_, m_)); }
 size_t AppNode::vhash() const { return hash_combine(fun()->gid(), arg()->gid()); }
 
 /*
@@ -416,6 +495,15 @@ size_t AppNode::vhash() const { return hash_combine(fun()->gid(), arg()->gid());
 bool BottomNode::is_closed() const { return true; }
 bool AbsNode::is_closed() const { return body(); }
 bool VarNode::is_closed() const { return type() ? type()->is_closed() : true; }
+bool TupleNode::is_closed() const {
+    bool closed = true;
+    for (auto& d : ops_) {
+        closed &= d->is_closed();
+    }
+    return closed;
+}
+bool DimNode::is_closed() const { return true; }
+bool ProjNode::is_closed() const { return true; }
 bool AppNode::is_closed() const { return fun()->is_closed() && arg()->is_closed(); }
 
 /*
@@ -456,6 +544,30 @@ void AbsNode::__update_non_reduced_repr_body (std::ostringstream& r) const {
     else
         r << __get_non_reduced_repr(**body());
     
+    non_reduced_repr_ = r.str();
+}
+
+void TupleNode::update_non_reduced_repr() const {
+    std::ostringstream r;
+    r << "<";
+    if(size() > 0)
+        r << __get_non_reduced_repr(**(ops_[0]));
+    for (size_t i = 1; i < ops_.size(); ++i) {
+        r << ", " << __get_non_reduced_repr(**(ops_[i]));
+    }
+    r << ">";
+    non_reduced_repr_ = r.str();
+}
+
+void DimNode::update_non_reduced_repr() const {
+    std::ostringstream r;
+    r << n_ << "ᵈ";
+    non_reduced_repr_ = r.str();
+}
+
+void ProjNode::update_non_reduced_repr() const {
+    std::ostringstream r;
+    r << "proj{" << m_ << "_" << n_ << "}";
     non_reduced_repr_ = r.str();
 }
 
@@ -517,6 +629,25 @@ void AbsNode::dump_body (std::ostream& stream) const {
     var()->type().dump(stream);
     stream << ". ";
     body().dump(stream);
+}
+
+void TupleNode::dump (std::ostream& stream) const {
+    stream << "<";
+    if(size() > 0)
+        ops_[0].dump(stream);
+    for (size_t i = 1; i < ops_.size(); ++i) {
+        stream << ", ";
+        ops_[i].dump(stream);
+    }
+    stream << ">";
+}
+
+void DimNode::dump(std::ostream& stream) const {
+    stream << n_ << "ᵈ";
+}
+
+void ProjNode::dump(std::ostream& stream) const {
+    stream << "proj{" << m_ << "_" << n_ << "}";
 }
 
 void BottomNode::dump (std::ostream& stream) const {

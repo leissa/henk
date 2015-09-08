@@ -16,6 +16,7 @@ World::World()
     auto botbox2 = new BottomNode(*this, gid_++, "⬜⬜ doesn't have a type");
     auto box2 = new VarNode(*this, gid_++, botbox2, nullptr, "⬜⬜");
     auto star2 = new VarNode(*this, gid_++, box2, nullptr, "**");
+    auto dim = new VarNode(*this, gid_++, box, nullptr, "D");
     
     botbox->update_non_reduced_repr();
     box->update_non_reduced_repr();
@@ -25,16 +26,19 @@ World::World()
     botbox2->update_non_reduced_repr();
     box2->update_non_reduced_repr();
     star2->update_non_reduced_repr();
+    dim->update_non_reduced_repr();
     
     expressions_.insert(botbox); expressions_.insert(box);
     expressions_.insert(star);   expressions_.insert(pint);
     expressions_.insert(pbool);  expressions_.insert(botbox2);
     expressions_.insert(box2);   expressions_.insert(star2);
+    expressions_.insert(dim);
     
     prim_consts["*"] = star;     prim_consts["**"] = star2;
     prim_consts["⬜"] = box;      prim_consts["⬜⬜"] = box2;
     prim_consts["Int"] = pint;   prim_consts["Bool"] = pbool;
     prim_consts["⊥ ⬜"] = botbox; prim_consts["⊥ ⬜⬜"] = botbox2;
+    prim_consts["D"] = dim;
     
     wavy_arrow_rules[std::make_pair(star, star)]   = star;
     wavy_arrow_rules[std::make_pair(star, star2)]  = star2;
@@ -43,6 +47,11 @@ World::World()
     wavy_arrow_rules[std::make_pair(box, star)]    = star2;
     wavy_arrow_rules[std::make_pair(box, star2)]   = star2;
     wavy_arrow_rules[std::make_pair(box, box)]     = box;
+    
+    /* primitive operators */
+    
+    
+    
     
     std::cout << "constructed world at " << this << std::endl;
 }
@@ -86,6 +95,10 @@ PrimLit World::literal(int value) {
     return cse(new PrimLitNode(*this, gid_++, get_prim_const("Int"), value, "someint"));
 }
 
+Tuple World::tuple(std::vector<Def> components) {
+    return cse(new TupleNode(*this, gid_++, components.size(), "tuple", components));
+}
+
 Pi World::fun_type(Def from, Def to) {
     auto npi = pi("_", from);
     npi->close(to); // upon closing, cse should be fired automatically
@@ -94,6 +107,14 @@ Pi World::fun_type(Def from, Def to) {
 
 Bottom World::bottom(std::string info) {
     return cse(new BottomNode(*this, gid_++, info));
+}
+
+Dim World::dimension(int n) {
+    return cse(new DimNode(*this, gid_++, n));
+}
+
+Proj World::projection(int n, int m) {
+    return cse(new ProjNode(*this, gid_++, n, m));
 }
 
 

@@ -19,6 +19,9 @@ class PrimLitNode; typedef Proxy<PrimLitNode> PrimLit;
 class AbsNode;     typedef Proxy<AbsNode>     Abs;
 class LambdaNode;  typedef Proxy<LambdaNode>  Lambda;
 class PiNode;      typedef Proxy<PiNode>      Pi;
+class TupleNode;   typedef Proxy<TupleNode>   Tuple;
+class DimNode;     typedef Proxy<DimNode>     Dim;
+class ProjNode;    typedef Proxy<ProjNode>    Proj;
 class AppNode;     typedef Proxy<AppNode>     App;
 
 template<class T>
@@ -264,6 +267,80 @@ public:
     friend class World;
 };
 
+class TupleNode : public DefNode {
+protected:
+    TupleNode(World& world, size_t gid, int size, std::string name,
+        std::vector<Def> components);//, int tag, bool is_type);
+    
+    virtual Def typecheck() const;
+    virtual Def reduce(Def2Def& map) const;
+    virtual void update_non_reduced_repr () const;
+    
+public:
+    virtual void dump (std::ostream& stream) const;
+    virtual bool is_closed() const override;
+    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    
+protected:
+    size_t vhash() const;
+    
+    //mutable std::vector<Def> component_types_;
+    
+    friend class World;
+};
+
+// dimension -- used for typechecking tuples
+class DimNode : public DefNode {
+protected:
+    DimNode(World& world, size_t gid, int n)
+        : DefNode(world, gid, 0, "dimension")
+        , n_(n)
+    {}
+    
+    virtual void update_non_reduced_repr () const;
+    virtual Def typecheck() const;
+    virtual Def reduce(Def2Def& map) const;
+    
+public:
+    virtual void dump (std::ostream& stream) const;
+    virtual bool is_closed() const override;
+    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+
+protected:
+    size_t vhash() const;
+    
+    int n_;
+    
+    friend class World;
+};
+
+// projection -- used for extracting things from tuples
+class ProjNode : public DefNode {
+protected:
+    ProjNode(World& world, size_t gid, int n, int m)
+        : DefNode(world, gid, 0, "projection")
+        , n_(n)
+        , m_(m)
+    {}
+    
+    virtual void update_non_reduced_repr () const;
+    virtual Def typecheck() const;
+    virtual Def reduce(Def2Def& map) const;
+    
+public:
+    virtual void dump (std::ostream& stream) const;
+    virtual bool is_closed() const override;
+    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+
+protected:
+    size_t vhash() const;
+    
+    int n_;
+    int m_;
+    
+    friend class World;
+};
+
 class BottomNode : public DefNode {
 protected:
     BottomNode(World& world, size_t gid, std::string info)
@@ -299,7 +376,6 @@ protected:
     }
     
     virtual Def typecheck() const;
-    
     virtual Def reduce(Def2Def& map) const;
     
 public:

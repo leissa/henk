@@ -23,6 +23,9 @@ public:
     Pi pi(std::string var_name, Def var_type);
     Def app(Def appl, Def arg);
     PrimLit literal(int value);
+    Tuple tuple(std::vector<Def> components);
+    Dim dimension(int n);
+    Proj projection(int n, int m);
 protected:
     Bottom bottom(std::string info);
 
