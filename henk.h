@@ -278,14 +278,13 @@ protected:
     virtual void update_non_reduced_repr () const;
     
 public:
+    std::vector<Def> component_types() const;
     virtual void dump (std::ostream& stream) const;
     virtual bool is_closed() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;
     
 protected:
     size_t vhash() const;
-    
-    //mutable std::vector<Def> component_types_;
     
     friend class World;
 };
@@ -303,6 +302,7 @@ protected:
     virtual Def reduce(Def2Def& map) const;
     
 public:
+    int n () const { return n_; }
     virtual void dump (std::ostream& stream) const;
     virtual bool is_closed() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;
@@ -329,6 +329,8 @@ protected:
     virtual Def reduce(Def2Def& map) const;
     
 public:
+    int n () const { return n_; }
+    int m () const { return m_; }
     virtual void dump (std::ostream& stream) const;
     virtual bool is_closed() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;

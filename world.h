@@ -26,8 +26,10 @@ public:
     // one tuple <a> will be a, so that's why tuple returns Def and not Tuple
     /*Tuple*/Def tuple(std::vector<Def> components);
     Dim dimension(int n);
-    Proj projection(int n, int m);
+    Def extract(Tuple tup, size_t i);
+    
 protected:
+    Proj projection(int n, int m);
     Bottom bottom(std::string info);
 
 public:

@@ -164,6 +164,13 @@ void AbsNode::close(Def body) const {
     world_.introduce(this);
 }
 
+std::vector<Def> TupleNode::component_types() const {
+    std::vector<Def> comptypes;
+    for (auto& d : ops_)
+        comptypes.push_back(d->inftype());
+    return comptypes;
+}
+
 /*
  * constructors
  */
@@ -357,16 +364,16 @@ Def TupleNode::typecheck() const {
         if(ops_[i]->isa<BottomNode>()) {
             std::ostringstream msg;
             msg << "tuple ";
-            dump(msg); msg << " has bottom type as " << i+1 << " component";
+            dump(msg); msg << " has bottom type as " << i << " component";
             return world_.bottom(msg.str());
         }
     }
     
     auto t = world_.pi("i", world_.dimension(size()));
-    std::vector<Def> comptypes;//(size());
-    for (auto& d : ops_)
-        comptypes.push_back(d->inftype());
-    auto b = world_.app(world_.tuple(comptypes), t->var());
+  //  std::vector<Def> comptypes;//(size());
+  //  for (auto& d : ops_)
+  //      comptypes.push_back(d->inftype());
+    auto b = world_.app(world_.tuple(/*comptypes*/component_types()), t->var());
     t->close(b);
     return t;
 }
@@ -391,7 +398,39 @@ Def AppNode::typecheck() const {
     auto funt = fun()->inftype();
     auto argt = arg()->inftype();
     if(auto pifunt = funt.isa<Pi>()) {
-        if(pifunt->var()->inftype() == argt) {
+        
+        if(auto tup = fun().isa<Tuple>()) {
+            if(auto argv = arg().isa<Var>()) {
+                auto dim = world_.dimension(tup->size());
+                if(dim == argv->inftype()) {
+                    return world_.app(world_.tuple(tup->component_types()), argv);
+                } else {
+                    std::ostringstream msg;
+                    msg << "in application: (";
+                    fun().dump(msg); msg << ") ("; arg().dump(msg);
+                    msg << ") -- arg is not Proj";
+                    return world_.bottom(msg.str());
+                }
+                
+            } else if(auto argp = arg().isa<Proj>()) {
+                size_t m = argp->m();
+                if(m < tup->size()) {
+                    return tup->op(argp->m())->inftype();
+                } else {
+                    std::ostringstream msg;
+                    msg << "in application: (";
+                    fun().dump(msg); msg << ") ("; arg().dump(msg);
+                    msg << ") -- projection outside bounds";
+                    return world_.bottom(msg.str());
+                }
+            } else {
+                std::ostringstream msg;
+                msg << "in application: (";
+                fun().dump(msg); msg << ") ("; arg().dump(msg);
+                msg << ") -- argument is neither Var nor Proj";
+                return world_.bottom(msg.str());
+            }
+        } else if(pifunt->var()->inftype() == argt) {
             return __reduce_but_dont_replace(**pifunt->body(),
                 pifunt->var(), arg()
             );
@@ -404,7 +443,7 @@ Def AppNode::typecheck() const {
             pifunt->var()->inftype().dump(msg);
             msg << ")";
             return world_.bottom(msg.str());
-        }
+        } 
     } else {
         std::ostringstream msg;
         msg << "in application: (";

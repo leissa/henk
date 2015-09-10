@@ -1,6 +1,7 @@
 #include "world.h"
 
 #include <list>
+#include <sstream>
 #include "thorin/util/queue.h"
 
 namespace henk {
@@ -125,8 +126,12 @@ Pi World::fun_type(Def from, Def to) {
     return npi; // so there's no need to call cse again
 }
 
-Bottom World::bottom(std::string info) {
-    return cse(new BottomNode(*this, gid_++, info));
+Def World::extract(Tuple tup, size_t i) {
+  //  std::ostringstream msg;
+  //  msg << "trying to extract " << i << "th element out of " << tup->size() << "-tuple";
+  //  auto s = msg.str();
+  //  assert(i < tup->size() && msg.str());
+    return app(tup, projection(tup->size(), i));
 }
 
 Dim World::dimension(int n) {
@@ -135,6 +140,10 @@ Dim World::dimension(int n) {
 
 Proj World::projection(int n, int m) {
     return cse(new ProjNode(*this, gid_++, n, m));
+}
+
+Bottom World::bottom(std::string info) {
+    return cse(new BottomNode(*this, gid_++, info));
 }
 
 
