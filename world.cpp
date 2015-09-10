@@ -126,12 +126,15 @@ Pi World::fun_type(Def from, Def to) {
     return npi; // so there's no need to call cse again
 }
 
-Def World::extract(Tuple tup, size_t i) {
-  //  std::ostringstream msg;
-  //  msg << "trying to extract " << i << "th element out of " << tup->size() << "-tuple";
-  //  auto s = msg.str();
-  //  assert(i < tup->size() && msg.str());
-    return app(tup, projection(tup->size(), i));
+Def World::extract(Def tup, size_t i) {
+    if(auto t = tup.isa<Tuple>())
+        return app(tup, projection(tup->size(), i));
+    else if(i > 0) {
+        std::ostringstream msg;
+        msg << "trying to extract " << i << "th element out of non-tuple value";
+        return bottom(msg.str());
+    } else
+        return tup;
 }
 
 Dim World::dimension(int n) {

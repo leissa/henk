@@ -119,9 +119,9 @@ void test5(World* world) {
     std::cout << ": ";
     p->inftype().dump();
     
-  //  auto p2 = world->extract(p, 1);
+    auto p2 = world->extract(p, 1);
     std::cout << std::endl;
-  //  p2.dump();
+    p2.dump();
 }
 
 int main(int argc, char* argv[]) {

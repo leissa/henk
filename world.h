@@ -26,7 +26,7 @@ public:
     // one tuple <a> will be a, so that's why tuple returns Def and not Tuple
     /*Tuple*/Def tuple(std::vector<Def> components);
     Dim dimension(int n);
-    Def extract(Tuple tup, size_t i);
+    Def extract(Def tup, size_t i); // because <2> = 2, we can extract from non-tuples
     
 protected:
     Proj projection(int n, int m);

@@ -310,7 +310,14 @@ Def VarNode::reduce(Def2Def& map) const {
 Def AppNode::reduce(Def2Def& map) const {
     Def rfun = __reduce(**fun(), map);
     Def rarg = __reduce(**arg(), map);
-    if (auto abs = rfun.isa<Abs>()) {
+    if (auto tup = rfun.isa<Tuple>()) {
+        if(auto proj = rarg.isa<Proj>()) {
+            return tup->op(proj->m());
+        } else if(*rfun != *(fun()))
+            return world_.app(rfun, rarg);
+        else
+            return this;
+    } else if (auto abs = rfun.isa<Abs>()) {
         map[*(abs->var())] = *rarg;
         return __reduce(**abs->body(), map);
     } else {
@@ -402,13 +409,16 @@ Def AppNode::typecheck() const {
         if(auto tup = fun().isa<Tuple>()) {
             if(auto argv = arg().isa<Var>()) {
                 auto dim = world_.dimension(tup->size());
-                if(dim == argv->inftype()) {
-                    return world_.app(world_.tuple(tup->component_types()), argv);
+                Dim argtd;
+                if((/*auto*/ argtd = argv->inftype().isa<Dim>()) && dim == argtd) {
+                   // if(dim == argv->inftype()) {
+                        return world_.app(world_.tuple(tup->component_types()), argv);
+                  //  } 
                 } else {
                     std::ostringstream msg;
                     msg << "in application: (";
                     fun().dump(msg); msg << ") ("; arg().dump(msg);
-                    msg << ") -- arg is not Proj";
+                    msg << ") -- arg is not Proj of " << tup->size() << "-tuple";
                     return world_.bottom(msg.str());
                 }
                 
