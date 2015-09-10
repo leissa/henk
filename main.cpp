@@ -108,6 +108,19 @@ void test4(World* world) {
     assert(*id1 == *id2 && "id functions have different addresses");
 }
 
+void test5(World* world) {
+    auto singl = world->tuple(std::vector<Def> {world->literal(42)});
+    singl.dump();
+    std::cout << ": ";
+    singl->inftype().dump();
+    auto p = world->tuple(std::vector<Def> {world->literal(23), singl});
+    std::cout << std::endl;
+    p.dump();
+    std::cout << ": ";
+    p->inftype().dump();
+    
+}
+
 int main(int argc, char* argv[]) {
     auto world = new World();
     world->dump_prims(std::cout);
@@ -119,11 +132,12 @@ int main(int argc, char* argv[]) {
             case 2: test2(world); break;
             case 3: test3(world); break;
             case 4: test4(world); break;
+            case 5: test5(world); break;
             default: throw std::runtime_error("wrong number of test case");
         }
     } else
-        throw std::runtime_error("give number of test case from 1 to 4");
-    std::cout << std::endl << "world has expressions: " << std::endl;
+        throw std::runtime_error("give number of test case from 1 to 5");
+    std::cout << "\n\nworld has expressions: " << std::endl;
     world->dump();
     std::cout << std::endl;
     delete world;

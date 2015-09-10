@@ -262,17 +262,21 @@ Def AbsNode::reduce(Def2Def& map) const {
 }
 
 Def TupleNode::reduce(Def2Def& map) const {
-    bool changed = false;
-    std::vector<Def> nops(ops_.size());
-    for (auto& d : ops_) {
-        auto nd = __reduce(**d, map);
-        nops.push_back(nd);
-        changed &= *nd == *d;
-    }
-    if (changed) {
-        return world_.tuple(nops);
-    } else
-        return this;
+  //  if(ops_.size() == 1) {
+   //     return __reduce(**(ops_[0]), map);
+ //   } else {
+        bool changed = false;
+        std::vector<Def> nops;//(ops_.size());
+        for (auto& d : ops_) {
+            auto nd = __reduce(**d, map);
+            nops.push_back(nd);
+            changed &= *nd == *d;
+        }
+        if (changed) {
+            return world_.tuple(nops);
+        } else
+            return this;
+   // }
 }
 
 Def DimNode::reduce(Def2Def& map) const {
@@ -348,8 +352,18 @@ Def PiNode::typecheck() const {
 }
 
 Def TupleNode::typecheck() const {
+    
+    for(size_t i = 0; i < ops_.size(); ++i) {
+        if(ops_[i]->isa<BottomNode>()) {
+            std::ostringstream msg;
+            msg << "tuple ";
+            dump(msg); msg << " has bottom type as " << i+1 << " component";
+            return world_.bottom(msg.str());
+        }
+    }
+    
     auto t = world_.pi("i", world_.dimension(size()));
-    std::vector<Def> comptypes(size());
+    std::vector<Def> comptypes;//(size());
     for (auto& d : ops_)
         comptypes.push_back(d->inftype());
     auto b = world_.app(world_.tuple(comptypes), t->var());
@@ -462,8 +476,16 @@ bool ProjNode::eq (const DefNode& other, Def2Def& map) const {
 }
 
 bool AppNode::eq (const DefNode& other, Def2Def& map) const {
-    assert(!this->isa<AbsNode>() && !other.isa<AbsNode>() && "an abstraction in fun position in AppNode::eq"
+    bool sametypes = DefNode::eq(other, map);
+    if(!sametypes)
+        return false;
+    
+    assert((!fun()->isa<AbsNode>() || fun()->isa<TupleNode>()) 
+        && (!other.as<AppNode>()->fun()->isa<AbsNode>() || other.as<AppNode>()->fun()->isa<TupleNode>()) 
+        && "an abstraction in fun position in AppNode::eq"
         " contradicts strong normalization (reduction) policy");
+    // we have to give up on the assertion due to introduction of tuples
+    // now `lam i:2^d. <a, b> i` is irreducible
     return DefNode::eq(other, map)
         && fun()->eq(**(other.as<AppNode>()->fun()), map)
         && arg()->eq(**(other.as<AppNode>()->arg()), map);
@@ -588,6 +610,8 @@ void AppNode::update_non_reduced_repr() const {
 /*
  * dump
  */
+
+void DefNode::vdump () const {dump(std::cout); std::cout << std::endl; }
 
 void DefNode::dump () const { dump(std::cout); std::cout << std::endl; }
 

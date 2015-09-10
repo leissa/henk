@@ -168,6 +168,7 @@ protected:
     
 public:
     std::string non_reduced_repr () const { return non_reduced_repr_; }
+    void vdump () const;
     virtual void dump (std::ostream& stream) const = 0;
     void dump () const;// { dump(std::cout); }
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }

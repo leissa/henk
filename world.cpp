@@ -44,13 +44,29 @@ World::World()
     wavy_arrow_rules[std::make_pair(star, star2)]  = star2;
     wavy_arrow_rules[std::make_pair(star2, star)]  = star2;
     wavy_arrow_rules[std::make_pair(star2, star2)] = star2;
+    
+    // polymorphism
     wavy_arrow_rules[std::make_pair(box, star)]    = star2;
     wavy_arrow_rules[std::make_pair(box, star2)]   = star2;
+    
+    // type constructors
     wavy_arrow_rules[std::make_pair(box, box)]     = box;
+    
+    // dependent types
     wavy_arrow_rules[std::make_pair(star, box)]    = box;
     wavy_arrow_rules[std::make_pair(star2, box)]   = box2;
     wavy_arrow_rules[std::make_pair(star, box2)]   = box2;
     wavy_arrow_rules[std::make_pair(star2, box2)]  = box2;
+    
+    // tuples
+    wavy_arrow_rules[std::make_pair(dim, dim)]     = star;
+    wavy_arrow_rules[std::make_pair(dim, star)]    = star;
+    wavy_arrow_rules[std::make_pair(dim, box)]     = box;
+    wavy_arrow_rules[std::make_pair(dim, star2)]   = star2;
+    wavy_arrow_rules[std::make_pair(dim, box2)]    = box2;
+    wavy_arrow_rules[std::make_pair(star, dim)]    = star; // or dim?
+    wavy_arrow_rules[std::make_pair(star2, dim)]   = star2; // or dim?
+    wavy_arrow_rules[std::make_pair(box, dim)]     = box; // or dim?
     
     /* primitive operators */
     
@@ -99,8 +115,8 @@ PrimLit World::literal(int value) {
     return cse(new PrimLitNode(*this, gid_++, get_prim_const("Int"), value, "someint"));
 }
 
-Tuple World::tuple(std::vector<Def> components) {
-    return cse(new TupleNode(*this, gid_++, components.size(), "tuple", components));
+/*Tuple*/Def World::tuple(std::vector<Def> components) {
+    return cse_base(new TupleNode(*this, gid_++, components.size(), "tuple", components));
 }
 
 Pi World::fun_type(Def from, Def to) {
@@ -210,6 +226,9 @@ const DefNode* World::cse_base(const DefNode* def) {
     if (!def->is_closed())
         return def;
     
+    if(auto dt = def->isa<TupleNode>())
+        def = untuple(dt);
+    
     auto type = def->typecheck();
     def->inftype_ = type;
     
@@ -254,6 +273,20 @@ void World::introduce(const DefNode* def)  {
         assert(p.second);
     }
 }
+
+/*
+ * Optimizations
+ */
+
+const DefNode* World::untuple(const TupleNode* tup) {
+    const DefNode* r = tup;
+    if (tup->size() == 1) {
+        r = *(tup->op(0));
+        delete tup;
+    }
+    return r;
+}
+
 
 /*
  * Dump

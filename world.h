@@ -23,7 +23,8 @@ public:
     Pi pi(std::string var_name, Def var_type);
     Def app(Def appl, Def arg);
     PrimLit literal(int value);
-    Tuple tuple(std::vector<Def> components);
+    // one tuple <a> will be a, so that's why tuple returns Def and not Tuple
+    /*Tuple*/Def tuple(std::vector<Def> components);
     Dim dimension(int n);
     Proj projection(int n, int m);
 protected:
@@ -43,6 +44,7 @@ public:
     size_t gid() const { return gid_; }
 
 protected:
+    const DefNode* untuple(const TupleNode* tup);
     void introduce(const DefNode* def) ;
     template<class T> const T* cse(const T* def) { return cse_base(def)->template as<T>(); }
     const DefNode* cse_base(const DefNode*) ;
@@ -71,6 +73,7 @@ protected:
     friend void AbsNode::close(Def) const; // uses introduce(DefNode*)
     friend Def PiNode::typecheck() const; // uses wavy_arrow_rules
     friend Def AppNode::typecheck() const; // uses bottom(std::string)
+    friend Def TupleNode::typecheck() const; // uses bottom(std::string)
 };
 
 }
