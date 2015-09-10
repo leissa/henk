@@ -47,6 +47,10 @@ World::World()
     wavy_arrow_rules[std::make_pair(box, star)]    = star2;
     wavy_arrow_rules[std::make_pair(box, star2)]   = star2;
     wavy_arrow_rules[std::make_pair(box, box)]     = box;
+    wavy_arrow_rules[std::make_pair(star, box)]    = box;
+    wavy_arrow_rules[std::make_pair(star2, box)]   = box2;
+    wavy_arrow_rules[std::make_pair(star, box2)]   = box2;
+    wavy_arrow_rules[std::make_pair(star2, box2)]  = box2;
     
     /* primitive operators */
     

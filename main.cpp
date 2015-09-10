@@ -51,13 +51,17 @@ void test2(World* world) {
 void test3(World* world) {
      // f (forall b. b -> b)
     // where f: forall a. a -> Int
-    // should fail
-    auto f = world->pi("α", world->get_prim_const("*"));
+    // should fail in predicative system
+    auto f = //world->pi("α", world->get_prim_const("*"));
+        world->lambda("α", world->get_prim_const("*"));
+    auto inf = world->lambda("x", f->var());
+    inf->close(world->literal(42));
+    f->close(inf);
 
-    f->close(world->fun_type(
+    /*f->close(world->fun_type(
             f->var(), world->get_prim_const("Int")
         )
-    );
+    );*/
     auto forallb = world->pi("β", world->get_prim_const("*"));
     forallb->close(world->fun_type(
         forallb->var(), forallb->var()
