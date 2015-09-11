@@ -124,10 +124,26 @@ void test5(World* world) {
     p2.dump();
 }
 
+void test6(World* world) {
+    auto i42 = world->literal(42);
+    auto i8 = world->literal(8);
+    auto plus = world->lambda("p", 
+        world->tuple(std::vector<Def> {world->get_prim_const("Int"), world->get_prim_const("Int")}));
+    auto primpl = world->get_primop("+");
+    auto dummypl = world->dummy(plus, world->get_prim_const("Int"));
+    dummypl->put_body(primpl);
+    plus->close(dummypl);
+    plus.dump();
+    auto r = world->app(plus, world->tuple(std::vector<Def> {i42, i8}));
+    std::cout << std::endl;
+    r.dump();
+}
+
 int main(int argc, char* argv[]) {
     auto world = new World();
     world->dump_prims(std::cout);
     std::cout << std::endl;
+    
     if (argc == 2) {
         std::string arg = argv[1];
         switch(std::stoi(arg)) {
@@ -136,12 +152,13 @@ int main(int argc, char* argv[]) {
             case 3: test3(world); break;
             case 4: test4(world); break;
             case 5: test5(world); break;
+            case 6: test6(world); break;
             default: throw std::runtime_error("wrong number of test case");
         }
     } else
-        throw std::runtime_error("give number of test case from 1 to 5");
-    std::cout << "\n\nworld has expressions: " << std::endl;
-    world->dump();
+        throw std::runtime_error("give number of test case from 1 to 6");
+  //  std::cout << "\n\nworld has expressions: " << std::endl;
+  //  world->dump();
     std::cout << std::endl;
     delete world;
     

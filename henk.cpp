@@ -48,6 +48,7 @@ template class Proxy<PiNode>;
 template class Proxy<TupleNode>;
 template class Proxy<DimNode>;
 template class Proxy<ProjNode>;
+template class Proxy<DummyNode>;
 template class Proxy<AppNode>;
 
 /* ----------------------------------------------------
@@ -307,6 +308,10 @@ Def VarNode::reduce(Def2Def& map) const {
     }
 }
 
+Def DummyNode::reduce(Def2Def& map) const {
+    return this; // it's app of lambda that is responsible for reducing its damn dummy body!
+}
+
 Def AppNode::reduce(Def2Def& map) const {
     Def rfun = __reduce(**fun(), map);
     Def rarg = __reduce(**arg(), map);
@@ -318,9 +323,20 @@ Def AppNode::reduce(Def2Def& map) const {
         else
             return this;
     } else if (auto abs = rfun.isa<Abs>()) {
-        map[*(abs->var())] = *rarg;
-        return __reduce(**abs->body(), map);
+        if(auto dummyb = abs->body().isa<Dummy>()) {
+            if(auto argv = rarg.isa<Var>()) {
+                goto cannotdumuchappnodereduce;
+            } else {
+                auto f = dummyb->body_;
+                return f(rarg);
+            }
+        } else {
+            map[*(abs->var())] = *rarg;
+            return __reduce(**abs->body(), map);
+        }
     } else {
+
+cannotdumuchappnodereduce:
         if(*rfun != *(fun()) || *rarg != *(arg()))
             return world_.app(rfun, rarg);
         else
@@ -399,6 +415,10 @@ Def BottomNode::typecheck() const {
 
 Def VarNode::typecheck() const {
     return type();
+}
+
+Def DummyNode::typecheck() const {
+    return arg_type_;
 }
 
 Def AppNode::typecheck() const {
@@ -524,6 +544,10 @@ bool ProjNode::eq (const DefNode& other, Def2Def& map) const {
         && m_ == other.as<ProjNode>()->m_;
 }
 
+bool DummyNode::eq (const DefNode& other, Def2Def& map) const {
+    return this == &other;
+}
+
 bool AppNode::eq (const DefNode& other, Def2Def& map) const {
     bool sametypes = DefNode::eq(other, map);
     if(!sametypes)
@@ -557,6 +581,7 @@ size_t TupleNode::vhash() const {
 }
 size_t DimNode::vhash() const { return hash_combine(hash_begin(197), n_); }
 size_t ProjNode::vhash() const { return hash_combine(hash_begin(73), hash_combine(n_, m_)); }
+size_t DummyNode::vhash() const { return hash_combine(hash_begin(55), hash_combine(arg_type()->hash(), return_type()->hash())); }
 size_t AppNode::vhash() const { return hash_combine(fun()->gid(), arg()->gid()); }
 
 /*
@@ -575,6 +600,7 @@ bool TupleNode::is_closed() const {
 }
 bool DimNode::is_closed() const { return true; }
 bool ProjNode::is_closed() const { return true; }
+bool DummyNode::is_closed() const { return true; } // yes, true!
 bool AppNode::is_closed() const { return fun()->is_closed() && arg()->is_closed(); }
 
 /*
@@ -639,6 +665,13 @@ void DimNode::update_non_reduced_repr() const {
 void ProjNode::update_non_reduced_repr() const {
     std::ostringstream r;
     r << "proj{" << m_ << "_" << n_ << "}";
+    non_reduced_repr_ = r.str();
+}
+
+void DummyNode::update_non_reduced_repr() const {
+    std::ostringstream r;
+    r << "Dummy{(" << __get_non_reduced_repr(**arg_type());
+    r << ") -> (" << __get_non_reduced_repr(**return_type()) << ")}";
     non_reduced_repr_ = r.str();
 }
 
@@ -733,6 +766,14 @@ void VarNode::dump (std::ostream& stream) const {
 
 void PrimLitNode::dump (std::ostream& stream) const {
     stream << value();
+}
+
+void DummyNode::dump (std::ostream& stream) const {
+    stream << "Dummy{(";
+    arg_type().dump(stream);
+    stream << ") -> (";
+    return_type().dump(stream);
+    stream << ")}";
 }
 
 void AppNode::dump (std::ostream& stream) const {

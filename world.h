@@ -1,6 +1,7 @@
 #ifndef HENK_WORLD_H
 #define HENK_WORLD_H
 
+#include <functional>
 #include <iostream>
 #include <map>
 
@@ -27,6 +28,7 @@ public:
     /*Tuple*/Def tuple(std::vector<Def> components);
     Dim dimension(int n);
     Def extract(Def tup, size_t i); // because <2> = 2, we can extract from non-tuples
+    Dummy dummy(Abs abs, Def return_type);
     
 protected:
     Proj projection(int n, int m);
@@ -36,6 +38,7 @@ public:
 /*
  * Utility methods
  */ 
+    std::function<Def(Def)> get_primop(std::string s) const { return prim_ops.at(s); }
     void cleanup();
     void add_external(Lambda lambda) const { externals_.insert(lambda); }
     void remove_external(Lambda lambda) const { externals_.erase(lambda); }
@@ -67,6 +70,7 @@ protected:
     
     mutable size_t gid_; // global id for expressions
     std::map<std::string, const DefNode*> prim_consts;
+    std::map<std::string, std::function<Def(Def)> > prim_ops;
     std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> externals_;

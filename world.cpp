@@ -71,20 +71,32 @@ World::World()
     
     /* primitive operators */
     
-    
+    auto plus = [this, pint] (Def d) -> Def {
+        if(auto t = d.isa<Tuple>()) {
+            PrimLit p0, p1;
+            if((p0 = t->op(0).isa<PrimLit>()) && (p1 = t->op(1).isa<PrimLit>())) {
+                return literal(p0->value() + p1->value());
+            } else {
+                return bottom("one of arguments types of primitve plus is not int");
+            }
+        } else {
+            return bottom("argument type to primitive plus is not a pair");
+        }
+    };
+    prim_ops["+"] = plus;
     
     
     std::cout << "constructed world at " << this << std::endl;
 }
 
 World::~World() {
-    std::cout << "deleting world at " << this << std::endl;
+    //std::cout << "deleting world at " << this << std::endl;
     for (auto& e : expressions_) {
-        std::cout << "expr at " << e << std::endl;
+      //  std::cout << "expr at " << e << std::endl;
         delete e;
     }
     for (auto& e : duplicates_) {
-        std::cout << "dup expr at " << e << std::endl;
+       // std::cout << "dup expr at " << e << std::endl;
         delete e;
     }
 }
@@ -139,6 +151,10 @@ Def World::extract(Def tup, size_t i) {
 
 Dim World::dimension(int n) {
     return cse(new DimNode(*this, gid_++, n));
+}
+
+Dummy World::dummy(Abs abs, Def return_type) {
+    return cse(new DummyNode(*this, gid_++, abs->var()->inftype(), return_type));
 }
 
 Proj World::projection(int n, int m) {

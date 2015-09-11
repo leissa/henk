@@ -1,6 +1,7 @@
 #ifndef HENK_IR_H
 #define HENK_IR_H
 
+#include <functional>
 #include <vector>
 
 #include "thorin/util/cast.h"
@@ -22,6 +23,7 @@ class PiNode;      typedef Proxy<PiNode>      Pi;
 class TupleNode;   typedef Proxy<TupleNode>   Tuple;
 class DimNode;     typedef Proxy<DimNode>     Dim;
 class ProjNode;    typedef Proxy<ProjNode>    Proj;
+class DummyNode;   typedef Proxy<DummyNode>   Dummy;
 class AppNode;     typedef Proxy<AppNode>     App;
 
 template<class T>
@@ -413,6 +415,38 @@ private:
     int value_;
     
     friend class World;
+};
+
+class DummyNode : public DefNode {
+protected:
+    DummyNode(World& world, size_t gid, Def arg_type, Def return_type)
+        : DefNode(world, gid, 0, "Dummy")
+        , arg_type_(arg_type)
+        , return_type_(return_type)
+    {}
+    
+    size_t vhash() const;
+    
+    virtual Def typecheck() const;
+    virtual void update_non_reduced_repr () const;
+    virtual Def reduce(Def2Def& map) const;
+    
+public:
+    Def arg_type () const { return arg_type_; }
+    Def return_type () const { return return_type_; }
+    bool is_reducable() const { return body_.operator bool(); }
+    void put_body(std::function<Def(Def)> body) const { assert(!body_.operator bool() && "dummy already holds a body"); body_ = body; } 
+    virtual void dump (std::ostream& stream) const;
+    virtual bool is_closed() const override;
+    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+
+protected:
+    Def arg_type_;
+    Def return_type_;
+    mutable std::function<Def(Def)> body_;
+    
+    friend class World;
+    friend class AppNode; // AppNode::reduce() uses body_
 };
 
 class AppNode : public DefNode {
