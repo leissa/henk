@@ -108,7 +108,7 @@ void DefNode::unlink_representative() const {
 void DefNode::set_representative(const DefNode* repr) const {
     unlink_representative();
     representative_ = repr;
-    if(this != repr) {
+    if (this != repr) {
         repr->representative_of_.insert(this);
         repr->non_reduced_repr_ = non_reduced_repr();
     }
@@ -147,7 +147,7 @@ bool DefNode::has_subexpr(Def sub) const {
                 return true;
             }
         }
-        if(auto v = def->isa<VarNode>()) {
+        if (auto v = def->isa<VarNode>()) {
             enqueue(v->type());
         }
         else for (auto op : def->ops_) {
@@ -269,7 +269,7 @@ Def AbsNode::reduce(Def2Def& map) const {
 }
 
 Def TupleNode::reduce(Def2Def& map) const {
-  //  if(ops_.size() == 1) {
+  //  if (ops_.size() == 1) {
    //     return __reduce(**ops_[0], map);
  //   } else {
         bool changed = false;
@@ -311,9 +311,9 @@ Def AppNode::reduce(Def2Def& map) const {
     Def rfun = __reduce(**fun(), map);
     Def rarg = __reduce(**arg(), map);
     if (auto tup = rfun.isa<Tuple>()) {
-        if(auto proj = rarg.isa<Proj>()) {
+        if (auto proj = rarg.isa<Proj>()) {
             return tup->op(proj->m());
-        } else if(*rfun != *fun())
+        } else if (*rfun != *fun())
             return world_.app(rfun, rarg);
         else
             return this;
@@ -321,7 +321,7 @@ Def AppNode::reduce(Def2Def& map) const {
         map[*abs->var()] = *rarg;
         return __reduce(**abs->body(), map);
     } else {
-        if(*rfun != *fun() || *rarg != *arg())
+        if (*rfun != *fun() || *rarg != *arg())
             return world_.app(rfun, rarg);
         else
             return this;
@@ -368,7 +368,7 @@ Def PiNode::typecheck() const {
 Def TupleNode::typecheck() const {
     
     for(size_t i = 0; i < ops_.size(); ++i) {
-        if(ops_[i]->isa<BottomNode>()) {
+        if (ops_[i]->isa<BottomNode>()) {
             std::ostringstream msg;
             msg << "tuple ";
             dump(msg); msg << " has bottom type as " << i << " component";
@@ -404,14 +404,14 @@ Def VarNode::typecheck() const {
 Def AppNode::typecheck() const {
     auto funt = fun()->inftype();
     auto argt = arg()->inftype();
-    if(auto pifunt = funt.isa<Pi>()) {
+    if (auto pifunt = funt.isa<Pi>()) {
         
-        if(auto tup = fun().isa<Tuple>()) {
-            if(auto argv = arg().isa<Var>()) {
+        if (auto tup = fun().isa<Tuple>()) {
+            if (auto argv = arg().isa<Var>()) {
                 auto dim = world_.dimension(tup->size());
                 Dim argtd;
-                if((/*auto*/ argtd = argv->inftype().isa<Dim>()) && dim == argtd) {
-                   // if(dim == argv->inftype()) {
+                if ((/*auto*/ argtd = argv->inftype().isa<Dim>()) && dim == argtd) {
+                   // if (dim == argv->inftype()) {
                         return world_.app(world_.tuple(tup->component_types()), argv);
                   //  } 
                 } else {
@@ -422,9 +422,9 @@ Def AppNode::typecheck() const {
                     return world_.bottom(msg.str());
                 }
                 
-            } else if(auto argp = arg().isa<Proj>()) {
+            } else if (auto argp = arg().isa<Proj>()) {
                 size_t m = argp->m();
-                if(m < tup->size()) {
+                if (m < tup->size()) {
                     return tup->op(argp->m())->inftype();
                 } else {
                     std::ostringstream msg;
@@ -440,7 +440,7 @@ Def AppNode::typecheck() const {
                 msg << ") -- argument is neither Var nor Proj";
                 return world_.bottom(msg.str());
             }
-        } else if(pifunt->var()->inftype() == argt) {
+        } else if (pifunt->var()->inftype() == argt) {
             return __reduce_but_dont_replace(**pifunt->body(),
                 pifunt->var(), arg()
             );
@@ -526,7 +526,7 @@ bool ProjNode::eq (const DefNode& other, Def2Def& map) const {
 
 bool AppNode::eq (const DefNode& other, Def2Def& map) const {
     bool sametypes = DefNode::eq(other, map);
-    if(!sametypes)
+    if (!sametypes)
         return false;
     
     assert((!fun()->isa<AbsNode>() || fun()->isa<TupleNode>()) 
@@ -605,12 +605,12 @@ void PiNode::update_non_reduced_repr() const {
 
 void AbsNode::__update_non_reduced_repr_body (std::ostringstream& r) const {
     r << __get_non_reduced_repr(**var()) << ":";
-    if(var()->type().is_empty())
+    if (var()->type().is_empty())
         r << "'nullptr'";
     else
         r << __get_non_reduced_repr(**var()->type());
     r << ". ";
-    if(body().is_empty())
+    if (body().is_empty())
         r << "'nullptr'";
     else
         r << __get_non_reduced_repr(**body());
@@ -621,7 +621,7 @@ void AbsNode::__update_non_reduced_repr_body (std::ostringstream& r) const {
 void TupleNode::update_non_reduced_repr() const {
     std::ostringstream r;
     r << "<";
-    if(size() > 0)
+    if (size() > 0)
         r << __get_non_reduced_repr(**ops_[0]);
     for (size_t i = 1; i < ops_.size(); ++i) {
         r << ", " << __get_non_reduced_repr(**ops_[i]);
@@ -645,10 +645,11 @@ void ProjNode::update_non_reduced_repr() const {
 void AppNode::update_non_reduced_repr() const {
     std::ostringstream r;
     r << "(";
-    if(fun().is_empty())
+    if (fun().is_empty())
         r << "'nullptr'";
-    else r << __get_non_reduced_repr(**fun()) << ") (";
-    if(arg().is_empty())
+    else 
+        r << __get_non_reduced_repr(**fun()) << ") (";
+    if (arg().is_empty())
         r << "'nullptr'";
     else
         r << __get_non_reduced_repr(**arg()) << ")";
@@ -666,7 +667,7 @@ void DefNode::dump () const { dump(std::cout); std::cout << std::endl; }
 
 template<class T>
 void Proxy<T>::dump (std::ostream& stream) const {
-    if(is_empty())
+    if (is_empty())
         stream << "'nullptr'";
     else
         deref()->dump(stream);
@@ -678,7 +679,7 @@ void LambdaNode::dump (std::ostream& stream) const {
 }
 
 void PiNode::dump (std::ostream& stream) const {
-    if(body().is_empty()) {
+    if (body().is_empty()) {
         stream << "Π";
         dump_body(stream);
     } else if (var()->name() == "_" || !body()->has_subexpr(var())) {
@@ -706,7 +707,7 @@ void AbsNode::dump_body (std::ostream& stream) const {
 
 void TupleNode::dump (std::ostream& stream) const {
     stream << "<";
-    if(size() > 0)
+    if (size() > 0)
         ops_[0].dump(stream);
     for (size_t i = 1; i < ops_.size(); ++i) {
         stream << ", ";

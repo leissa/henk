@@ -127,9 +127,9 @@ Pi World::fun_type(Def from, Def to) {
 }
 
 Def World::extract(Def tup, size_t i) {
-    if(auto t = tup.isa<Tuple>())
+    if (auto t = tup.isa<Tuple>())
         return app(tup, projection(tup->size(), i));
-    else if(i > 0) {
+    else if (i > 0) {
         std::ostringstream msg;
         msg << "trying to extract " << i << "th element out of non-tuple value";
         return bottom(msg.str());
@@ -162,7 +162,7 @@ Bottom World::bottom(std::string info) {
 template<class T>
 void World::unlink_and_unregister(T& exprs) {
     for (auto def : exprs) {
-        if(!def->live_) {
+        if (!def->live_) {
             def->unregister_uses();
             def->unlink_representative();
         }
@@ -173,7 +173,7 @@ template<class T>
 void World::delete_garbage(T& exprs) {
     std::list<typename T::iterator> exprs_garbage;
     for (auto i = exprs.begin(); i != exprs.end(); ++i) {
-        if(!((*i)->live_)) {
+        if (!((*i)->live_)) {
             exprs_garbage.push_back(i);
             delete *i;
         }
@@ -187,7 +187,7 @@ void World::cleanup() {
     std::queue<const DefNode*> queue;
     
     auto enqueue = [&] (const DefNode* def) {
-        if(!def->live_) {
+        if (!def->live_) {
             def->live_ = true;
             queue.push(def);
         }
@@ -206,10 +206,10 @@ void World::cleanup() {
     
     while (!queue.empty()) {
         auto def = pop(queue);
-        if(def->is_proxy()) {
+        if (def->is_proxy()) {
             enqueue(def->representative_);
         } else {
-            if(def->inftype_)
+            if (def->inftype_)
                 enqueue(def->inftype_);
             
             if (auto v = def->isa<VarNode>()) {
@@ -238,7 +238,7 @@ const DefNode* World::cse_base(const DefNode* def) {
     if (!def->is_closed())
         return def;
     
-    if(auto dt = def->isa<TupleNode>())
+    if (auto dt = def->isa<TupleNode>())
         def = untuple(dt);
     
     auto type = def->typecheck();
@@ -247,7 +247,7 @@ const DefNode* World::cse_base(const DefNode* def) {
     Def proxdef(def);
     proxdef->reduce();
     auto rdef = *proxdef;
-    if(def != rdef) {
+    if (def != rdef) {
         rdef->inftype_ = type;
         delete def;
     }
