@@ -166,7 +166,7 @@ void AbsNode::close(Def body) const {
     world_.introduce(this);
 }
 
-Array<Def> TupleNode::component_types() const {
+Array<Def> TupleNode::elem_types() const {
     Array<Def> result(size());
     for (size_t i = 0, e = size(); i != e; ++i)
         result[i] = op(i)->inftype();
@@ -199,10 +199,10 @@ AbsNode::AbsNode(World& world, size_t gid, Def var)
     set_op(0, var);
 }
 
-TupleNode::TupleNode(World& world, size_t gid, int size, std::string name, ArrayRef<Def> components)
+TupleNode::TupleNode(World& world, size_t gid, size_t size, std::string name, ArrayRef<Def> elems)
     : DefNode(world, gid, size, name)
 { 
-    std::copy(components.begin(), components.end(), ops_.begin());
+    std::copy(elems.begin(), elems.end(), ops_.begin());
 }
 
 AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
@@ -373,7 +373,7 @@ Def TupleNode::typecheck() const {
         if (ops_[i]->isa<BottomNode>()) {
             std::ostringstream msg;
             msg << "tuple ";
-            dump(msg); msg << " has bottom type as " << i << " component";
+            dump(msg); msg << " has bottom type as " << i << " elem";
             return world_.bottom(msg.str());
         }
     }
@@ -382,7 +382,7 @@ Def TupleNode::typecheck() const {
   //  std::vector<Def> comptypes;//(size());
   //  for (auto& d : ops_)
   //      comptypes.push_back(d->inftype());
-    auto b = world_.app(world_.tuple(/*comptypes*/component_types()), t->var());
+    auto b = world_.app(world_.tuple(/*comptypes*/elem_types()), t->var());
     t->close(b);
     return t;
 }
@@ -414,7 +414,7 @@ Def AppNode::typecheck() const {
                 Dim argtd;
                 if ((/*auto*/ argtd = argv->inftype().isa<Dim>()) && dim == argtd) {
                    // if (dim == argv->inftype()) {
-                        return world_.app(world_.tuple(tup->component_types()), argv);
+                        return world_.app(world_.tuple(tup->elem_types()), argv);
                   //  } 
                 } else {
                     std::ostringstream msg;

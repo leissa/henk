@@ -120,8 +120,8 @@ PrimLit World::literal(int value) {
     return cse(new PrimLitNode(*this, gid_++, get_prim_const("Int"), value, "someint"));
 }
 
-/*Tuple*/Def World::tuple(ArrayRef<Def> components) {
-    return cse_base(new TupleNode(*this, gid_++, components.size(), "tuple", components));
+Def World::tuple(ArrayRef<Def> elems) {
+    return cse_base(new TupleNode(*this, gid_++, elems.size(), "tuple", elems));
 }
 
 Pi World::fun_type(Def from, Def to) {

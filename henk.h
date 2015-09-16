@@ -270,14 +270,14 @@ public:
 
 class TupleNode : public DefNode {
 protected:
-    TupleNode(World& world, size_t gid, int size, std::string name, thorin::ArrayRef<Def> components);
+    TupleNode(World& world, size_t gid, size_t size, std::string name, thorin::ArrayRef<Def> elems);
     
     virtual Def typecheck() const;
     virtual Def reduce(Def2Def& map) const;
     virtual void update_non_reduced_repr () const;
     
 public:
-    thorin::Array<Def> component_types() const;
+    thorin::Array<Def> elem_types() const;
     virtual void dump (std::ostream& stream) const;
     virtual bool is_closed() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;

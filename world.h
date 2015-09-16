@@ -26,7 +26,7 @@ public:
     PrimLit literal(int value);
     Dim dimension(int n);
     /// 1-tuple "\<a\>" will be "a", so that's why tuple returns @p Def and not @p Tuple.
-    Def tuple(thorin::ArrayRef<Def> components);
+    Def tuple(thorin::ArrayRef<Def> elems);
     Def extract(Def tup, size_t i); // because <2> = 2, we can extract from non-tuples
     
 protected:
