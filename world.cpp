@@ -72,7 +72,8 @@ World::World()
     /* primitive operators */
     
     auto plus = [this, pint] (Def d) -> Def {
-        if(auto t = d.isa<Tuple>()) {
+        Tuple t;
+        if((t = d.isa<Tuple>()) && t->size() == 2) {
             PrimLit p0, p1;
             if((p0 = t->op(0).isa<PrimLit>()) && (p1 = t->op(1).isa<PrimLit>())) {
                 return literal(p0->value() + p1->value());
@@ -83,7 +84,12 @@ World::World()
             return bottom("argument type to primitive plus is not a pair");
         }
     };
-    prim_ops["+"] = plus;
+    auto l = lambda("p", tuple(std::vector<Def> { pint, pint }));
+    auto dummypl = dummy(l, pint, true, true);
+    dummypl->put_body(plus);
+    l->close(dummypl);
+    
+    prim_ops["+"] = l;
     
     
     std::cout << "constructed world at " << this << std::endl;
@@ -121,6 +127,14 @@ Pi World::pi(std::string name, Def var_type) {
 }
 
 Def World::app(Def fun, Def arg) {
+    
+    if(auto l = fun.isa<Lambda>()) {
+        if(auto db = l->body().isa<Dummy>()) {
+            //PrimLit o1, o2;
+           // if(auto o2 = 
+        }
+    }
+    
     return cse_base(new AppNode(*this, gid_++, fun, arg, "app_"));
 }
 
@@ -153,8 +167,9 @@ Dim World::dimension(int n) {
     return cse(new DimNode(*this, gid_++, n));
 }
 
-Dummy World::dummy(Abs abs, Def return_type) {
-    return cse(new DummyNode(*this, gid_++, abs->var()->inftype(), return_type));
+Dummy World::dummy(Abs abs, Def return_type, bool is_commutative, bool is_associative) {
+    return cse(new DummyNode(*this, gid_++, abs->var()->inftype(), 
+        return_type, is_commutative, is_associative));
 }
 
 Proj World::projection(int n, int m) {

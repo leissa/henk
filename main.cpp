@@ -127,12 +127,13 @@ void test5(World* world) {
 void test6(World* world) {
     auto i42 = world->literal(42);
     auto i8 = world->literal(8);
-    auto plus = world->lambda("p", 
+  /*  auto plus = world->lambda("p", 
         world->tuple(std::vector<Def> {world->get_prim_const("Int"), world->get_prim_const("Int")}));
     auto primpl = world->get_primop("+");
     auto dummypl = world->dummy(plus, world->get_prim_const("Int"));
     dummypl->put_body(primpl);
-    plus->close(dummypl);
+    plus->close(dummypl);*/
+    auto plus = world->get_primop("+");
     plus.dump();
     auto r = world->app(plus, world->tuple(std::vector<Def> {i42, i8}));
     std::cout << std::endl;

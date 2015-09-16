@@ -137,7 +137,7 @@ class DefNode : public thorin::MagicCast<DefNode> {
 protected:   
     DefNode(World& world, size_t gid, size_t size, std::string name);
     
-    virtual ~DefNode() { /*unregister_uses();*/ }
+    virtual ~DefNode() {}
 
     void unregister_use(size_t i) const;
     void unregister_uses() const;
@@ -149,7 +149,7 @@ protected:
     virtual void update_non_reduced_repr () const;
     std::string __get_non_reduced_repr (const DefNode& def) const;
     virtual Def typecheck() const = 0;
-    
+    //virtual std::list<Def> flatten() const { return this; }
     void reduce() const;
     void reduce(Def oldd, Def newd) const; // acts as substitution
     virtual Def reduce(Def2Def& map) const = 0;
@@ -169,6 +169,7 @@ protected:
     Def __reduce(const DefNode& def, Def2Def& map) const; 
     
 public:
+    virtual DefSet free_vars () const;
     std::string non_reduced_repr () const { return non_reduced_repr_; }
     void vdump () const;
     virtual void dump (std::ostream& stream) const = 0;
@@ -224,6 +225,7 @@ protected:
     void __update_non_reduced_repr_body (std::ostringstream& r) const;
     
 public:
+    virtual DefSet free_vars () const;
     virtual void dump (std::ostream& stream) const = 0;
     void dump_body (std::ostream& stream) const;
     Var var() const { return op(0).as<Var>(); }
@@ -273,13 +275,14 @@ public:
 class TupleNode : public DefNode {
 protected:
     TupleNode(World& world, size_t gid, int size, std::string name,
-        std::vector<Def> components);//, int tag, bool is_type);
+        std::vector<Def> components);
     
     virtual Def typecheck() const;
     virtual Def reduce(Def2Def& map) const;
     virtual void update_non_reduced_repr () const;
     
 public:
+    virtual DefSet free_vars () const;
     std::vector<Def> component_types() const;
     virtual void dump (std::ostream& stream) const;
     virtual bool is_closed() const override;
@@ -384,6 +387,7 @@ protected:
     virtual Def reduce(Def2Def& map) const;
     
 public:
+    virtual DefSet free_vars () const;
     virtual void dump (std::ostream& stream) const;
     Def type() const { return op(0); }
     Abs abs() const { return op(1).as<Abs>(); }
@@ -397,18 +401,23 @@ protected:
     friend class AbsNode;
 };
 
-class PrimLitNode : public VarNode {
+class PrimLitNode : public DefNode {
 protected:
     PrimLitNode(World& world, size_t gid, Def type, int/*will become Box later on*/ value, std::string name)
-        : VarNode(world, gid, type, nullptr, name)
+        : DefNode(world, gid, 1, name)
         , value_(value)
-    {}
+    { set_op(0, type); }
+
+    virtual Def typecheck() const;
+    virtual Def reduce(Def2Def& map) const;
     
     size_t vhash() const;
     
 public:
     virtual void dump (std::ostream& stream) const;
+    Def type() const { return op(0); }
     int value() const { return value_; };
+    virtual bool is_closed() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;
     
 private:
@@ -419,10 +428,13 @@ private:
 
 class DummyNode : public DefNode {
 protected:
-    DummyNode(World& world, size_t gid, Def arg_type, Def return_type)
+    DummyNode(World& world, size_t gid, Def arg_type, Def return_type, 
+        bool is_commutative, bool is_associative)
         : DefNode(world, gid, 0, "Dummy")
         , arg_type_(arg_type)
         , return_type_(return_type)
+        , is_commutative_(is_commutative)
+        , is_associative_(is_associative)
     {}
     
     size_t vhash() const;
@@ -435,6 +447,8 @@ public:
     Def arg_type () const { return arg_type_; }
     Def return_type () const { return return_type_; }
     bool is_reducable() const { return body_.operator bool(); }
+    bool is_commutative() const { return is_commutative_; }
+    bool is_associative() const { return is_associative_; }
     void put_body(std::function<Def(Def)> body) const { assert(!body_.operator bool() && "dummy already holds a body"); body_ = body; } 
     virtual void dump (std::ostream& stream) const;
     virtual bool is_closed() const override;
@@ -444,6 +458,8 @@ protected:
     Def arg_type_;
     Def return_type_;
     mutable std::function<Def(Def)> body_;
+    bool is_commutative_;
+    bool is_associative_;
     
     friend class World;
     friend class AppNode; // AppNode::reduce() uses body_
@@ -460,6 +476,7 @@ protected:
     virtual Def reduce(Def2Def& map) const;
     
 public:
+    virtual DefSet free_vars () const;
     virtual void dump (std::ostream& stream) const;
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }

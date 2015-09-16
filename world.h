@@ -24,11 +24,11 @@ public:
     Pi pi(std::string var_name, Def var_type);
     Def app(Def appl, Def arg);
     PrimLit literal(int value);
-    // one tuple <a> will be a, so that's why tuple returns Def and not Tuple
+    // singleton tuple <a> will be a, so that's why tuple returns Def and not Tuple
     /*Tuple*/Def tuple(std::vector<Def> components);
     Dim dimension(int n);
     Def extract(Def tup, size_t i); // because <2> = 2, we can extract from non-tuples
-    Dummy dummy(Abs abs, Def return_type);
+    Dummy dummy(Abs abs, Def return_type, bool is_commutative = false, bool is_associative = false);
     
 protected:
     Proj projection(int n, int m);
@@ -38,7 +38,7 @@ public:
 /*
  * Utility methods
  */ 
-    std::function<Def(Def)> get_primop(std::string s) const { return prim_ops.at(s); }
+    /*std::function<Def(Def)>*/Lambda get_primop(std::string s) const { return prim_ops.at(s); }
     void cleanup();
     void add_external(Lambda lambda) const { externals_.insert(lambda); }
     void remove_external(Lambda lambda) const { externals_.erase(lambda); }
@@ -70,7 +70,7 @@ protected:
     
     mutable size_t gid_; // global id for expressions
     std::map<std::string, const DefNode*> prim_consts;
-    std::map<std::string, std::function<Def(Def)> > prim_ops;
+    std::map<std::string, /*std::function<Def(Def)>*/Lambda > prim_ops;
     std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> externals_;

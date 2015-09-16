@@ -1,3 +1,4 @@
+#include <algorithm> // std::is_permutation
 #include <typeinfo>
 #include <sstream>
 
@@ -194,14 +195,11 @@ AbsNode::AbsNode(World& world, size_t gid, Def var_type, std::string name)
 
 AbsNode::AbsNode(World& world, size_t gid, Def var)
     : DefNode(world, gid, 2, "some abs")
-{
-    set_op(0, var);
-}
+{ set_op(0, var); }
 
 TupleNode::TupleNode(World& world, size_t gid, int size, std::string name,
-    std::vector<Def> components)//, int tag, bool is_type);
+    std::vector<Def> components)
     : DefNode(world, gid, size, name)
-    //, ops_(components)
 { ops_ = components; }
 
 AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
@@ -216,6 +214,40 @@ AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
  */
 
 AbsNode::~AbsNode() { delete *var(); }
+
+/*
+ * free_vars
+ */ 
+
+DefSet DefNode::free_vars() const {
+    return DefSet();
+}
+
+DefSet AbsNode::free_vars() const {
+    auto r = body()->free_vars();
+    r.erase(var());
+    return r;
+}
+
+DefSet TupleNode::free_vars() const {
+    DefSet r;
+    for(auto& d : ops_) {
+        auto fv = d->free_vars();
+        r.insert(fv.begin(), fv.end());
+    }
+    return r;
+}
+
+DefSet VarNode::free_vars() const {
+    return DefSet { this };
+}
+
+DefSet AppNode::free_vars() const {
+    auto r1 = fun()->free_vars();
+    auto r2 = arg()->free_vars();
+    r1.insert(r2.begin(), r2.end());
+    return r1;
+}
 
 /*
  * reduce
@@ -308,8 +340,12 @@ Def VarNode::reduce(Def2Def& map) const {
     }
 }
 
+Def PrimLitNode::reduce(Def2Def& map) const {
+    return this;
+}
+
 Def DummyNode::reduce(Def2Def& map) const {
-    return this; // it's app of lambda that is responsible for reducing its damn dummy body!
+    return this; // it's app of lambda that is responsible for reducing its damn dummy body! ;)
 }
 
 Def AppNode::reduce(Def2Def& map) const {
@@ -324,11 +360,16 @@ Def AppNode::reduce(Def2Def& map) const {
             return this;
     } else if (auto abs = rfun.isa<Abs>()) {
         if(auto dummyb = abs->body().isa<Dummy>()) {
-            if(auto argv = rarg.isa<Var>()) {
-                goto cannotdumuchappnodereduce;
-            } else {
+            auto fv = rarg->free_vars();
+            for(auto& kv : map) {
+                fv.erase(kv.first);
+            }
+            if(/*rarg->free_vars()*/fv.empty() && dummyb->is_reducable()) {
+           // if((v = rarg.isa<Var>()) || (a = rarg)) { // what about map?!
                 auto f = dummyb->body_;
                 return f(rarg);
+            } else {
+                goto cannotdumuchappnodereduce;                
             }
         } else {
             map[*(abs->var())] = *rarg;
@@ -393,10 +434,7 @@ Def TupleNode::typecheck() const {
     }
     
     auto t = world_.pi("i", world_.dimension(size()));
-  //  std::vector<Def> comptypes;//(size());
-  //  for (auto& d : ops_)
-  //      comptypes.push_back(d->inftype());
-    auto b = world_.app(world_.tuple(/*comptypes*/component_types()), t->var());
+    auto b = world_.app(world_.tuple(component_types()), t->var());
     t->close(b);
     return t;
 }
@@ -414,6 +452,10 @@ Def BottomNode::typecheck() const {
 }
 
 Def VarNode::typecheck() const {
+    return type();
+}
+
+Def PrimLitNode::typecheck() const {
     return type();
 }
 
@@ -526,7 +568,6 @@ bool AbsNode::eq (const DefNode& other, Def2Def& map) const {
 bool TupleNode::eq (const DefNode& other, Def2Def& map) const {
     if (DefNode::eq(other, map) && size() == other.size()) {
         bool compeq = true;
-        //auto tother = other.as<TupleNode>();
         for (size_t i = 0; i < size(); ++i) {
             compeq &= ops_[i]->eq(**(other.op(i)), map);
         }
@@ -557,8 +598,13 @@ bool AppNode::eq (const DefNode& other, Def2Def& map) const {
         && (!other.as<AppNode>()->fun()->isa<AbsNode>() || other.as<AppNode>()->fun()->isa<TupleNode>()) 
         && "an abstraction in fun position in AppNode::eq"
         " contradicts strong normalization (reduction) policy");
-    // we have to give up on the assertion due to introduction of tuples
-    // now `lam i:2^d. <a, b> i` is irreducible
+    
+   /* if(auto lam = fun().isa<Lam>()) {
+        if(auto dummyb = lam->body().isa<Dummy>()) {
+            
+        }
+    }*/
+    
     return DefNode::eq(other, map)
         && fun()->eq(**(other.as<AppNode>()->fun()), map)
         && arg()->eq(**(other.as<AppNode>()->arg()), map);
@@ -591,6 +637,7 @@ size_t AppNode::vhash() const { return hash_combine(fun()->gid(), arg()->gid());
 bool BottomNode::is_closed() const { return true; }
 bool AbsNode::is_closed() const { return body(); }
 bool VarNode::is_closed() const { return type() ? type()->is_closed() : true; }
+bool PrimLitNode::is_closed() const { return type() ? type()->is_closed() : true; }
 bool TupleNode::is_closed() const {
     bool closed = true;
     for (auto& d : ops_) {
