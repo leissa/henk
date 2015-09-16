@@ -51,10 +51,10 @@ public:
     const T* operator  * () const { return deref(); }
     const T* operator -> () const { return *(*this); }
     
-    bool is_empty () const { return node_ == nullptr; }
-    void dump (std::ostream& stream) const;
-    void dump () const { dump(std::cout); }
-    void vdump () const { dump(); std::cout << std::endl; }
+    bool is_empty() const { return node_ == nullptr; }
+    void dump(std::ostream& stream) const;
+    void dump() const { dump(std::cout); }
+    void vdump() const { dump(); std::cout << std::endl; }
     
     // casts
 
@@ -144,8 +144,8 @@ protected:
     void set_representative(const DefNode* repr) const;
     void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<DefNode*>(this)->gid_) = gid; }
     virtual size_t vhash() const = 0;
-    virtual void update_non_reduced_repr () const;
-    std::string __get_non_reduced_repr (const DefNode& def) const;
+    virtual void update_non_reduced_repr() const;
+    std::string __get_non_reduced_repr(const DefNode& def) const;
     virtual Def typecheck() const = 0;
     
     void reduce() const;
@@ -167,10 +167,10 @@ protected:
     Def __reduce(const DefNode& def, Def2Def& map) const; 
     
 public:
-    std::string non_reduced_repr () const { return non_reduced_repr_; }
-    void vdump () const;
-    virtual void dump (std::ostream& stream) const = 0;
-    void dump () const;// { dump(std::cout); }
+    std::string non_reduced_repr() const { return non_reduced_repr_; }
+    void vdump() const;
+    virtual void dump(std::ostream& stream) const = 0;
+    void dump() const;// { dump(std::cout); }
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
     Def inftype() const;
     size_t size() const { return ops_.size(); }
@@ -189,7 +189,7 @@ public:
     Def op(size_t i) const { assert(i < ops().size() && "index out of bounds"); return ops_[i]; }
     const std::string& name() const { return name_; }
     virtual bool is_closed() const = 0;
-    bool equal (const DefNode& other) const;
+    bool equal(const DefNode& other) const;
     virtual bool eq(const DefNode& other, Def2Def& map) const;
 
 protected:
@@ -219,16 +219,16 @@ protected:
     virtual ~AbsNode();
     
     virtual Def reduce(Def2Def& map) const;
-    void __update_non_reduced_repr_body (std::ostringstream& r) const;
+    void __update_non_reduced_repr_body(std::ostringstream& r) const;
     
 public:
-    virtual void dump (std::ostream& stream) const = 0;
-    void dump_body (std::ostream& stream) const;
+    virtual void dump(std::ostream& stream) const = 0;
+    void dump_body(std::ostream& stream) const;
     Var var() const { return op(0).as<Var>(); }
     Def body() const { return op(1); }
     void close(Def body) const;
     virtual bool is_closed() const override;
-    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
 protected:
     size_t vhash() const;
@@ -243,10 +243,10 @@ protected:
     {}
     
     virtual Def typecheck() const;
-    virtual void update_non_reduced_repr () const;
+    virtual void update_non_reduced_repr() const;
     
 public:
-    virtual void dump (std::ostream& stream) const;
+    virtual void dump(std::ostream& stream) const;
     friend class World;
 };
 
@@ -261,10 +261,10 @@ protected:
     {}
     
     virtual Def typecheck() const;
-    virtual void update_non_reduced_repr () const;
+    virtual void update_non_reduced_repr() const;
     
 public:
-    virtual void dump (std::ostream& stream) const;
+    virtual void dump(std::ostream& stream) const;
     friend class World;
 };
 
@@ -274,13 +274,13 @@ protected:
     
     virtual Def typecheck() const;
     virtual Def reduce(Def2Def& map) const;
-    virtual void update_non_reduced_repr () const;
+    virtual void update_non_reduced_repr() const;
     
 public:
     thorin::Array<Def> elem_types() const;
-    virtual void dump (std::ostream& stream) const;
+    virtual void dump(std::ostream& stream) const;
     virtual bool is_closed() const override;
-    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
 protected:
     size_t vhash() const;
@@ -296,15 +296,15 @@ protected:
         , n_(n)
     {}
     
-    virtual void update_non_reduced_repr () const;
+    virtual void update_non_reduced_repr() const;
     virtual Def typecheck() const;
     virtual Def reduce(Def2Def& map) const;
     
 public:
     int n() const { return n_; }
-    virtual void dump (std::ostream& stream) const;
+    virtual void dump(std::ostream& stream) const;
     virtual bool is_closed() const override;
-    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
 protected:
     size_t vhash() const;
@@ -323,16 +323,16 @@ protected:
         , m_(m)
     {}
     
-    virtual void update_non_reduced_repr () const;
+    virtual void update_non_reduced_repr() const;
     virtual Def typecheck() const;
     virtual Def reduce(Def2Def& map) const;
     
 public:
     int n() const { return n_; }
     int m() const { return m_; }
-    virtual void dump (std::ostream& stream) const;
+    virtual void dump(std::ostream& stream) const;
     virtual bool is_closed() const override;
-    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
 protected:
     size_t vhash() const;
@@ -356,9 +356,9 @@ protected:
     
 public:
     std::string info() const { return info_; }
-    virtual void dump (std::ostream& stream) const;
+    virtual void dump(std::ostream& stream) const;
     virtual bool is_closed() const override;
-    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
 protected:
     size_t vhash() const;
@@ -381,11 +381,11 @@ protected:
     virtual Def reduce(Def2Def& map) const;
     
 public:
-    virtual void dump (std::ostream& stream) const;
+    virtual void dump(std::ostream& stream) const;
     Def type() const { return op(0); }
     Abs abs() const { return op(1).as<Abs>(); }
     virtual bool is_closed() const override;
-    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
 protected:
     size_t vhash() const;
@@ -404,9 +404,9 @@ protected:
     size_t vhash() const;
     
 public:
-    virtual void dump (std::ostream& stream) const;
+    virtual void dump(std::ostream& stream) const;
     int value() const { return value_; };
-    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
 private:
     int value_;
@@ -421,15 +421,15 @@ protected:
     size_t vhash() const;
     
     virtual Def typecheck() const;
-    virtual void update_non_reduced_repr () const;
+    virtual void update_non_reduced_repr() const;
     virtual Def reduce(Def2Def& map) const;
     
 public:
-    virtual void dump (std::ostream& stream) const;
+    virtual void dump(std::ostream& stream) const;
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }
     virtual bool is_closed() const override;
-    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
     friend class World;
 };
