@@ -172,7 +172,7 @@ public:
     virtual void dump(std::ostream& stream) const = 0;
     void dump() const;// { dump(std::cout); }
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
-    Def type() const;
+    Def type() const { assert(!type_.is_empty()); return type_; }
     size_t size() const { return ops_.size(); }
     bool empty() const { return ops_.empty(); }
     void set_op(size_t i, Def def) const;

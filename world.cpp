@@ -13,15 +13,15 @@ namespace henk {
 World::World()
     : gid_(0)
 {
-    auto botbox = new BottomNode(*this, gid_++, "⬜ doesn't have a type");
-    auto box = new VarNode(*this, gid_++, botbox, nullptr, "⬜");
-    auto star = new VarNode(*this, gid_++, box, nullptr, "*");
-    auto pint = new VarNode(*this, gid_++, star, nullptr, "Int");
-    auto pbool = new VarNode(*this, gid_++, star, nullptr, "Bool");
-    auto botbox2 = new BottomNode(*this, gid_++, "⬜⬜ doesn't have a type");
-    auto box2 = new VarNode(*this, gid_++, botbox2, nullptr, "⬜⬜");
-    auto star2 = new VarNode(*this, gid_++, box2, nullptr, "**");
-    auto dim = new VarNode(*this, gid_++, box, nullptr, "D");
+    auto botbox = cse(new BottomNode(*this, gid_++, "⬜ doesn't have a type"));
+    auto box = cse(new VarNode(*this, gid_++, botbox, nullptr, "⬜"));
+    auto star = cse(new VarNode(*this, gid_++, box, nullptr, "*"));
+    auto pint = cse(new VarNode(*this, gid_++, star, nullptr, "Int"));
+    auto pbool = cse(new VarNode(*this, gid_++, star, nullptr, "Bool"));
+    auto botbox2 = cse(new BottomNode(*this, gid_++, "⬜⬜ doesn't have a type"));
+    auto box2 = cse(new VarNode(*this, gid_++, botbox2, nullptr, "⬜⬜"));
+    auto star2 = cse(new VarNode(*this, gid_++, box2, nullptr, "**"));
+    auto dim = cse(new VarNode(*this, gid_++, box, nullptr, "D"));
     
     botbox->update_non_reduced_repr();
     box->update_non_reduced_repr();
@@ -95,7 +95,7 @@ World::~World() {
 
 
 /*
- * Factory methods
+ * factory methods
  */
 
 Lambda World::lambda(Def var_type, std::string name) {

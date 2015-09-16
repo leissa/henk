@@ -70,8 +70,6 @@ size_t UseEq::operator () (Use use1, Use use2) const {
  * DefNode
  * ------------------------------------------------- */
 
-Def DefNode::type() const { /*assert(!type_.is_empty());*/ return type_.is_empty() ? type_ = typecheck() : type_; }
-
 void DefNode::set_op(size_t i, Def def) const { // weird constness?
     assert(!op(i) && "already set");
    // assert(def && "setting null pointer");
