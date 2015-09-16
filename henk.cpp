@@ -354,8 +354,7 @@ Def PiNode::typecheck() const {
 }
 
 Def TupleNode::typecheck() const {
-    
-    for(size_t i = 0; i < ops_.size(); ++i) {
+    for (size_t i = 0; i < ops_.size(); ++i) {
         if (ops_[i]->isa<BottomNode>()) {
             std::ostringstream msg;
             msg << "tuple ";
@@ -457,29 +456,29 @@ Def AppNode::typecheck() const {
  * equal
  */
 
-bool DefNode::equal (const DefNode& other) const {
+bool DefNode::equal(const DefNode& other) const {
     Def2Def map;
     return this->eq(other, map);
 }
 
-bool DefNode::eq (const DefNode& other, Def2Def& map) const {
+bool DefNode::eq(const DefNode& other, Def2Def& map) const {
     return typeid(*this) == typeid(other);
 }
 
-bool BottomNode::eq (const DefNode& other, Def2Def& map) const {
+bool BottomNode::eq(const DefNode& other, Def2Def& map) const {
     return this == &other;
 }
 
-bool VarNode::eq (const DefNode& other, Def2Def& map) const {
+bool VarNode::eq(const DefNode& other, Def2Def& map) const {
     auto eqto = map[this];
     return DefNode::eq(other, map) && (this == &other || eqto == &other);
 }
 
-bool PrimLitNode::eq (const DefNode& other, Def2Def& map) const {
+bool PrimLitNode::eq(const DefNode& other, Def2Def& map) const {
     return DefNode::eq(other, map) && value() == other.as<PrimLitNode>()->value();
 }
 
-bool AbsNode::eq (const DefNode& other, Def2Def& map) const {
+bool AbsNode::eq(const DefNode& other, Def2Def& map) const {
     if (DefNode::eq(other, map)) {
         auto aother = other.as<AbsNode>();
         map[*this->var()] = *aother->var();
@@ -491,7 +490,7 @@ bool AbsNode::eq (const DefNode& other, Def2Def& map) const {
     return false;
 }
 
-bool TupleNode::eq (const DefNode& other, Def2Def& map) const {
+bool TupleNode::eq(const DefNode& other, Def2Def& map) const {
     if (DefNode::eq(other, map) && size() == other.size()) {
         bool compeq = true;
         //auto tother = other.as<TupleNode>();
@@ -503,16 +502,16 @@ bool TupleNode::eq (const DefNode& other, Def2Def& map) const {
     return false;
 }
 
-bool DimNode::eq (const DefNode& other, Def2Def& map) const {
+bool DimNode::eq(const DefNode& other, Def2Def& map) const {
     return DefNode::eq(other, map) && n_ == other.as<DimNode>()->n_;
 }
 
-bool ProjNode::eq (const DefNode& other, Def2Def& map) const {
+bool ProjNode::eq(const DefNode& other, Def2Def& map) const {
     return DefNode::eq(other, map) && n_ == other.as<ProjNode>()->n_
         && m_ == other.as<ProjNode>()->m_;
 }
 
-bool AppNode::eq (const DefNode& other, Def2Def& map) const {
+bool AppNode::eq(const DefNode& other, Def2Def& map) const {
     bool sametypes = DefNode::eq(other, map);
     if (!sametypes)
         return false;
@@ -569,7 +568,7 @@ bool AppNode::is_closed() const { return fun()->is_closed() && arg()->is_closed(
  * update_non_reduced_repr
  */
 
-std::string DefNode::__get_non_reduced_repr (const DefNode& def) const {
+std::string DefNode::__get_non_reduced_repr(const DefNode& def) const {
     return def.non_reduced_repr_;
 }
 
@@ -591,7 +590,7 @@ void PiNode::update_non_reduced_repr() const {
     __update_non_reduced_repr_body(r);
 }
 
-void AbsNode::__update_non_reduced_repr_body (std::ostringstream& r) const {
+void AbsNode::__update_non_reduced_repr_body(std::ostringstream& r) const {
     r << __get_non_reduced_repr(**var()) << ":";
     if (var()->type().is_empty())
         r << "'nullptr'";
@@ -649,24 +648,23 @@ void AppNode::update_non_reduced_repr() const {
  * dump
  */
 
-void DefNode::vdump () const {dump(std::cout); std::cout << std::endl; }
-
-void DefNode::dump () const { dump(std::cout); std::cout << std::endl; }
+void DefNode::vdump() const { dump(std::cout); std::cout << std::endl; }
+void DefNode::dump() const { dump(std::cout); std::cout << std::endl; }
 
 template<class T>
-void Proxy<T>::dump (std::ostream& stream) const {
+void Proxy<T>::dump(std::ostream& stream) const {
     if (is_empty())
         stream << "'nullptr'";
     else
         deref()->dump(stream);
 }
 
-void LambdaNode::dump (std::ostream& stream) const {
+void LambdaNode::dump(std::ostream& stream) const {
     stream << "λ";
     dump_body(stream);
 }
 
-void PiNode::dump (std::ostream& stream) const {
+void PiNode::dump(std::ostream& stream) const {
     if (body().is_empty()) {
         stream << "Π";
         dump_body(stream);
@@ -685,7 +683,7 @@ void PiNode::dump (std::ostream& stream) const {
     }  
 }
 
-void AbsNode::dump_body (std::ostream& stream) const {
+void AbsNode::dump_body(std::ostream& stream) const {
     var().dump(stream);
     stream << ":";
     var()->type().dump(stream);
@@ -693,7 +691,7 @@ void AbsNode::dump_body (std::ostream& stream) const {
     body().dump(stream);
 }
 
-void TupleNode::dump (std::ostream& stream) const {
+void TupleNode::dump(std::ostream& stream) const {
     stream << "<";
     if (size() > 0)
         ops_[0].dump(stream);
@@ -712,19 +710,19 @@ void ProjNode::dump(std::ostream& stream) const {
     stream << "proj{" << m_ << "_" << n_ << "}";
 }
 
-void BottomNode::dump (std::ostream& stream) const {
+void BottomNode::dump(std::ostream& stream) const {
     stream << name() << " { " << info() << " }";
 }
 
-void VarNode::dump (std::ostream& stream) const {
+void VarNode::dump(std::ostream& stream) const {
     stream << name();
 }
 
-void PrimLitNode::dump (std::ostream& stream) const {
+void PrimLitNode::dump(std::ostream& stream) const {
     stream << value();
 }
 
-void AppNode::dump (std::ostream& stream) const {
+void AppNode::dump(std::ostream& stream) const {
     stream << "(";
     fun().dump(stream);
     stream << ") (";
