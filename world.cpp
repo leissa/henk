@@ -293,7 +293,7 @@ void World::introduce(const DefNode* def)  {
 const DefNode* World::untuple(const TupleNode* tup) {
     const DefNode* r = tup;
     if (tup->size() == 1) {
-        r = *(tup->op(0));
+        r = *tup->op(0);
         delete tup;
     }
     return r;

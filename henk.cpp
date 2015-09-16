@@ -248,7 +248,7 @@ Def DefNode::reduce_but_dont_replace(Def oldd, Def newd) const {
 }
 
 Def AbsNode::reduce(Def2Def& map) const {
-    auto i = map.find(*(var()));
+    auto i = map.find(*var());
     if (i != map.end()) { // TODO looks broken to me // FIXED?
         map.erase(i);
     }
@@ -258,11 +258,11 @@ Def AbsNode::reduce(Def2Def& map) const {
         nvarn << "'";
     auto ntype = __reduce(**var()->type(), map);
     Abs nabs;
-    if(this->isa<LambdaNode>())
+    if (this->isa<LambdaNode>())
         nabs = world_.lambda(nvarn.str(), ntype);
     else
         nabs = world_.pi(nvarn.str(), ntype);
-    map[*(var())] = *(nabs->var());
+    map[*var()] = *nabs->var();
     auto nbody = __reduce(**body(), map);
     nabs->close(nbody);
     return nabs;
@@ -270,7 +270,7 @@ Def AbsNode::reduce(Def2Def& map) const {
 
 Def TupleNode::reduce(Def2Def& map) const {
   //  if(ops_.size() == 1) {
-   //     return __reduce(**(ops_[0]), map);
+   //     return __reduce(**ops_[0], map);
  //   } else {
         bool changed = false;
         std::vector<Def> nops;//(ops_.size());
@@ -313,15 +313,15 @@ Def AppNode::reduce(Def2Def& map) const {
     if (auto tup = rfun.isa<Tuple>()) {
         if(auto proj = rarg.isa<Proj>()) {
             return tup->op(proj->m());
-        } else if(*rfun != *(fun()))
+        } else if(*rfun != *fun())
             return world_.app(rfun, rarg);
         else
             return this;
     } else if (auto abs = rfun.isa<Abs>()) {
-        map[*(abs->var())] = *rarg;
+        map[*abs->var()] = *rarg;
         return __reduce(**abs->body(), map);
     } else {
-        if(*rfun != *(fun()) || *rarg != *(arg()))
+        if(*rfun != *fun() || *rarg != *arg())
             return world_.app(rfun, rarg);
         else
             return this;
@@ -494,10 +494,10 @@ bool PrimLitNode::eq (const DefNode& other, Def2Def& map) const {
 bool AbsNode::eq (const DefNode& other, Def2Def& map) const {
     if (DefNode::eq(other, map)) {
         auto aother = other.as<AbsNode>();
-        map[*(this->var())] = *(aother->var());
-        bool res = var()->type()->eq(**(aother->var()->type()), map) &&
-            (body()->eq(**(aother->body()), map));
-        map.erase(map.find(*(this->var())));
+        map[*this->var()] = *aother->var();
+        bool res = var()->type()->eq(**aother->var()->type(), map) &&
+            (body()->eq(**aother->body(), map));
+        map.erase(map.find(*this->var()));
         return res;
     }
     return false;
@@ -508,7 +508,7 @@ bool TupleNode::eq (const DefNode& other, Def2Def& map) const {
         bool compeq = true;
         //auto tother = other.as<TupleNode>();
         for (size_t i = 0; i < size(); ++i) {
-            compeq &= ops_[i]->eq(**(other.op(i)), map);
+            compeq &= ops_[i]->eq(**other.op(i), map);
         }
         return compeq;
     }
@@ -536,8 +536,8 @@ bool AppNode::eq (const DefNode& other, Def2Def& map) const {
     // we have to give up on the assertion due to introduction of tuples
     // now `lam i:2^d. <a, b> i` is irreducible
     return DefNode::eq(other, map)
-        && fun()->eq(**(other.as<AppNode>()->fun()), map)
-        && arg()->eq(**(other.as<AppNode>()->arg()), map);
+        && fun()->eq(**other.as<AppNode>()->fun(), map)
+        && arg()->eq(**other.as<AppNode>()->arg(), map);
 }
 
 /*
@@ -622,9 +622,9 @@ void TupleNode::update_non_reduced_repr() const {
     std::ostringstream r;
     r << "<";
     if(size() > 0)
-        r << __get_non_reduced_repr(**(ops_[0]));
+        r << __get_non_reduced_repr(**ops_[0]);
     for (size_t i = 1; i < ops_.size(); ++i) {
-        r << ", " << __get_non_reduced_repr(**(ops_[i]));
+        r << ", " << __get_non_reduced_repr(**ops_[i]);
     }
     r << ">";
     non_reduced_repr_ = r.str();
@@ -687,7 +687,7 @@ void PiNode::dump (std::ostream& stream) const {
         stream << ") -> (";
         body().dump(stream);
         stream << ")";
-    } else if (*(var().as<Var>()->type()) == *(world_.get_prim_const("*"))) {
+    } else if (*var().as<Var>()->type() == *world_.get_prim_const("*")) {
         stream << "∀" << var()->name() << ". ";
         body().dump(stream);
     } else {
