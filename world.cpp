@@ -171,11 +171,11 @@ Def World::app(Def fun, Def arg) {
                                 return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
                             }
                         } else if (db->is_commutative()) {
-                            auto nt = tuple(std::vector<Def> {a2, a1});
+                            auto nt = tuple(std::vector<Def> {a2, pairarg->op(0)});
                             return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
                         }
                     } else if (db->is_commutative()) {
-                        auto nt = tuple(std::vector<Def> {a2, a1});
+                        auto nt = tuple(std::vector<Def> {a2, pairarg->op(0)});
                         return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
                     }
                 } else if ((a1 = pairarg->op(0).isa<PrimLit>())
@@ -188,12 +188,12 @@ Def World::app(Def fun, Def arg) {
                             && db->is_commutative()
                             && db->is_associative()) {
                             auto nt = tuple(std::vector<Def> {(db->body_)(
-                                tuple(std::vector<Def> {a1, nested2})), a2});
+                                tuple(std::vector<Def> {a1, nested2})), pairarg->op(1)});
                             return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
                         } else if ((nested1 = nestedargs->op(0).isa<PrimLit>())
                             && db->is_associative()) {
                             auto nt = tuple(std::vector<Def> {(db->body_)(
-                                tuple(std::vector<Def> {a1, nested1})), a2});
+                                tuple(std::vector<Def> {a1, nested1})), pairarg->op(1)});
                             return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
                         }
                     } else {
@@ -201,7 +201,7 @@ Def World::app(Def fun, Def arg) {
                     }
                 } else if( pairarg->op(0)->gid() > pairarg->op(1)->gid()
                     && db->is_commutative()) {
-                    auto nt = tuple(std::vector<Def> {a2, a1});
+                    auto nt = tuple(std::vector<Def> {pairarg->op(1), pairarg->op(0)});
                     return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
                 } else {
                     // do nothing -- default is okay here

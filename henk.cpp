@@ -593,12 +593,12 @@ bool AppNode::eq (const DefNode& other, Def2Def& map) const {
     bool sametypes = DefNode::eq(other, map);
     if(!sametypes)
         return false;
-    
+   /* 
     assert((!fun()->isa<AbsNode>() || fun()->isa<TupleNode>()) 
         && (!other.as<AppNode>()->fun()->isa<AbsNode>() || other.as<AppNode>()->fun()->isa<TupleNode>()) 
         && "an abstraction in fun position in AppNode::eq"
         " contradicts strong normalization (reduction) policy");
-    
+    */ // problems when dummies are bodies...
    /* if(auto lam = fun().isa<Lam>()) {
         if(auto dummyb = lam->body().isa<Dummy>()) {
             

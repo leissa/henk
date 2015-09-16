@@ -144,13 +144,16 @@ void test7(World* world) {
     auto dint = world->get_prim_const("Int");
     auto plus = world->get_primop("+");
     auto l1 = world->lambda("x", dint);
-    l1->close(world->app(plus, world->tuple(std::vector<Def> {l1->var(), world->literal(7)})));
+    l1->close(world->app(plus, 
+        world->tuple(std::vector<Def> {l1->var(), world->literal(7)})));
     auto l2 = world->lambda("y", dint);
     l2->close(world->app(plus, world->tuple(std::vector<Def>{world->app(plus, 
         world->tuple(std::vector<Def>{world->literal(3), world->literal(4)})), l2->var()})));
     l1.dump();
     std::cout << std::endl;
     l2.dump();
+    
+    assert(l1 == l2 && "lambdas differ");
 }
 
 int main(int argc, char* argv[]) {
