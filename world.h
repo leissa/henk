@@ -4,6 +4,7 @@
 #include <iostream>
 #include <map>
 
+#include "thorin/util/array.h"
 #include "thorin/util/hash.h"
 
 #include "henk.h"
@@ -23,9 +24,9 @@ public:
     Pi pi(std::string var_name, Def var_type);
     Def app(Def appl, Def arg);
     PrimLit literal(int value);
-    // one tuple <a> will be a, so that's why tuple returns Def and not Tuple
-    /*Tuple*/Def tuple(std::vector<Def> components);
     Dim dimension(int n);
+    /// 1-tuple "\<a\>" will be "a", so that's why tuple returns @p Def and not @p Tuple.
+    Def tuple(thorin::ArrayRef<Def> components);
     Def extract(Def tup, size_t i); // because <2> = 2, we can extract from non-tuples
     
 protected:

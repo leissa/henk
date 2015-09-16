@@ -185,12 +185,12 @@ public:
     bool has_subexpr(Def) const;
     size_t gid() const { return gid_; }
     World& world() const { return world_; }
-    std::vector<Def> ops() const { return ops_; }
+    const std::vector<Def>& ops() const { return ops_; }
     Def op(size_t i) const { assert(i < ops().size() && "index out of bounds"); return ops_[i]; }
     const std::string& name() const { return name_; }
     virtual bool is_closed() const = 0;
     bool equal (const DefNode& other) const;
-    virtual bool eq (const DefNode& other, Def2Def& map) const;
+    virtual bool eq(const DefNode& other, Def2Def& map) const;
 
 protected:
     mutable std::string non_reduced_repr_;
@@ -270,15 +270,14 @@ public:
 
 class TupleNode : public DefNode {
 protected:
-    TupleNode(World& world, size_t gid, int size, std::string name,
-        std::vector<Def> components);//, int tag, bool is_type);
+    TupleNode(World& world, size_t gid, int size, std::string name, thorin::ArrayRef<Def> components);
     
     virtual Def typecheck() const;
     virtual Def reduce(Def2Def& map) const;
     virtual void update_non_reduced_repr () const;
     
 public:
-    std::vector<Def> component_types() const;
+    thorin::Array<Def> component_types() const;
     virtual void dump (std::ostream& stream) const;
     virtual bool is_closed() const override;
     virtual bool eq (const DefNode& other, Def2Def& map) const override;

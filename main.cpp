@@ -111,11 +111,11 @@ void test4(World& world) {
 }
 
 void test5(World& world) {
-    auto singl = world.tuple(std::vector<Def> {world.literal(42)});
+    auto singl = world.tuple({world.literal(42)});
     singl.dump();
     std::cout << ": ";
     singl->inftype().dump();
-    auto p = world.tuple(std::vector<Def> {world.literal(23), singl});
+    auto p = world.tuple({world.literal(23), singl});
     std::cout << std::endl;
     p.dump();
     std::cout << ": ";

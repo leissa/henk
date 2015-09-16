@@ -7,6 +7,8 @@
 
 namespace henk {
 
+using thorin::Array;
+using thorin::ArrayRef;
 using thorin::hash_combine;
 using thorin::hash_begin;
 
@@ -164,11 +166,11 @@ void AbsNode::close(Def body) const {
     world_.introduce(this);
 }
 
-std::vector<Def> TupleNode::component_types() const {
-    std::vector<Def> comptypes;
-    for (auto& d : ops_)
-        comptypes.push_back(d->inftype());
-    return comptypes;
+Array<Def> TupleNode::component_types() const {
+    Array<Def> result(size());
+    for (size_t i = 0, e = size(); i != e; ++i)
+        result[i] = op(i)->inftype();
+    return result;
 }
 
 /*
@@ -197,11 +199,11 @@ AbsNode::AbsNode(World& world, size_t gid, Def var)
     set_op(0, var);
 }
 
-TupleNode::TupleNode(World& world, size_t gid, int size, std::string name,
-    std::vector<Def> components)//, int tag, bool is_type);
+TupleNode::TupleNode(World& world, size_t gid, int size, std::string name, ArrayRef<Def> components)
     : DefNode(world, gid, size, name)
-    //, ops_(components)
-{ ops_ = components; }
+{ 
+    std::copy(components.begin(), components.end(), ops_.begin());
+}
 
 AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
     : DefNode(world, gid, 2, name)

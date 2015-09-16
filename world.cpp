@@ -1,8 +1,12 @@
 #include "world.h"
 
+#include "thorin/util/queue.h"
+
 #include <list>
 #include <sstream>
-#include "thorin/util/queue.h"
+
+using thorin::Array;
+using thorin::ArrayRef;
 
 namespace henk {
 
@@ -116,7 +120,7 @@ PrimLit World::literal(int value) {
     return cse(new PrimLitNode(*this, gid_++, get_prim_const("Int"), value, "someint"));
 }
 
-/*Tuple*/Def World::tuple(std::vector<Def> components) {
+/*Tuple*/Def World::tuple(ArrayRef<Def> components) {
     return cse_base(new TupleNode(*this, gid_++, components.size(), "tuple", components));
 }
 
