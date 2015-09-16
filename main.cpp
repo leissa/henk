@@ -128,21 +128,31 @@ int main(int argc, char* argv[]) {
     auto world = new World();
     world->dump_prims(std::cout);
     std::cout << std::endl;
-    if (argc == 2) {
-        std::string arg = argv[1];
-        switch(std::stoi(arg)) {
-            case 1: test1(world); break;
-            case 2: test2(world); break;
-            case 3: test3(world); break;
-            case 4: test4(world); break;
-            case 5: test5(world); break;
-            default: throw std::runtime_error("wrong number of test case");
-        }
-    } else
-        throw std::runtime_error("give number of test case from 1 to 5");
+
+    switch (argc) {
+        case 1:
+            test1(world);
+            test2(world);
+            test3(world);
+            test4(world);
+            test5(world);
+            break;
+        case 2:
+            switch (std::atoi(argv[1])) {
+                case 1: test1(world); break;
+                case 2: test2(world); break;
+                case 3: test3(world); break;
+                case 4: test4(world); break;
+                case 5: test5(world); break;
+                default: throw std::runtime_error("wrong number of test case");
+            }
+            break;
+        default:
+            throw std::runtime_error("give number of test case from 1 to 5");
+    }
+
     std::cout << "\n\nworld has expressions: " << std::endl;
     world->dump();
     std::cout << std::endl;
     delete world;
-    
 }
