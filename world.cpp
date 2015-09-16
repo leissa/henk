@@ -121,6 +121,8 @@ PrimLit World::literal(int value) {
 }
 
 Def World::tuple(ArrayRef<Def> elems) {
+    if (elems.size() == 1)
+        return elems[0];
     return cse_base(new TupleNode(*this, gid_++, elems.size(), "tuple", elems));
 }
 
@@ -242,9 +244,6 @@ const DefNode* World::cse_base(const DefNode* def) {
     if (!def->is_closed())
         return def;
     
-    if (auto dt = def->isa<TupleNode>())
-        def = untuple(dt);
-    
     auto type = def->typecheck();
     def->inftype_ = type;
     
@@ -291,21 +290,7 @@ void World::introduce(const DefNode* def)  {
 }
 
 /*
- * Optimizations
- */
-
-const DefNode* World::untuple(const TupleNode* tup) {
-    const DefNode* r = tup;
-    if (tup->size() == 1) {
-        r = *tup->op(0);
-        delete tup;
-    }
-    return r;
-}
-
-
-/*
- * Dump
+ * dump
  */
 
 void World::dump(std::ostream& stream) const {
@@ -336,4 +321,3 @@ void World::dump_prims(std::ostream& stream) const {
 }
 
 }
-
