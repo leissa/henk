@@ -172,7 +172,7 @@ public:
     virtual void dump(std::ostream& stream) const = 0;
     void dump() const;// { dump(std::cout); }
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
-    Def inftype() const;
+    Def type() const;
     size_t size() const { return ops_.size(); }
     bool empty() const { return ops_.empty(); }
     void set_op(size_t i, Def def) const;
@@ -203,12 +203,11 @@ protected:
     mutable DefSet representative_of_;
     mutable size_t hash_ = 0;
     mutable bool live_ = false;
-  //  mutable const DefNode* equiv_ = nullptr; // hack-ptr useful when testing for equality
-    mutable Def inftype_ = nullptr; // probably will change it to 'type_' later
-
+    // mutable const DefNode* equiv_ = nullptr; // hack-ptr useful when testing for equality
+    mutable Def type_ = nullptr;
     
-    friend class World;
     template<class T> friend class Proxy;
+    friend class World;
 };
 
 class AbsNode : public DefNode {
@@ -370,25 +369,26 @@ protected:
 
 class VarNode : public DefNode {
 protected:
-    VarNode(World& world, size_t gid, Def type, Def of_abs, std::string name)
-        : DefNode(world, gid, 2, name)
+    VarNode(World& world, size_t gid, Def type, Abs abs, std::string name)
+        : DefNode(world, gid, 1, name)
+        , abs_(abs)
     {
-        set_op(0, type); 
-        set_op(1, of_abs);
+        set_op(0, type_ = type);
     }
     
     virtual Def typecheck() const override;
     virtual Def reduce(Def2Def& map) const override;
     
 public:
-    Def type() const { return op(0); }
-    Abs abs() const { return op(1).as<Abs>(); }
+    Abs abs() const { return abs_; }
     virtual void dump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
 protected:
     virtual size_t vhash() const override;
+
+    Abs abs_;
 
     friend class World;
     friend class AbsNode;

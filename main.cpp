@@ -16,7 +16,7 @@ Lambda poly_id(World& world, std::string tvar, std::string var) {
 void test1(World& world) {
     auto type_lambda = poly_id(world, "a", "x");
 
-    auto atype = type_lambda->inftype();
+    auto atype = type_lambda->type();
     std::cout << std::endl;
     type_lambda.dump();
     std::cout << " : ";
@@ -41,7 +41,7 @@ void test2(World& world) {
     auto app = world.app(lambda, world.literal(33));//get_prim_const("Int"));
     std::cout << app->non_reduced_repr() << " reduced to ";
     app.dump();
-    auto tapp = app->inftype();
+    auto tapp = app->type();
     std::cout << " : ";
     tapp.dump();
     std::cout << std::endl;
@@ -66,12 +66,12 @@ void test3(World& world) {
     std::cout << "f = ";
     f.dump();
     std::cout << " : ";
-    f->inftype().dump();
+    f->type().dump();
     std::cout << std::endl;
     std::cout << "g = ";
     forallb.dump();
     std::cout << " : ";
-    forallb->inftype().dump();
+    forallb->type().dump();
     
     std::cout << std::endl;
     auto app = world.app(f, forallb);
@@ -80,7 +80,7 @@ void test3(World& world) {
     std::cout << std::endl;
     
     std::cout << "f g : ";
-    auto apptype = app->inftype();
+    auto apptype = app->type();
     apptype.dump();
     std::cout << std::endl;
 
@@ -108,12 +108,12 @@ void test5(World& world) {
     auto singl = world.tuple({world.literal(42)});
     singl.dump();
     std::cout << ": ";
-    singl->inftype().dump();
+    singl->type().dump();
     auto p = world.tuple({world.literal(23), singl});
     std::cout << std::endl;
     p.dump();
     std::cout << ": ";
-    p->inftype().dump();
+    p->type().dump();
     
     auto p2 = world.extract(p, 1);
     std::cout << std::endl;

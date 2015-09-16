@@ -16,12 +16,12 @@ public:
     World();
     ~World();
     
-/*
- * Factory methods
- */
-    Lambda lambda(Def var_type, std::string var_name = std::string());
+    /*
+     * factory methods
+     */
+    Lambda lambda(Def var_type, std::string var_name = "");
     Pi fun_type(Def from, Def to);
-    Pi pi(Def var_type, std::string var_name = std::string());
+    Pi pi(Def var_type, std::string var_name = "");
     Def app(Def appl, Def arg);
     PrimLit literal(int value);
     Dim dimension(int n);
@@ -29,15 +29,12 @@ public:
     Def tuple(thorin::ArrayRef<Def> elems);
     /// @p def is of type @p Def instead of @p Tuple because we can extract from non-tuples due to "<2> = 2".
     Def extract(Def def, size_t i);
-    
-protected:
     Proj projection(int n, int m);
-    Bottom bottom(std::string info);
-
-public:
-/*
- * Utility methods
- */ 
+    Bottom bottom(std::string name = "");
+    
+    /*
+     * Utility methods
+     */ 
     void cleanup();
     void add_external(Lambda lambda) const { externals_.insert(lambda); }
     void remove_external(Lambda lambda) const { externals_.erase(lambda); }

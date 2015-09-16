@@ -209,8 +209,8 @@ void World::cleanup() {
         if (def->is_proxy()) {
             enqueue(def->representative_);
         } else {
-            if (def->inftype_)
-                enqueue(def->inftype_);
+            if (def->type_)
+                enqueue(def->type_);
             
             if (auto v = def->isa<VarNode>()) {
                 enqueue(v->type());
@@ -238,13 +238,13 @@ const DefNode* World::cse_base(const DefNode* def) {
         return def;
     
     auto type = def->typecheck();
-    def->inftype_ = type;
+    def->type_ = type;
     
     Def proxdef(def);
     proxdef->reduce();
     auto rdef = *proxdef;
     if (def != rdef) {
-        rdef->inftype_ = type;
+        rdef->type_ = type;
         delete def;
     }
     
@@ -261,7 +261,7 @@ const DefNode* World::cse_base(const DefNode* def) {
         assert(p.second);
     }
     
-    def->inftype_ = type; // unnecessary?
+    def->type_ = type; // unnecessary?
     return def;
 }
 
@@ -269,7 +269,7 @@ void World::introduce(const DefNode* def)  {
     def->update_non_reduced_repr();
     
     auto type = def->typecheck();
-    def->inftype_ = type;
+    def->type_ = type;
     
     auto j = expressions_.find(def);
     if (j != expressions_.end()) {
@@ -307,7 +307,7 @@ void World::dump_prims(std::ostream& stream) const {
     stream << "prim consts: \n";
     for (auto& p : prim_consts) {
         stream << p.first << " at (" << p.second << ") : ";
-        p.second->inftype().dump(stream); 
+        p.second->type().dump(stream); 
         stream << std::endl;
     } 
 }

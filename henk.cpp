@@ -70,7 +70,7 @@ size_t UseEq::operator () (Use use1, Use use2) const {
  * DefNode
  * ------------------------------------------------- */
 
-Def DefNode::inftype() const { return inftype_.is_empty() ? inftype_ = typecheck() : inftype_; }
+Def DefNode::type() const { /*assert(!type_.is_empty());*/ return type_.is_empty() ? type_ = typecheck() : type_; }
 
 void DefNode::set_op(size_t i, Def def) const { // weird constness?
     assert(!op(i) && "already set");
@@ -169,7 +169,7 @@ void AbsNode::close(Def body) const {
 Array<Def> TupleNode::elem_types() const {
     Array<Def> result(size());
     for (size_t i = 0, e = size(); i != e; ++i)
-        result[i] = op(i)->inftype();
+        result[i] = op(i)->type();
     return result;
 }
 
@@ -323,21 +323,21 @@ Def AppNode::reduce(Def2Def& map) const {
  */ 
 
 Def LambdaNode::typecheck() const {
-    auto body_type = body()->inftype();
+    auto body_type = body()->type();
     std::ostringstream nvarn;
     nvarn << var()->name();
     if (nvarn.str() != "_")
         nvarn << "'";
-    auto res = world_.pi(var()->inftype(), nvarn.str());
+    auto res = world_.pi(var()->type(), nvarn.str());
     auto body_type2 = __reduce_but_dont_replace(**body_type, var(), res->var());
     res->close(body_type2);
     return res;
 }
 
 Def PiNode::typecheck() const {
-    auto var_type = var()->inftype();
-    auto var_type_type = var_type->inftype();
-    auto body_type = body()->inftype();
+    auto var_type = var()->type();
+    auto var_type_type = var_type->type();
+    auto body_type = body()->type();
     auto p = world_.wavy_arrow_rules.find(std::make_pair(
         *var_type_type,
         *body_type)
@@ -366,7 +366,7 @@ Def TupleNode::typecheck() const {
     auto t = world_.pi(world_.dimension(size()), "i");
   //  std::vector<Def> comptypes;//(size());
   //  for (auto& d : ops_)
-  //      comptypes.push_back(d->inftype());
+  //      comptypes.push_back(d->type());
     auto b = world_.app(world_.tuple(/*comptypes*/elem_types()), t->var());
     t->close(b);
     return t;
@@ -389,16 +389,16 @@ Def VarNode::typecheck() const {
 }
 
 Def AppNode::typecheck() const {
-    auto funt = fun()->inftype();
-    auto argt = arg()->inftype();
+    auto funt = fun()->type();
+    auto argt = arg()->type();
     if (auto pifunt = funt.isa<Pi>()) {
         
         if (auto tup = fun().isa<Tuple>()) {
             if (auto argv = arg().isa<Var>()) {
                 auto dim = world_.dimension(tup->size());
                 Dim argtd;
-                if ((/*auto*/ argtd = argv->inftype().isa<Dim>()) && dim == argtd) {
-                   // if (dim == argv->inftype()) {
+                if ((/*auto*/ argtd = argv->type().isa<Dim>()) && dim == argtd) {
+                   // if (dim == argv->type()) {
                         return world_.app(world_.tuple(tup->elem_types()), argv);
                   //  } 
                 } else {
@@ -412,7 +412,7 @@ Def AppNode::typecheck() const {
             } else if (auto argp = arg().isa<Proj>()) {
                 size_t m = argp->m();
                 if (m < tup->size()) {
-                    return tup->op(argp->m())->inftype();
+                    return tup->op(argp->m())->type();
                 } else {
                     std::ostringstream msg;
                     msg << "in application: (";
@@ -427,7 +427,7 @@ Def AppNode::typecheck() const {
                 msg << ") -- argument is neither Var nor Proj";
                 return world_.bottom(msg.str());
             }
-        } else if (pifunt->var()->inftype() == argt) {
+        } else if (pifunt->var()->type() == argt) {
             return __reduce_but_dont_replace(**pifunt->body(),
                 pifunt->var(), arg()
             );
@@ -437,7 +437,7 @@ Def AppNode::typecheck() const {
             fun().dump(msg); msg << ") ("; arg().dump(msg);
             msg << ") -- type of argument (";
             argt.dump(msg); msg << ") != type of fun's var (";
-            pifunt->var()->inftype().dump(msg);
+            pifunt->var()->type().dump(msg);
             msg << ")";
             return world_.bottom(msg.str());
         } 
