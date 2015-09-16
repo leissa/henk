@@ -126,12 +126,87 @@ Pi World::pi(std::string name, Def var_type) {
     return cse(new PiNode(*this, g, var_type, name));
 }
 
+std::pair<bool, Dummy> is_app_of_dummy(Def a) {
+    if(auto ap = a.isa<App>()) {
+        if(auto l = ap->fun().isa<Lambda>()) {
+            if(auto db = l->body().isa<Dummy>())
+                return std::make_pair(true, db);
+        }
+    }
+    return std::make_pair(false, nullptr);
+}
+
 Def World::app(Def fun, Def arg) {
     
     if(auto l = fun.isa<Lambda>()) {
         if(auto db = l->body().isa<Dummy>()) {
-            //PrimLit o1, o2;
-           // if(auto o2 = 
+            Tuple argt;
+            if ((argt = db->arg_type().isa<Tuple>()) && argt->size() == 2) {
+                auto pairarg = arg.as<Tuple>();
+                PrimLit a1, a2;
+                if ((a1 = pairarg->op(0).isa<PrimLit>()) 
+                    && (a2 = pairarg->op(1).isa<PrimLit>())
+                    && db->is_reducable()) {
+                    return cse_base((db->body_)(arg));
+                } else if ((a2 = pairarg->op(1).isa<PrimLit>()) 
+                    && !(a1 = pairarg->op(0).isa<PrimLit>())) {
+                    auto p = is_app_of_dummy(pairarg->op(0));
+                    if (p.first && p.second == db) {
+                        auto nestedargs = pairarg->op(0).as<App>()->arg().as<Tuple>();
+                        PrimLit nested1, nested2;
+                        if ((nested1 = nestedargs->op(0).isa<PrimLit>())
+                            && db->is_commutative()
+                            && db->is_associative()) {
+                            auto nt = tuple(std::vector<Def> {(db->body_)(
+                                tuple(std::vector<Def> {nested1, a2})), nestedargs->op(1)});
+                            return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                        } else if ((nested2 = nestedargs->op(1).isa<PrimLit>())) {
+                            if(db->is_commutative() && db->is_associative()) {
+                                auto nt = tuple(std::vector<Def> {(db->body_)(
+                                    tuple(std::vector<Def> {nested2, a2})), nestedargs->op(0)});
+                                return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                            } else if (db->is_associative()) {
+                                auto nt = tuple(std::vector<Def> {nestedargs->op(0),
+                                    (db->body_)(tuple(std::vector<Def> {nested2, a2}))});
+                                return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                            }
+                        } else if (db->is_commutative()) {
+                            auto nt = tuple(std::vector<Def> {a2, a1});
+                            return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                        }
+                    } else if (db->is_commutative()) {
+                        auto nt = tuple(std::vector<Def> {a2, a1});
+                        return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                    }
+                } else if ((a1 = pairarg->op(0).isa<PrimLit>())
+                    && !(a2 = pairarg->op(1).isa<PrimLit>())) {
+                    auto p = is_app_of_dummy(pairarg->op(1));
+                    if (p.first && p.second == db) {
+                        auto nestedargs = pairarg->op(1).as<App>()->arg().as<Tuple>();
+                        PrimLit nested1, nested2;
+                        if ((nested2 = nestedargs->op(1).isa<PrimLit>())
+                            && db->is_commutative()
+                            && db->is_associative()) {
+                            auto nt = tuple(std::vector<Def> {(db->body_)(
+                                tuple(std::vector<Def> {a1, nested2})), a2});
+                            return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                        } else if ((nested1 = nestedargs->op(0).isa<PrimLit>())
+                            && db->is_associative()) {
+                            auto nt = tuple(std::vector<Def> {(db->body_)(
+                                tuple(std::vector<Def> {a1, nested1})), a2});
+                            return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                        }
+                    } else {
+                        // do nothing -- default is okay here
+                    }
+                } else if( pairarg->op(0)->gid() > pairarg->op(1)->gid()
+                    && db->is_commutative()) {
+                    auto nt = tuple(std::vector<Def> {a2, a1});
+                    return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                } else {
+                    // do nothing -- default is okay here
+                }
+            }
         }
     }
     
@@ -157,7 +232,7 @@ Def World::extract(Def tup, size_t i) {
         return app(tup, projection(tup->size(), i));
     else if(i > 0) {
         std::ostringstream msg;
-        msg << "trying to extract " << i << "th element out of non-tuple value";
+        msg << "trying to extract " << i << "th element out of a non-tuple value";
         return bottom(msg.str());
     } else
         return tup;
