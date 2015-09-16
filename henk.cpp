@@ -148,12 +148,9 @@ bool DefNode::has_subexpr(Def sub) const {
             if (def == sub)
                 return true;
         }
-        if (auto v = def->isa<VarNode>())
-            enqueue(v->type());
-        else {
-            for (auto op : def->ops_)
-                enqueue(op);
-        }
+
+        for (auto op : def->ops_)
+            enqueue(op);
     }
 
     return false;
@@ -161,7 +158,7 @@ bool DefNode::has_subexpr(Def sub) const {
 
 void AbsNode::close(Def body) const {
     assert(body->is_closed() && "closing AbsNode with unclosed body");
-   // world_.reduce(body); // unnecessary?
+    // world_.reduce(body); // unnecessary?
     set_op(1, body);
     world_.introduce(this);
 }
