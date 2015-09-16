@@ -140,7 +140,8 @@ int main(int argc, char* argv[]) {
                 case 3: test3(*world); break;
                 case 4: test4(*world); break;
                 case 5: test5(*world); break;
-                default: throw std::runtime_error("wrong number of test case");
+                default: 
+                    throw std::runtime_error("wrong number of test case");
             }
             break;
         default:
