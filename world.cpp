@@ -154,12 +154,6 @@ Proj World::projection(int n, int m) {
 Bottom World::bottom(std::string info) {
     return cse(new BottomNode(*this, gid_++, info));
 }
-
-
-/*
- * Utility methods
- */
- 
  
 /*
  * Cleanup
@@ -238,7 +232,6 @@ void World::cleanup() {
  */
 
 const DefNode* World::cse_base(const DefNode* def) {
-    
     def->update_non_reduced_repr();
     
     if (!def->is_closed())
@@ -273,7 +266,6 @@ const DefNode* World::cse_base(const DefNode* def) {
 }
 
 void World::introduce(const DefNode* def)  {
-    
     def->update_non_reduced_repr();
     
     auto type = def->typecheck();

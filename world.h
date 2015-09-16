@@ -27,7 +27,8 @@ public:
     Dim dimension(int n);
     /// 1-tuple "\<a\>" will be "a", so that's why tuple returns @p Def and not @p Tuple.
     Def tuple(thorin::ArrayRef<Def> elems);
-    Def extract(Def tup, size_t i); // because <2> = 2, we can extract from non-tuples
+    /// @p def is of type @p Def instead of @p Tuple because we can extract from non-tuples due to "<2> = 2".
+    Def extract(Def def, size_t i);
     
 protected:
     Proj projection(int n, int m);
