@@ -47,7 +47,6 @@ public:
     size_t gid() const { return gid_; }
 
 protected:
-    const DefNode* untuple(const TupleNode* tup);
     void introduce(const DefNode* def) ;
     template<class T> const T* cse(const T* def) { return cse_base(def)->template as<T>(); }
     const DefNode* cse_base(const DefNode*) ;
