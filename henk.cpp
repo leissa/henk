@@ -261,9 +261,9 @@ Def AbsNode::reduce(Def2Def& map) const {
     auto ntype = __reduce(**var()->type(), map);
     Abs nabs;
     if (this->isa<LambdaNode>())
-        nabs = world_.lambda(nvarn.str(), ntype);
+        nabs = world_.lambda(ntype, nvarn.str());
     else
-        nabs = world_.pi(nvarn.str(), ntype);
+        nabs = world_.pi(ntype, nvarn.str());
     map[*var()] = *nabs->var();
     auto nbody = __reduce(**body(), map);
     nabs->close(nbody);
@@ -340,10 +340,8 @@ Def LambdaNode::typecheck() const {
     nvarn << var()->name();
     if (nvarn.str() != "_")
         nvarn << "'";
-    auto res = world_.pi(nvarn.str(), var()->inftype());
-    auto body_type2 = __reduce_but_dont_replace(**body_type,
-        var(), res->var()
-    );
+    auto res = world_.pi(var()->inftype(), nvarn.str());
+    auto body_type2 = __reduce_but_dont_replace(**body_type, var(), res->var());
     res->close(body_type2);
     return res;
 }
@@ -378,7 +376,7 @@ Def TupleNode::typecheck() const {
         }
     }
     
-    auto t = world_.pi("i", world_.dimension(size()));
+    auto t = world_.pi(world_.dimension(size()), "i");
   //  std::vector<Def> comptypes;//(size());
   //  for (auto& d : ops_)
   //      comptypes.push_back(d->inftype());

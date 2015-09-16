@@ -98,14 +98,14 @@ World::~World() {
  * Factory methods
  */
 
-Lambda World::lambda(std::string name, Def var_type) {
+Lambda World::lambda(Def var_type, std::string name) {
     assert(var_type->is_closed() && "type of lambda variable is an unclosed term");
     size_t g = gid_;
     gid_ += 2; // world knows that Abs creates Var
     return cse(new LambdaNode(*this, g, var_type, name));
 }
 
-Pi World::pi(std::string name, Def var_type) {
+Pi World::pi(Def var_type, std::string name) {
     assert(var_type->is_closed() && "type of pi variable is an unclosed term");
     size_t g = gid_;
     gid_ += 2; // world knows that Abs creates Var
@@ -127,20 +127,20 @@ Def World::tuple(ArrayRef<Def> elems) {
 }
 
 Pi World::fun_type(Def from, Def to) {
-    auto npi = pi("_", from);
+    auto npi = pi(from, "_");
     npi->close(to); // upon closing, cse should be fired automatically
     return npi; // so there's no need to call cse again
 }
 
-Def World::extract(Def tup, size_t i) {
-    if (auto t = tup.isa<Tuple>())
-        return app(tup, projection(tup->size(), i));
+Def World::extract(Def def, size_t i) {
+    if (auto tuple = def.isa<Tuple>())
+        return app(tuple, projection(tuple->size(), i));
     else if (i > 0) {
         std::ostringstream msg;
         msg << "trying to extract " << i << "th element out of non-tuple value";
         return bottom(msg.str());
     } else
-        return tup;
+        return def;
 }
 
 Dim World::dimension(int n) {

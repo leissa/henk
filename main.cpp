@@ -5,8 +5,8 @@
 using namespace henk;
 
 Lambda poly_id(World& world, std::string tvar, std::string var) {
-    auto type_lambda = world.lambda(tvar, world.get_prim_const("*"));
-    auto id_lambda = world.lambda(var, type_lambda->var());
+    auto type_lambda = world.lambda(world.get_prim_const("*"), tvar);
+    auto id_lambda = world.lambda(type_lambda->var(), var);
     id_lambda->close(id_lambda->var());
     type_lambda->close(id_lambda);
 
@@ -28,13 +28,10 @@ void test2(World& world) {
      // u = lambda y:* . Int
     // (lambda x: (u Bool). 42) (Int)
     
-    auto u = world.lambda("y", world.get_prim_const("*"));
+    auto u = world.lambda(world.get_prim_const("*"), "y");
     u->close(world.get_prim_const("Int"));
     
-    auto lambda = world.lambda("x", world.app(
-        u, world.get_prim_const("Bool")
-        )
-    );
+    auto lambda = world.lambda(world.app(u, world.get_prim_const("Bool")), "x");
     lambda->close(world.literal(42));
     
     world.add_external(lambda);
@@ -55,8 +52,8 @@ void test3(World& world) {
     // where f: forall a. a -> Int
     // should fail in predicative system
     auto f = //world.pi("α", world.get_prim_const("*"));
-        world.lambda("α", world.get_prim_const("*"));
-    auto inf = world.lambda("x", f->var());
+        world.lambda(world.get_prim_const("*"), "α");
+    auto inf = world.lambda(f->var(), "x");
     inf->close(world.literal(42));
     f->close(inf);
 
@@ -64,11 +61,8 @@ void test3(World& world) {
             f->var(), world.get_prim_const("Int")
         )
     );*/
-    auto forallb = world.pi("β", world.get_prim_const("*"));
-    forallb->close(world.fun_type(
-        forallb->var(), forallb->var()
-        )
-    );
+    auto forallb = world.pi(world.get_prim_const("*"), "β");
+    forallb->close(world.fun_type(forallb->var(), forallb->var()));
     std::cout << "f = ";
     f.dump();
     std::cout << " : ";

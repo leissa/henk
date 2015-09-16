@@ -19,9 +19,9 @@ public:
 /*
  * Factory methods
  */
-    Lambda lambda(std::string var_name, Def var_type);
+    Lambda lambda(Def var_type, std::string var_name = std::string());
     Pi fun_type(Def from, Def to);
-    Pi pi(std::string var_name, Def var_type);
+    Pi pi(Def var_type, std::string var_name = std::string());
     Def app(Def appl, Def arg);
     PrimLit literal(int value);
     Dim dimension(int n);
