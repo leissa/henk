@@ -51,10 +51,8 @@ protected:
     template<class T> const T* cse(const T* def) { return cse_base(def)->template as<T>(); }
     const DefNode* cse_base(const DefNode*) ;
     
-    template<class T>
-    void unlink_and_unregister(T& expr);
-    template<class T>
-    void delete_garbage(T& exprs);
+    template<class T> static void unlink_and_unregister(T& expr);
+    template<class T> static void delete_garbage(T& exprs);
     
     struct ExprHash { size_t operator () (const DefNode* e) const { return e->hash(); } };
     struct ExprEqual {
