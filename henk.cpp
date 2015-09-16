@@ -145,17 +145,17 @@ bool DefNode::has_subexpr(Def sub) const {
     while (!queue.empty()) {
         auto def = pop(queue);
         if (def->is_closed()) {
-            if (def == sub) {
+            if (def == sub)
                 return true;
-            }
         }
-        if (auto v = def->isa<VarNode>()) {
+        if (auto v = def->isa<VarNode>())
             enqueue(v->type());
-        }
-        else for (auto op : def->ops_) {
-            enqueue(op);
+        else {
+            for (auto op : def->ops_)
+                enqueue(op);
         }
     }
+
     return false;
 }
 
@@ -288,25 +288,13 @@ Def TupleNode::reduce(Def2Def& map) const {
    // }
 }
 
-Def DimNode::reduce(Def2Def& map) const {
-    return this;
-}
-
-Def ProjNode::reduce(Def2Def& map) const {
-    return this;
-}
-
-Def BottomNode::reduce(Def2Def& map) const {
-    return this;
-}
+Def DimNode::reduce(Def2Def&) const { return this; }
+Def ProjNode::reduce(Def2Def&) const { return this; }
+Def BottomNode::reduce(Def2Def&) const { return this; }
 
 Def VarNode::reduce(Def2Def& map) const {
     auto i = map.find(this);
-    if (i != map.end()) {
-        return i->second;
-    } else {
-        return this;
-    }
+    return i != map.end() ? i->second : this;
 }
 
 Def AppNode::reduce(Def2Def& map) const {
