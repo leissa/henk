@@ -49,6 +49,7 @@ public:
     size_t gid() const { return gid_; }
 
 protected:
+    std::pair<bool, Dummy> is_app_of_dummy(Def a) const;
     const DefNode* untuple(const TupleNode* tup);
     void introduce(const DefNode* def) ;
     template<class T> const T* cse(const T* def) { return cse_base(def)->template as<T>(); }

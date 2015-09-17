@@ -68,7 +68,7 @@ World::World()
     wavy_arrow_rules[std::make_pair(star, dim)]    = star; // or dim?
     wavy_arrow_rules[std::make_pair(star2, dim)]   = star2; // or dim?
     wavy_arrow_rules[std::make_pair(box, dim)]     = box; // or dim?
-    
+
     /* primitive operators */
     
     auto plus = [this, pint] (Def d) -> Def {
@@ -84,7 +84,10 @@ World::World()
             return bottom("argument type to primitive plus is not a pair");
         }
     };
-    auto l = lambda("p", tuple(std::vector<Def> { pint, pint }));
+    
+    auto tt = tuple(std::vector<Def> { pint, pint });
+    auto l = lambda("p", tt);
+    
     auto dummypl = dummy(l, pint, true, true);
     dummypl->put_body(plus);
     l->close(dummypl);
@@ -124,16 +127,6 @@ Pi World::pi(std::string name, Def var_type) {
     size_t g = gid_;
     gid_ += 2; // world knows that Abs creates Var
     return cse(new PiNode(*this, g, var_type, name));
-}
-
-std::pair<bool, Dummy> is_app_of_dummy(Def a) {
-    if(auto ap = a.isa<App>()) {
-        if(auto l = ap->fun().isa<Lambda>()) {
-            if(auto db = l->body().isa<Dummy>())
-                return std::make_pair(true, db);
-        }
-    }
-    return std::make_pair(false, nullptr);
 }
 
 Def World::app(Def fun, Def arg) {
@@ -259,7 +252,15 @@ Bottom World::bottom(std::string info) {
 /*
  * Utility methods
  */
- 
+std::pair<bool, Dummy> World::is_app_of_dummy(Def a) const {
+    if(auto ap = a.isa<App>()) {
+        if(auto l = ap->fun().isa<Lambda>()) {
+            if(auto db = l->body().isa<Dummy>())
+                return std::make_pair(true, db);
+        }
+    }
+    return std::make_pair(false, nullptr);
+}
  
 /*
  * Cleanup
@@ -359,6 +360,9 @@ const DefNode* World::cse_base(const DefNode* def) {
     }
     
     def = rdef;
+    std::cout << "created: ";
+    Def(def).dump();
+    std::cout << std::endl;
     
     auto i = expressions_.find(def);
     if (i != expressions_.end() && *i != def) {
