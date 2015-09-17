@@ -187,8 +187,8 @@ public:
     bool has_subexpr(Def) const;
     size_t gid() const { return gid_; }
     World& world() const { return world_; }
-    const std::vector<Def>& ops() const { return ops_; }
-    Def op(size_t i) const { assert(i < ops().size() && "index out of bounds"); return ops_[i]; }
+    thorin::ArrayRef<Def> ops() const { return ops_; }
+    Def op(size_t i) const { return ops_[i]; }
     const std::string& name() const { return name_; }
     virtual bool is_closed() const = 0;
     bool equal(const DefNode& other) const;
@@ -198,7 +198,7 @@ protected:
     mutable std::string non_reduced_repr_;
     mutable const DefNode* representative_;
     World& world_;
-    mutable std::vector<Def> ops_;
+    mutable thorin::Array<Def> ops_;
     mutable size_t gid_;
     mutable std::string name_;
     mutable thorin::HashSet<Use, UseHash, UseEq> uses_;
