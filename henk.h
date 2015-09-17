@@ -215,7 +215,6 @@ protected:
 class AbsNode : public DefNode {
 protected:
     AbsNode(World& world, size_t gid, Def var_type, std::string name);
-    AbsNode(World& world, size_t gid, Def var);
     
     virtual ~AbsNode();
     
@@ -257,10 +256,6 @@ class PiNode : public AbsNode {
 protected:
     PiNode(World& world, size_t gid, Def var_type, std::string name)
         : AbsNode(world, gid, var_type, name)
-    {}
-    
-    PiNode(World& world, size_t gid, Def var)
-        : AbsNode(world, gid, var)
     {}
     
     virtual Def typecheck() const override;

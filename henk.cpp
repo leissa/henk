@@ -190,10 +190,6 @@ AbsNode::AbsNode(World& world, size_t gid, Def var_type, std::string name)
     set_op(0, v);
 }
 
-AbsNode::AbsNode(World& world, size_t gid, Def var)
-    : DefNode(world, gid, 2, "some abs")
-{ set_op(0, var); }
-
 TupleNode::TupleNode(World& world, size_t gid, size_t size, std::string name, ArrayRef<Def> elems)
     : DefNode(world, gid, size, name)
 { 
