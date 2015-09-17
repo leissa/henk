@@ -407,7 +407,7 @@ Def TupleNode::typecheck() const {
         if (ops_[i]->isa<BottomNode>()) {
             std::ostringstream msg;
             msg << "tuple ";
-            dump(msg); msg << " has bottom type as " << i << " elem";
+            vdump(msg); msg << " has bottom type as " << i << " elem";
             return world_.bottom(msg.str());
         }
     }
@@ -720,23 +720,22 @@ void AppNode::update_non_reduced_repr() const {
  * dump
  */
 
-void DefNode::vdump() const { dump(std::cout); std::cout << std::endl; }
-void DefNode::dump() const { dump(std::cout); std::cout << std::endl; }
-
 template<class T>
 void Proxy<T>::dump(std::ostream& stream) const {
     if (is_empty())
         stream << "'nullptr'";
     else
-        deref()->dump(stream);
+        deref()->vdump(stream);
 }
 
-void LambdaNode::dump(std::ostream& stream) const {
+void DefNode::dump() const { vdump(std::cout); std::cout << std::endl; }
+
+void LambdaNode::vdump(std::ostream& stream) const {
     stream << "λ";
     dump_body(stream);
 }
 
-void PiNode::dump(std::ostream& stream) const {
+void PiNode::vdump(std::ostream& stream) const {
     if (body().is_empty()) {
         stream << "Π";
         dump_body(stream);
@@ -763,7 +762,7 @@ void AbsNode::dump_body(std::ostream& stream) const {
     body().dump(stream);
 }
 
-void TupleNode::dump(std::ostream& stream) const {
+void TupleNode::vdump(std::ostream& stream) const {
     stream << "<";
     if (size() > 0)
         ops_[0].dump(stream);
@@ -774,27 +773,27 @@ void TupleNode::dump(std::ostream& stream) const {
     stream << ">";
 }
 
-void DimNode::dump(std::ostream& stream) const {
+void DimNode::vdump(std::ostream& stream) const {
     stream << n_ << "ᵈ";
 }
 
-void ProjNode::dump(std::ostream& stream) const {
+void ProjNode::vdump(std::ostream& stream) const {
     stream << "proj{" << m_ << "_" << n_ << "}";
 }
 
-void BottomNode::dump(std::ostream& stream) const {
+void BottomNode::vdump(std::ostream& stream) const {
     stream << name() << " { " << info() << " }";
 }
 
-void VarNode::dump(std::ostream& stream) const {
+void VarNode::vdump(std::ostream& stream) const {
     stream << name();
 }
 
-void PrimLitNode::dump(std::ostream& stream) const {
+void PrimLitNode::vdump(std::ostream& stream) const {
     stream << value();
 }
 
-void DummyNode::dump(std::ostream& stream) const {
+void DummyNode::vdump(std::ostream& stream) const {
     stream << "Dummy{(";
     arg_type().dump(stream);
     stream << ") -> (";
@@ -802,7 +801,7 @@ void DummyNode::dump(std::ostream& stream) const {
     stream << ")}";
 }
 
-void AppNode::dump(std::ostream& stream) const {
+void AppNode::vdump(std::ostream& stream) const {
     stream << "(";
     fun().dump(stream);
     stream << ") (";

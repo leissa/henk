@@ -55,8 +55,7 @@ public:
     
     bool is_empty() const { return node_ == nullptr; }
     void dump(std::ostream& stream) const;
-    void dump() const { dump(std::cout); }
-    void vdump() const { dump(); std::cout << std::endl; }
+    void dump() const { dump(std::cout); std::cout << std::endl; }
     
     // casts
 
@@ -170,9 +169,8 @@ protected:
 public:
     virtual DefSet free_vars() const;
     std::string non_reduced_repr() const { return non_reduced_repr_; }
-    void vdump() const;
-    virtual void dump(std::ostream& stream) const = 0;
-    void dump() const;// { dump(std::cout); }
+    void dump() const;
+    virtual void vdump(std::ostream& stream) const = 0;
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
     Def type() const { assert(!type_.is_empty()); return type_; }
     size_t size() const { return ops_.size(); }
@@ -223,7 +221,6 @@ protected:
     
 public:
     virtual DefSet free_vars() const override;
-    virtual void dump(std::ostream& stream) const = 0;
     Var var() const { return op(0).as<Var>(); }
     Def body() const { return op(1); }
     void close(Def body) const;
@@ -247,7 +244,7 @@ protected:
     virtual void update_non_reduced_repr() const override;
     
 public:
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
 
     friend class World;
 };
@@ -262,7 +259,7 @@ protected:
     virtual void update_non_reduced_repr() const override;
     
 public:
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
 
     friend class World;
 };
@@ -277,7 +274,7 @@ protected:
     
 public:
     thorin::Array<Def> elem_types() const;
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
     virtual DefSet free_vars() const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
@@ -302,7 +299,7 @@ protected:
     
 public:
     int n() const { return n_; }
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
@@ -330,7 +327,7 @@ protected:
 public:
     int n() const { return n_; }
     int m() const { return m_; }
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
@@ -355,7 +352,7 @@ protected:
     
 public:
     std::string info() const { return info_; }
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
@@ -381,7 +378,7 @@ protected:
     
 public:
     Abs abs() const { return abs_; }
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
     virtual DefSet free_vars() const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
@@ -408,7 +405,7 @@ protected:
     virtual size_t vhash() const override;
     
 public:
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     Def type() const { return op(0); }
     int value() const { return value_; };
@@ -444,7 +441,7 @@ public:
     bool is_commutative() const { return is_commutative_; }
     bool is_associative() const { return is_associative_; }
     void put_body(std::function<Def(Def)> body) const { assert(!body_.operator bool() && "dummy already holds a body"); body_ = body; } 
-    virtual void dump(std::ostream& stream) const;
+    virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
@@ -472,7 +469,7 @@ public:
     virtual DefSet free_vars() const override;
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
