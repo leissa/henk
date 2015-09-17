@@ -224,7 +224,7 @@ protected:
     void __update_non_reduced_repr_body(std::ostringstream& r) const;
     
 public:
-    virtual DefSet free_vars() const;
+    virtual DefSet free_vars() const override;
     virtual void dump(std::ostream& stream) const = 0;
     Var var() const { return op(0).as<Var>(); }
     Def body() const { return op(1); }
@@ -284,7 +284,7 @@ protected:
 public:
     thorin::Array<Def> elem_types() const;
     virtual void dump(std::ostream& stream) const override;
-    virtual DefSet free_vars() const;
+    virtual DefSet free_vars() const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
@@ -388,7 +388,7 @@ protected:
 public:
     Abs abs() const { return abs_; }
     virtual void dump(std::ostream& stream) const override;
-    virtual DefSet free_vars() const;
+    virtual DefSet free_vars() const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
@@ -475,7 +475,7 @@ protected:
     virtual Def reduce(Def2Def& map) const override;
     
 public:
-    virtual DefSet free_vars() const;
+    virtual DefSet free_vars() const override;
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }
     virtual void dump(std::ostream& stream) const override;
