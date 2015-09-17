@@ -72,23 +72,44 @@ World::World()
     wavy_arrow_rules[std::make_pair(star, dim)]    = star; // or dim?
     wavy_arrow_rules[std::make_pair(star2, dim)]   = star2; // or dim?
     wavy_arrow_rules[std::make_pair(box, dim)]     = box; // or dim?
-    
+
     /* primitive operators */
     
+    auto plus = [this, pint] (Def d) -> Def {
+        Tuple t;
+        if((t = d.isa<Tuple>()) && t->size() == 2) {
+            PrimLit p0, p1;
+            if((p0 = t->op(0).isa<PrimLit>()) && (p1 = t->op(1).isa<PrimLit>())) {
+                return literal(p0->value() + p1->value());
+            } else {
+                return bottom("one of arguments types of primitve plus is not int");
+            }
+        } else {
+            return bottom("argument type to primitive plus is not a pair");
+        }
+    };
     
+    auto tt = tuple(std::vector<Def> { pint, pint });
+    auto l = lambda(tt, "p");
+    
+    auto dummypl = dummy(l, pint, true, true);
+    dummypl->put_body(plus);
+    l->close(dummypl);
+    
+    prim_ops["+"] = l;
     
     
     std::cout << "constructed world at " << this << std::endl;
 }
 
 World::~World() {
-    std::cout << "deleting world at " << this << std::endl;
+    //std::cout << "deleting world at " << this << std::endl;
     for (auto& e : expressions_) {
-        std::cout << "expr at " << e << std::endl;
+      //  std::cout << "expr at " << e << std::endl;
         delete e;
     }
     for (auto& e : duplicates_) {
-        std::cout << "dup expr at " << e << std::endl;
+       // std::cout << "dup expr at " << e << std::endl;
         delete e;
     }
 }
@@ -113,6 +134,79 @@ Pi World::pi(Def var_type, std::string name) {
 }
 
 Def World::app(Def fun, Def arg) {
+    
+    if(auto l = fun.isa<Lambda>()) {
+        if(auto db = l->body().isa<Dummy>()) {
+            Tuple argt;
+            if ((argt = db->arg_type().isa<Tuple>()) && argt->size() == 2) {
+                auto pairarg = arg.as<Tuple>();
+                PrimLit a1, a2;
+                if ((a1 = pairarg->op(0).isa<PrimLit>()) 
+                    && (a2 = pairarg->op(1).isa<PrimLit>())
+                    && db->is_reducable()) {
+                    return cse_base((db->body_)(arg));
+                } else if ((a2 = pairarg->op(1).isa<PrimLit>()) 
+                    && !(a1 = pairarg->op(0).isa<PrimLit>())) {
+                    auto p = is_app_of_dummy(pairarg->op(0));
+                    if (p.first && p.second == db) {
+                        auto nestedargs = pairarg->op(0).as<App>()->arg().as<Tuple>();
+                        PrimLit nested1, nested2;
+                        if ((nested1 = nestedargs->op(0).isa<PrimLit>())
+                            && db->is_commutative()
+                            && db->is_associative()) {
+                            auto nt = tuple(std::vector<Def> {(db->body_)(
+                                tuple(std::vector<Def> {nested1, a2})), nestedargs->op(1)});
+                            return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                        } else if ((nested2 = nestedargs->op(1).isa<PrimLit>())) {
+                            if(db->is_commutative() && db->is_associative()) {
+                                auto nt = tuple(std::vector<Def> {(db->body_)(
+                                    tuple(std::vector<Def> {nested2, a2})), nestedargs->op(0)});
+                                return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                            } else if (db->is_associative()) {
+                                auto nt = tuple(std::vector<Def> {nestedargs->op(0),
+                                    (db->body_)(tuple(std::vector<Def> {nested2, a2}))});
+                                return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                            }
+                        } else if (db->is_commutative()) {
+                            auto nt = tuple(std::vector<Def> {a2, pairarg->op(0)});
+                            return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                        }
+                    } else if (db->is_commutative()) {
+                        auto nt = tuple(std::vector<Def> {a2, pairarg->op(0)});
+                        return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                    }
+                } else if ((a1 = pairarg->op(0).isa<PrimLit>())
+                    && !(a2 = pairarg->op(1).isa<PrimLit>())) {
+                    auto p = is_app_of_dummy(pairarg->op(1));
+                    if (p.first && p.second == db) {
+                        auto nestedargs = pairarg->op(1).as<App>()->arg().as<Tuple>();
+                        PrimLit nested1, nested2;
+                        if ((nested2 = nestedargs->op(1).isa<PrimLit>())
+                            && db->is_commutative()
+                            && db->is_associative()) {
+                            auto nt = tuple(std::vector<Def> {(db->body_)(
+                                tuple(std::vector<Def> {a1, nested2})), pairarg->op(1)});
+                            return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                        } else if ((nested1 = nestedargs->op(0).isa<PrimLit>())
+                            && db->is_associative()) {
+                            auto nt = tuple(std::vector<Def> {(db->body_)(
+                                tuple(std::vector<Def> {a1, nested1})), pairarg->op(1)});
+                            return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                        }
+                    } else {
+                        // do nothing -- default is okay here
+                    }
+                } else if( pairarg->op(0)->gid() > pairarg->op(1)->gid()
+                    && db->is_commutative()) {
+                    auto nt = tuple(std::vector<Def> {pairarg->op(1), pairarg->op(0)});
+                    return cse_base(new AppNode(*this, gid_++, fun, nt, "app_"));
+                } else {
+                    // do nothing -- default is okay here
+                }
+            }
+        }
+    }
+    
     return cse_base(new AppNode(*this, gid_++, fun, arg, "app_"));
 }
 
@@ -137,7 +231,7 @@ Def World::extract(Def def, size_t i) {
         return app(tuple, projection(tuple->size(), i));
     else if (i > 0) {
         std::ostringstream msg;
-        msg << "trying to extract " << i << "th element out of non-tuple value";
+        msg << "trying to extract " << i << "th element out of a non-tuple value";
         return bottom(msg.str());
     } else
         return def;
@@ -147,12 +241,30 @@ Dim World::dimension(int n) {
     return cse(new DimNode(*this, gid_++, n));
 }
 
+Dummy World::dummy(Abs abs, Def return_type, bool is_commutative, bool is_associative) {
+    return cse(new DummyNode(*this, gid_++, abs->var()->type(), 
+        return_type, is_commutative, is_associative));
+}
+
 Proj World::projection(int n, int m) {
     return cse(new ProjNode(*this, gid_++, n, m));
 }
 
 Bottom World::bottom(std::string info) {
     return cse(new BottomNode(*this, gid_++, info));
+}
+
+/*
+ * Utility methods
+ */
+std::pair<bool, Dummy> World::is_app_of_dummy(Def a) const {
+    if(auto ap = a.isa<App>()) {
+        if(auto l = ap->fun().isa<Lambda>()) {
+            if(auto db = l->body().isa<Dummy>())
+                return std::make_pair(true, db);
+        }
+    }
+    return std::make_pair(false, nullptr);
 }
  
 /*
@@ -249,6 +361,9 @@ const DefNode* World::cse_base(const DefNode* def) {
     }
     
     def = rdef;
+   // std::cout << "created: ";
+   // Def(def).dump();
+   // std::cout << std::endl;
     
     auto i = expressions_.find(def);
     if (i != expressions_.end() && *i != def) {

@@ -1,6 +1,7 @@
 #ifndef HENK_WORLD_H
 #define HENK_WORLD_H
 
+#include <functional>
 #include <iostream>
 #include <map>
 
@@ -29,12 +30,19 @@ public:
     Def tuple(thorin::ArrayRef<Def> elems);
     /// @p def is of type @p Def instead of @p Tuple because we can extract from non-tuples due to "<2> = 2".
     Def extract(Def def, size_t i);
-    Proj projection(int n, int m);
-    Bottom bottom(std::string name = "");
+    //Proj projection(int n, int m);
+    //Bottom bottom(std::string name = "");
+    Dummy dummy(Abs abs, Def return_type, bool is_commutative = false, bool is_associative = false);
     
-    /*
-     * Utility methods
-     */ 
+protected:
+    Proj projection(int n, int m);
+    Bottom bottom(std::string info);
+
+public:
+/*
+ * Utility methods
+ */ 
+    Lambda get_primop(std::string s) const { return prim_ops.at(s); }
     void cleanup();
     void add_external(Lambda lambda) const { externals_.insert(lambda); }
     void remove_external(Lambda lambda) const { externals_.erase(lambda); }
@@ -45,6 +53,7 @@ public:
     size_t gid() const { return gid_; }
 
 protected:
+    std::pair<bool, Dummy> is_app_of_dummy(Def a) const;
     void introduce(const DefNode* def) ;
     template<class T> const T* cse(const T* def) { return cse_base(def)->template as<T>(); }
     const DefNode* cse_base(const DefNode*) ;
@@ -63,6 +72,7 @@ protected:
     
     mutable size_t gid_; // global id for expressions
     std::map<std::string, const DefNode*> prim_consts;
+    std::map<std::string, /*std::function<Def(Def)>*/Lambda > prim_ops;
     std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> externals_;

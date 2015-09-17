@@ -1,3 +1,4 @@
+#include <algorithm> // std::is_permutation
 #include <typeinfo>
 #include <sstream>
 
@@ -50,6 +51,7 @@ template class Proxy<PiNode>;
 template class Proxy<TupleNode>;
 template class Proxy<DimNode>;
 template class Proxy<ProjNode>;
+template class Proxy<DummyNode>;
 template class Proxy<AppNode>;
 
 /* ----------------------------------------------------
@@ -190,9 +192,7 @@ AbsNode::AbsNode(World& world, size_t gid, Def var_type, std::string name)
 
 AbsNode::AbsNode(World& world, size_t gid, Def var)
     : DefNode(world, gid, 2, "some abs")
-{
-    set_op(0, var);
-}
+{ set_op(0, var); }
 
 TupleNode::TupleNode(World& world, size_t gid, size_t size, std::string name, ArrayRef<Def> elems)
     : DefNode(world, gid, size, name)
@@ -212,6 +212,40 @@ AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
  */
 
 AbsNode::~AbsNode() { delete *var(); }
+
+/*
+ * free_vars
+ */ 
+
+DefSet DefNode::free_vars() const {
+    return DefSet();
+}
+
+DefSet AbsNode::free_vars() const {
+    auto r = body()->free_vars();
+    r.erase(var());
+    return r;
+}
+
+DefSet TupleNode::free_vars() const {
+    DefSet r;
+    for(auto& d : ops_) {
+        auto fv = d->free_vars();
+        r.insert(fv.begin(), fv.end());
+    }
+    return r;
+}
+
+DefSet VarNode::free_vars() const {
+    return DefSet { this };
+}
+
+DefSet AppNode::free_vars() const {
+    auto r1 = fun()->free_vars();
+    auto r2 = arg()->free_vars();
+    r1.insert(r2.begin(), r2.end());
+    return r1;
+}
 
 /*
  * reduce
@@ -292,6 +326,14 @@ Def VarNode::reduce(Def2Def& map) const {
     return i != map.end() ? i->second : this;
 }
 
+Def PrimLitNode::reduce(Def2Def& map) const {
+    return this;
+}
+
+Def DummyNode::reduce(Def2Def& map) const {
+    return this; // it's app of lambda that is responsible for reducing its damn dummy body! ;)
+}
+
 Def AppNode::reduce(Def2Def& map) const {
     Def rfun = __reduce(**fun(), map);
     Def rarg = __reduce(**arg(), map);
@@ -303,10 +345,26 @@ Def AppNode::reduce(Def2Def& map) const {
         else
             return this;
     } else if (auto abs = rfun.isa<Abs>()) {
-        map[*abs->var()] = *rarg;
-        return __reduce(**abs->body(), map);
+        if(auto dummyb = abs->body().isa<Dummy>()) {
+            auto fv = rarg->free_vars();
+            for(auto& kv : map) {
+                fv.erase(kv.first);
+            }
+            if(/*rarg->free_vars()*/fv.empty() && dummyb->is_reducable()) {
+           // if((v = rarg.isa<Var>()) || (a = rarg)) { // what about map?!
+                auto f = dummyb->body_;
+                return f(rarg);
+            } else {
+                goto cannotdumuchappnodereduce;                
+            }
+        } else {
+            map[*(abs->var())] = *rarg;
+            return __reduce(**abs->body(), map);
+        }
     } else {
-        if (*rfun != *fun() || *rarg != *arg())
+
+cannotdumuchappnodereduce:
+        if(*rfun != *(fun()) || *rarg != *(arg()))
             return world_.app(rfun, rarg);
         else
             return this;
@@ -359,10 +417,7 @@ Def TupleNode::typecheck() const {
     }
     
     auto t = world_.pi(world_.dimension(size()), "i");
-  //  std::vector<Def> comptypes;//(size());
-  //  for (auto& d : ops_)
-  //      comptypes.push_back(d->type());
-    auto b = world_.app(world_.tuple(/*comptypes*/elem_types()), t->var());
+    auto b = world_.app(world_.tuple(elem_types()), t->var());
     t->close(b);
     return t;
 }
@@ -381,6 +436,14 @@ Def BottomNode::typecheck() const {
 
 Def VarNode::typecheck() const {
     return type();
+}
+
+Def PrimLitNode::typecheck() const {
+    return type();
+}
+
+Def DummyNode::typecheck() const {
+    return arg_type_;
 }
 
 Def AppNode::typecheck() const {
@@ -488,7 +551,6 @@ bool AbsNode::eq(const DefNode& other, Def2Def& map) const {
 bool TupleNode::eq(const DefNode& other, Def2Def& map) const {
     if (DefNode::eq(other, map) && size() == other.size()) {
         bool compeq = true;
-        //auto tother = other.as<TupleNode>();
         for (size_t i = 0; i < size(); ++i) {
             compeq &= ops_[i]->eq(**other.op(i), map);
         }
@@ -506,17 +568,26 @@ bool ProjNode::eq(const DefNode& other, Def2Def& map) const {
         && m_ == other.as<ProjNode>()->m_;
 }
 
-bool AppNode::eq(const DefNode& other, Def2Def& map) const {
+bool DummyNode::eq (const DefNode& other, Def2Def& map) const {
+    return this == &other;
+}
+
+bool AppNode::eq (const DefNode& other, Def2Def& map) const {
     bool sametypes = DefNode::eq(other, map);
     if (!sametypes)
         return false;
-    
+   /* 
     assert((!fun()->isa<AbsNode>() || fun()->isa<TupleNode>()) 
         && (!other.as<AppNode>()->fun()->isa<AbsNode>() || other.as<AppNode>()->fun()->isa<TupleNode>()) 
         && "an abstraction in fun position in AppNode::eq"
         " contradicts strong normalization (reduction) policy");
-    // we have to give up on the assertion due to introduction of tuples
-    // now `lam i:2^d. <a, b> i` is irreducible
+    */ // problems when dummies are bodies...
+   /* if(auto lam = fun().isa<Lam>()) {
+        if(auto dummyb = lam->body().isa<Dummy>()) {
+            
+        }
+    }*/
+    
     return DefNode::eq(other, map)
         && fun()->eq(**other.as<AppNode>()->fun(), map)
         && arg()->eq(**other.as<AppNode>()->arg(), map);
@@ -539,6 +610,7 @@ size_t TupleNode::vhash() const {
 }
 size_t DimNode::vhash() const { return hash_combine(hash_begin(197), n_); }
 size_t ProjNode::vhash() const { return hash_combine(hash_begin(73), hash_combine(n_, m_)); }
+size_t DummyNode::vhash() const { return hash_combine(hash_begin(55), hash_combine(arg_type()->hash(), return_type()->hash())); }
 size_t AppNode::vhash() const { return hash_combine(fun()->gid(), arg()->gid()); }
 
 /*
@@ -548,6 +620,7 @@ size_t AppNode::vhash() const { return hash_combine(fun()->gid(), arg()->gid());
 bool BottomNode::is_closed() const { return true; }
 bool AbsNode::is_closed() const { return body(); }
 bool VarNode::is_closed() const { return type() ? type()->is_closed() : true; }
+bool PrimLitNode::is_closed() const { return type() ? type()->is_closed() : true; }
 bool TupleNode::is_closed() const {
     bool closed = true;
     for (auto& d : ops_) {
@@ -557,6 +630,7 @@ bool TupleNode::is_closed() const {
 }
 bool DimNode::is_closed() const { return true; }
 bool ProjNode::is_closed() const { return true; }
+bool DummyNode::is_closed() const { return true; } // yes, true!
 bool AppNode::is_closed() const { return fun()->is_closed() && arg()->is_closed(); }
 
 /*
@@ -621,6 +695,13 @@ void DimNode::update_non_reduced_repr() const {
 void ProjNode::update_non_reduced_repr() const {
     std::ostringstream r;
     r << "proj{" << m_ << "_" << n_ << "}";
+    non_reduced_repr_ = r.str();
+}
+
+void DummyNode::update_non_reduced_repr() const {
+    std::ostringstream r;
+    r << "Dummy{(" << __get_non_reduced_repr(**arg_type());
+    r << ") -> (" << __get_non_reduced_repr(**return_type()) << ")}";
     non_reduced_repr_ = r.str();
 }
 
@@ -717,7 +798,15 @@ void PrimLitNode::dump(std::ostream& stream) const {
     stream << value();
 }
 
-void AppNode::dump(std::ostream& stream) const {
+void DummyNode::dump (std::ostream& stream) const {
+    stream << "Dummy{(";
+    arg_type().dump(stream);
+    stream << ") -> (";
+    return_type().dump(stream);
+    stream << ")}";
+}
+
+void AppNode::dump (std::ostream& stream) const {
     stream << "(";
     fun().dump(stream);
     stream << ") (";

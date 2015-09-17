@@ -1,6 +1,7 @@
 #ifndef HENK_IR_H
 #define HENK_IR_H
 
+#include <functional>
 #include <vector>
 
 #include "thorin/util/cast.h"
@@ -22,6 +23,7 @@ class PiNode;      typedef Proxy<PiNode>      Pi;
 class TupleNode;   typedef Proxy<TupleNode>   Tuple;
 class DimNode;     typedef Proxy<DimNode>     Dim;
 class ProjNode;    typedef Proxy<ProjNode>    Proj;
+class DummyNode;   typedef Proxy<DummyNode>   Dummy;
 class AppNode;     typedef Proxy<AppNode>     App;
 
 template<class T>
@@ -135,7 +137,7 @@ class DefNode : public thorin::MagicCast<DefNode> {
 protected:   
     DefNode(World& world, size_t gid, size_t size, std::string name);
     
-    virtual ~DefNode() { /*unregister_uses();*/ }
+    virtual ~DefNode() {}
 
     void unregister_use(size_t i) const;
     void unregister_uses() const;
@@ -147,7 +149,7 @@ protected:
     virtual void update_non_reduced_repr() const;
     std::string __get_non_reduced_repr(const DefNode& def) const;
     virtual Def typecheck() const = 0;
-    
+    //virtual std::list<Def> flatten() const { return this; }
     void reduce() const;
     void reduce(Def oldd, Def newd) const; // acts as substitution
     virtual Def reduce(Def2Def& map) const = 0;
@@ -167,10 +169,11 @@ protected:
     Def __reduce(const DefNode& def, Def2Def& map) const; 
     
 public:
-    std::string non_reduced_repr() const { return non_reduced_repr_; }
-    void vdump() const;
-    virtual void dump(std::ostream& stream) const = 0;
-    void dump() const;// { dump(std::cout); }
+    virtual DefSet free_vars () const;
+    std::string non_reduced_repr () const { return non_reduced_repr_; }
+    void vdump () const;
+    virtual void dump (std::ostream& stream) const = 0;
+    void dump () const;// { dump(std::cout); }
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
     Def type() const { assert(!type_.is_empty()); return type_; }
     size_t size() const { return ops_.size(); }
@@ -221,6 +224,8 @@ protected:
     void __update_non_reduced_repr_body(std::ostringstream& r) const;
     
 public:
+    virtual DefSet free_vars () const;
+    virtual void dump (std::ostream& stream) const = 0;
     Var var() const { return op(0).as<Var>(); }
     Def body() const { return op(1); }
     void close(Def body) const;
@@ -279,6 +284,7 @@ protected:
 public:
     thorin::Array<Def> elem_types() const;
     virtual void dump(std::ostream& stream) const override;
+    virtual DefSet free_vars () const;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
@@ -382,6 +388,7 @@ protected:
 public:
     Abs abs() const { return abs_; }
     virtual void dump(std::ostream& stream) const override;
+    virtual DefSet free_vars () const;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
@@ -394,24 +401,68 @@ protected:
     friend class AbsNode;
 };
 
-class PrimLitNode : public VarNode {
+class PrimLitNode : public DefNode {
 protected:
     PrimLitNode(World& world, size_t gid, Def type, int/*will become Box later on*/ value, std::string name)
-        : VarNode(world, gid, type, nullptr, name)
+        : DefNode(world, gid, 1, name)
         , value_(value)
-    {}
+    { set_op(0, type); }
+
+    virtual Def typecheck() const;
+    virtual Def reduce(Def2Def& map) const;
     
     virtual size_t vhash() const override;
     
 public:
-    int value() const { return value_; };
     virtual void dump(std::ostream& stream) const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
+    Def type() const { return op(0); }
+    int value() const { return value_; };
+    virtual bool is_closed() const override;
     
 private:
     int value_;
     
     friend class World;
+};
+
+class DummyNode : public DefNode {
+protected:
+    DummyNode(World& world, size_t gid, Def arg_type, Def return_type, 
+        bool is_commutative, bool is_associative)
+        : DefNode(world, gid, 0, "Dummy")
+        , arg_type_(arg_type)
+        , return_type_(return_type)
+        , is_commutative_(is_commutative)
+        , is_associative_(is_associative)
+    {}
+    
+    size_t vhash() const;
+    
+    virtual Def typecheck() const;
+    virtual void update_non_reduced_repr () const;
+    virtual Def reduce(Def2Def& map) const;
+    
+public:
+    Def arg_type () const { return arg_type_; }
+    Def return_type () const { return return_type_; }
+    bool is_reducable() const { return body_.operator bool(); }
+    bool is_commutative() const { return is_commutative_; }
+    bool is_associative() const { return is_associative_; }
+    void put_body(std::function<Def(Def)> body) const { assert(!body_.operator bool() && "dummy already holds a body"); body_ = body; } 
+    virtual void dump (std::ostream& stream) const;
+    virtual bool is_closed() const override;
+    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+
+protected:
+    Def arg_type_;
+    Def return_type_;
+    mutable std::function<Def(Def)> body_;
+    bool is_commutative_;
+    bool is_associative_;
+    
+    friend class World;
+    friend class AppNode; // AppNode::reduce() uses body_
 };
 
 class AppNode : public DefNode {
@@ -424,6 +475,7 @@ protected:
     virtual Def reduce(Def2Def& map) const override;
     
 public:
+    virtual DefSet free_vars () const;
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }
     virtual void dump(std::ostream& stream) const override;
