@@ -257,6 +257,7 @@ Bottom World::bottom(std::string info) {
 /*
  * Utility methods
  */
+
 std::pair<bool, Dummy> World::is_app_of_dummy(Def a) const {
     if(auto ap = a.isa<App>()) {
         if(auto l = ap->fun().isa<Lambda>()) {
@@ -309,8 +310,14 @@ void World::cleanup() {
         def->live_ = false;
     for (auto def : duplicates_)
         def->live_ = false;
-    for (auto kv : prim_consts)
+    for (auto kv : prim_consts) {
         kv.second->live_ = true;
+        queue.push(kv.second);
+    }
+    for (auto kv : prim_ops) {
+        kv.second->live_ = true;
+        queue.push(kv.second);
+    }
     for (auto edef : externals_) {
         edef->live_ = true;
         queue.push(edef);
@@ -324,8 +331,11 @@ void World::cleanup() {
             if (def->type_)
                 enqueue(def->type_);
             
-            if (auto v = def->isa<VarNode>()) {
-                enqueue(v->type());
+           // if (auto v = def->isa<VarNode>()) {
+            //    enqueue(v->type());
+            if (auto d = def->isa<DummyNode>()) {
+                enqueue(d->arg_type());
+                enqueue(d->return_type());
             } else for (auto op : def->ops_) {
                 enqueue(op);
             }
