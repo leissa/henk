@@ -135,6 +135,7 @@ using Def2Def = DefMap<const DefNode*>;
 class DefNode : public thorin::MagicCast<DefNode> {
 protected:   
     DefNode(World& world, size_t gid, size_t size, std::string name);
+    //DefNode(World& world, size_t gid, thorin::ArrayRef<Def> ops, std::string name);
     
     virtual ~DefNode() {}
 
@@ -266,7 +267,7 @@ public:
 
 class TupleNode : public DefNode {
 protected:
-    TupleNode(World& world, size_t gid, size_t size, std::string name, thorin::ArrayRef<Def> elems);
+    TupleNode(World& world, size_t gid, size_t size, thorin::ArrayRef<Def> elems, std::string name);
     
     virtual Def typecheck() const override;
     virtual Def reduce(Def2Def& map) const override;

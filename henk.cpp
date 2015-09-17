@@ -190,7 +190,7 @@ AbsNode::AbsNode(World& world, size_t gid, Def var_type, std::string name)
     set_op(0, v);
 }
 
-TupleNode::TupleNode(World& world, size_t gid, size_t size, std::string name, ArrayRef<Def> elems)
+TupleNode::TupleNode(World& world, size_t gid, size_t size, ArrayRef<Def> elems, std::string name)
     : DefNode(world, gid, size, name)
 { 
     std::copy(elems.begin(), elems.end(), ops_.begin());

@@ -217,7 +217,7 @@ PrimLit World::literal(int value) {
 Def World::tuple(ArrayRef<Def> elems) {
     if (elems.size() == 1)
         return elems[0];
-    return cse_base(new TupleNode(*this, gid_++, elems.size(), "tuple", elems));
+    return cse_base(new TupleNode(*this, gid_++, elems.size(), elems, "tuple"));
 }
 
 Pi World::fun_type(Def from, Def to) {
