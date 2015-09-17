@@ -358,13 +358,13 @@ Def AppNode::reduce(Def2Def& map) const {
                 goto cannotdumuchappnodereduce;                
             }
         } else {
-            map[*(abs->var())] = *rarg;
+            map[*abs->var()] = *rarg;
             return __reduce(**abs->body(), map);
         }
     } else {
 
 cannotdumuchappnodereduce:
-        if(*rfun != *(fun()) || *rarg != *(arg()))
+        if(*rfun != *fun() || *rarg != *arg())
             return world_.app(rfun, rarg);
         else
             return this;
