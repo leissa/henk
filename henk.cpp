@@ -174,34 +174,32 @@ Array<Def> TupleNode::elem_types() const {
  * constructors
  */
 
-DefNode::DefNode(World& world, size_t gid, size_t size, std::string name)
+DefNode::DefNode(World& world, size_t gid, ArrayRef<Def> ops, std::string name)
     : representative_(this)
     , world_(world)
-    , ops_(size)
+    , ops_(ops.size())
     , gid_(gid)
     , name_(name)
-{}
+{
+    for (size_t i = 0, e = ops.size(); i != e; ++i) {
+        if (auto op = ops[i])
+            set_op(i, ops[i]);
+    }
+}
 
 AbsNode::AbsNode(World& world, size_t gid, Def var_type, std::string name)
-    : DefNode(world, gid, 2, name)
+    : DefNode(world, gid, { new VarNode(world, gid + 1, var_type, this, name), nullptr }, name)
 {
-    auto v = new VarNode(world, gid + 1, var_type, this, name);
-    v->update_non_reduced_repr();
-    set_op(0, v);
+    var()->update_non_reduced_repr();
 }
 
 TupleNode::TupleNode(World& world, size_t gid, size_t size, ArrayRef<Def> elems, std::string name)
-    : DefNode(world, gid, size, name)
-{ 
-    std::copy(elems.begin(), elems.end(), ops_.begin());
-}
+    : DefNode(world, gid, elems, name)
+{} 
 
 AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
-    : DefNode(world, gid, 2, name)
-{
-    set_op(0, fun);
-    set_op(1, arg);
-}
+    : DefNode(world, gid, { fun, arg }, name)
+{}
 
 /*
  * destructors

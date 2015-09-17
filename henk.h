@@ -134,8 +134,7 @@ using Def2Def = DefMap<const DefNode*>;
 /// Base class for all @p Def%s.
 class DefNode : public thorin::MagicCast<DefNode> {
 protected:   
-    DefNode(World& world, size_t gid, size_t size, std::string name);
-    //DefNode(World& world, size_t gid, thorin::ArrayRef<Def> ops, std::string name);
+    DefNode(World& world, size_t gid, thorin::ArrayRef<Def> ops, std::string name);
     
     virtual ~DefNode() {}
 
@@ -290,7 +289,7 @@ protected:
 class DimNode : public DefNode {
 protected:
     DimNode(World& world, size_t gid, int n)
-        : DefNode(world, gid, 0, "dimension")
+        : DefNode(world, gid, {}, "dimension")
         , n_(n)
     {}
     
@@ -316,7 +315,7 @@ protected:
 class ProjNode : public DefNode {
 protected:
     ProjNode(World& world, size_t gid, int n, int m)
-        : DefNode(world, gid, 0, "projection")
+        : DefNode(world, gid, {}, "projection")
         , n_(n)
         , m_(m)
     {}
@@ -344,7 +343,7 @@ protected:
 class BottomNode : public DefNode {
 protected:
     BottomNode(World& world, size_t gid, std::string info)
-        : DefNode(world, gid, 0, "⊥")
+        : DefNode(world, gid, {}, "⊥")
         , info_(info)
     {}
     
@@ -368,10 +367,10 @@ protected:
 class VarNode : public DefNode {
 protected:
     VarNode(World& world, size_t gid, Def type, Abs abs, std::string name)
-        : DefNode(world, gid, 1, name)
+        : DefNode(world, gid, { type }, name)
         , abs_(abs)
     {
-        set_op(0, type_ = type);
+        type_ = type;
     }
     
     virtual Def typecheck() const override;
@@ -396,9 +395,11 @@ protected:
 class PrimLitNode : public DefNode {
 protected:
     PrimLitNode(World& world, size_t gid, Def type, int/*will become Box later on*/ value, std::string name)
-        : DefNode(world, gid, 1, name)
+        : DefNode(world, gid, { type }, name)
         , value_(value)
-    { set_op(0, type); }
+    {
+        type_ = type;
+    }
 
     virtual Def typecheck() const;
     virtual Def reduce(Def2Def& map) const;
@@ -422,7 +423,7 @@ class DummyNode : public DefNode {
 protected:
     DummyNode(World& world, size_t gid, Def arg_type, Def return_type, 
         bool is_commutative, bool is_associative)
-        : DefNode(world, gid, 0, "Dummy")
+        : DefNode(world, gid, {}, "Dummy")
         , arg_type_(arg_type)
         , return_type_(return_type)
         , is_commutative_(is_commutative)
