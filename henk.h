@@ -141,7 +141,6 @@ protected:
 
     void unregister_use(size_t i) const;
     void unregister_uses() const;
-    void resize(size_t n) { ops_.resize(n, nullptr); }
     void unlink_representative() const;
     void set_representative(const DefNode* repr) const;
     void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<DefNode*>(this)->gid_) = gid; }
