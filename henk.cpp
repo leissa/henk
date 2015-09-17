@@ -345,12 +345,12 @@ Def AppNode::reduce(Def2Def& map) const {
         else
             return this;
     } else if (auto abs = rfun.isa<Abs>()) {
-        if(auto dummyb = abs->body().isa<Dummy>()) {
+        if (auto dummyb = abs->body().isa<Dummy>()) {
             auto fv = rarg->free_vars();
             for(auto& kv : map) {
                 fv.erase(kv.first);
             }
-            if(/*rarg->free_vars()*/fv.empty() && dummyb->is_reducable()) {
+            if (/*rarg->free_vars()*/fv.empty() && dummyb->is_reducable()) {
            // if((v = rarg.isa<Var>()) || (a = rarg)) { // what about map?!
                 auto f = dummyb->body_;
                 return f(rarg);
@@ -364,7 +364,7 @@ Def AppNode::reduce(Def2Def& map) const {
     } else {
 
 cannotdumuchappnodereduce:
-        if(*rfun != *fun() || *rarg != *arg())
+        if (*rfun != *fun() || *rarg != *arg())
             return world_.app(rfun, rarg);
         else
             return this;
