@@ -568,11 +568,11 @@ bool ProjNode::eq(const DefNode& other, Def2Def& map) const {
         && m_ == other.as<ProjNode>()->m_;
 }
 
-bool DummyNode::eq (const DefNode& other, Def2Def& map) const {
+bool DummyNode::eq(const DefNode& other, Def2Def& map) const {
     return this == &other;
 }
 
-bool AppNode::eq (const DefNode& other, Def2Def& map) const {
+bool AppNode::eq(const DefNode& other, Def2Def& map) const {
     bool sametypes = DefNode::eq(other, map);
     if (!sametypes)
         return false;
@@ -798,7 +798,7 @@ void PrimLitNode::dump(std::ostream& stream) const {
     stream << value();
 }
 
-void DummyNode::dump (std::ostream& stream) const {
+void DummyNode::dump(std::ostream& stream) const {
     stream << "Dummy{(";
     arg_type().dump(stream);
     stream << ") -> (";
@@ -806,7 +806,7 @@ void DummyNode::dump (std::ostream& stream) const {
     stream << ")}";
 }
 
-void AppNode::dump (std::ostream& stream) const {
+void AppNode::dump(std::ostream& stream) const {
     stream << "(";
     fun().dump(stream);
     stream << ") (";

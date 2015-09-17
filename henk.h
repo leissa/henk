@@ -169,11 +169,11 @@ protected:
     Def __reduce(const DefNode& def, Def2Def& map) const; 
     
 public:
-    virtual DefSet free_vars () const;
-    std::string non_reduced_repr () const { return non_reduced_repr_; }
-    void vdump () const;
-    virtual void dump (std::ostream& stream) const = 0;
-    void dump () const;// { dump(std::cout); }
+    virtual DefSet free_vars() const;
+    std::string non_reduced_repr() const { return non_reduced_repr_; }
+    void vdump() const;
+    virtual void dump(std::ostream& stream) const = 0;
+    void dump() const;// { dump(std::cout); }
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
     Def type() const { assert(!type_.is_empty()); return type_; }
     size_t size() const { return ops_.size(); }
@@ -224,8 +224,8 @@ protected:
     void __update_non_reduced_repr_body(std::ostringstream& r) const;
     
 public:
-    virtual DefSet free_vars () const;
-    virtual void dump (std::ostream& stream) const = 0;
+    virtual DefSet free_vars() const;
+    virtual void dump(std::ostream& stream) const = 0;
     Var var() const { return op(0).as<Var>(); }
     Def body() const { return op(1); }
     void close(Def body) const;
@@ -284,7 +284,7 @@ protected:
 public:
     thorin::Array<Def> elem_types() const;
     virtual void dump(std::ostream& stream) const override;
-    virtual DefSet free_vars () const;
+    virtual DefSet free_vars() const;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
@@ -388,7 +388,7 @@ protected:
 public:
     Abs abs() const { return abs_; }
     virtual void dump(std::ostream& stream) const override;
-    virtual DefSet free_vars () const;
+    virtual DefSet free_vars() const;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
@@ -440,19 +440,19 @@ protected:
     size_t vhash() const;
     
     virtual Def typecheck() const;
-    virtual void update_non_reduced_repr () const;
+    virtual void update_non_reduced_repr() const;
     virtual Def reduce(Def2Def& map) const;
     
 public:
-    Def arg_type () const { return arg_type_; }
-    Def return_type () const { return return_type_; }
+    Def arg_type() const { return arg_type_; }
+    Def return_type() const { return return_type_; }
     bool is_reducable() const { return body_.operator bool(); }
     bool is_commutative() const { return is_commutative_; }
     bool is_associative() const { return is_associative_; }
     void put_body(std::function<Def(Def)> body) const { assert(!body_.operator bool() && "dummy already holds a body"); body_ = body; } 
-    virtual void dump (std::ostream& stream) const;
+    virtual void dump(std::ostream& stream) const;
     virtual bool is_closed() const override;
-    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
 protected:
     Def arg_type_;
@@ -475,7 +475,7 @@ protected:
     virtual Def reduce(Def2Def& map) const override;
     
 public:
-    virtual DefSet free_vars () const;
+    virtual DefSet free_vars() const;
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }
     virtual void dump(std::ostream& stream) const override;
