@@ -114,11 +114,8 @@ protected:
     virtual void update_non_reduced_repr() const;
     std::string __get_non_reduced_repr(const DefNode& def) const;
     virtual Def typecheck() const = 0;
-    void reduce() const;
-    void reduce(Def oldd, Def newd) const; // acts as substitution
-    virtual Def reduce(Def2Def& map) const = 0;
-    Def reduce_but_dont_replace(Def oldd, Def newd) const; // acts as substitution
-    // those '__reduce...' methods are a workaround to being able to call protected methods
+    virtual Def vreduce(Def2Def& map) const = 0;
+    // '__reduce...' method is a workaround to being able to call protected methods
     // from derived classes on objects not necessarily of their type, i.e.
     /*  class A : public DefNode {
      *      void foo() {
@@ -129,10 +126,10 @@ protected:
      *  }
      * // and: __reduce(const DefNode& def, ...) { def.reduce(...); }
      */ 
-    Def __reduce_but_dont_replace(const DefNode& def, Def oldd, Def newd) const;
     Def __reduce(const DefNode& def, Def2Def& map) const; 
     
 public:
+    Def reduce(Def2Def map = {}, bool replace = true) const; // map says what to substitute with what
     virtual DefSet free_vars() const;
     std::string non_reduced_repr() const { return non_reduced_repr_; }
     void dump() const;
@@ -175,7 +172,7 @@ protected:
     
     virtual ~AbsNode();
     
-    virtual Def reduce(Def2Def& map) const override;
+    virtual Def vreduce(Def2Def& map) const override;
     void __update_non_reduced_repr_body(std::ostringstream& r) const;
     
 public:
@@ -228,7 +225,7 @@ protected:
     TupleNode(World& world, size_t gid, size_t size, thorin::ArrayRef<Def> elems, std::string name);
     
     virtual Def typecheck() const override;
-    virtual Def reduce(Def2Def& map) const override;
+    virtual Def vreduce(Def2Def& map) const override;
     virtual void update_non_reduced_repr() const override;
     
 public:
@@ -254,7 +251,7 @@ protected:
     
     virtual void update_non_reduced_repr() const override;
     virtual Def typecheck() const override;
-    virtual Def reduce(Def2Def& map) const override;
+    virtual Def vreduce(Def2Def& map) const override;
     
 public:
     int n() const { return n_; }
@@ -281,7 +278,7 @@ protected:
     
     virtual void update_non_reduced_repr() const override;
     virtual Def typecheck() const override;
-    virtual Def reduce(Def2Def& map) const override;
+    virtual Def vreduce(Def2Def& map) const override;
     
 public:
     int n() const { return n_; }
@@ -307,7 +304,7 @@ protected:
     {}
     
     virtual Def typecheck() const override;
-    virtual Def reduce(Def2Def& map) const override;
+    virtual Def vreduce(Def2Def& map) const override;
     
 public:
     std::string info() const { return info_; }
@@ -333,7 +330,7 @@ protected:
     }
     
     virtual Def typecheck() const override;
-    virtual Def reduce(Def2Def& map) const override;
+    virtual Def vreduce(Def2Def& map) const override;
     
 public:
     Abs abs() const { return abs_; }
@@ -361,7 +358,7 @@ protected:
     }
 
     virtual Def typecheck() const;
-    virtual Def reduce(Def2Def& map) const;
+    virtual Def vreduce(Def2Def& map) const;
     
     virtual size_t vhash() const override;
     
@@ -393,7 +390,7 @@ protected:
     
     virtual Def typecheck() const;
     virtual void update_non_reduced_repr() const;
-    virtual Def reduce(Def2Def& map) const;
+    virtual Def vreduce(Def2Def& map) const;
     
 public:
     Def arg_type() const { return arg_type_; }
@@ -424,7 +421,7 @@ protected:
     virtual size_t vhash() const override;
     virtual Def typecheck() const override;
     virtual void update_non_reduced_repr() const override;
-    virtual Def reduce(Def2Def& map) const override;
+    virtual Def vreduce(Def2Def& map) const override;
     
 public:
     virtual DefSet free_vars() const override;

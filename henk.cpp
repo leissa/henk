@@ -58,7 +58,7 @@ template class Proxy<AppNode>;
  * DefNode
  * ------------------------------------------------- */
 
-void DefNode::set_op(size_t i, Def def) const { // weird constness?
+void DefNode::set_op(size_t i, Def def) const {
     assert(!op(i) && "already set");
    // assert(def && "setting null pointer");
     if (!def) {
@@ -203,35 +203,21 @@ DefSet AppNode::free_vars() const {
 /*
  * reduce
  */
-
-Def DefNode::__reduce_but_dont_replace(const DefNode& def, Def oldd, Def newd) const {
-    return def.reduce_but_dont_replace(oldd, newd);
-}
  
 Def DefNode::__reduce(const DefNode& def, Def2Def& map) const {
-    return def.reduce(map);
+    return def.vreduce(map);
 }
- 
-void DefNode::reduce() const {
+
+Def DefNode::reduce(Def2Def map, bool replace) const {
     assert(is_closed() && "unclosed def in reduce");
-    Def2Def map;
-    set_representative(*reduce(map));
+    auto res = vreduce(map);
+    if(replace)
+        set_representative(*res);
+    
+    return res;
 }
 
-void DefNode::reduce(Def oldd, Def newd) const {
-    assert(is_closed() && "unclosed def in reduce/subst");
-    Def2Def map;
-    map[*oldd] = *newd;
-    set_representative(*reduce(map));
-}
-
-Def DefNode::reduce_but_dont_replace(Def oldd, Def newd) const {
-    Def2Def map;
-    map[*oldd] = *newd;
-    return reduce(map);
-}
-
-Def AbsNode::reduce(Def2Def& map) const {
+Def AbsNode::vreduce(Def2Def& map) const {
     auto i = map.find(*var());
     if (i != map.end()) { // TODO looks broken to me // FIXED?
         map.erase(i);
@@ -252,7 +238,7 @@ Def AbsNode::reduce(Def2Def& map) const {
     return nabs;
 }
 
-Def TupleNode::reduce(Def2Def& map) const {
+Def TupleNode::vreduce(Def2Def& map) const {
     bool changed = false;
     std::vector<Def> nops;
     for (auto& d : ops_) {
@@ -266,24 +252,24 @@ Def TupleNode::reduce(Def2Def& map) const {
         return this;
 }
 
-Def DimNode::reduce(Def2Def&) const { return this; }
-Def ProjNode::reduce(Def2Def&) const { return this; }
-Def BottomNode::reduce(Def2Def&) const { return this; }
+Def DimNode::vreduce(Def2Def&) const { return this; }
+Def ProjNode::vreduce(Def2Def&) const { return this; }
+Def BottomNode::vreduce(Def2Def&) const { return this; }
 
-Def VarNode::reduce(Def2Def& map) const {
+Def VarNode::vreduce(Def2Def& map) const {
     auto i = map.find(this);
     return i != map.end() ? i->second : this;
 }
 
-Def PrimLitNode::reduce(Def2Def& map) const {
+Def PrimLitNode::vreduce(Def2Def& map) const {
     return this;
 }
 
-Def DummyNode::reduce(Def2Def& map) const {
+Def DummyNode::vreduce(Def2Def& map) const {
     return this; // it's app of lambda that is responsible for reducing its damn dummy body! ;)
 }
 
-Def AppNode::reduce(Def2Def& map) const {
+Def AppNode::vreduce(Def2Def& map) const {
     Def rfun = __reduce(**fun(), map);
     Def rarg = __reduce(**arg(), map);
     if (auto tup = rfun.isa<Tuple>()) {
@@ -332,7 +318,7 @@ Def LambdaNode::typecheck() const {
     if (nvarn.str() != "_")
         nvarn << "'";
     auto res = world_.pi(var()->type(), nvarn.str());
-    auto body_type2 = __reduce_but_dont_replace(**body_type, var(), res->var());
+    auto body_type2 = body_type->reduce({{var(), res->var()}}, false);
     res->close(body_type2);
     return res;
 }
@@ -436,9 +422,7 @@ Def AppNode::typecheck() const {
                 return world_.bottom(msg.str());
             }
         } else if (pifunt->var()->type() == argt) {
-            return __reduce_but_dont_replace(**pifunt->body(),
-                pifunt->var(), arg()
-            );
+            return pifunt->body()->reduce({{pifunt->var(), arg()}}, false);
         } else {
             std::ostringstream msg;
             msg << "in application: (";
