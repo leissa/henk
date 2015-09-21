@@ -80,8 +80,6 @@ World::World()
         if((t = d.isa<Tuple>()) && t->size() == 2) {
             PrimLit p0, p1;
             if((p0 = t->op(0).isa<PrimLit>()) && (p1 = t->op(1).isa<PrimLit>())) {
-                std::cout << "dodamy: ";
-                p0.dump(); std::cout << "  i  "; p1.dump(); std::cout << std::endl;
                 return literal(p0->value() + p1->value());
             } else {
                 return bottom("one of arguments types of primitve plus is not int");
@@ -146,9 +144,6 @@ Def World::app(Def fun, Def arg) {
                 if ((a1 = pairarg->op(0).isa<PrimLit>()) 
                     && (a2 = pairarg->op(1).isa<PrimLit>())
                     && db->is_reducable()) {
-                        // this shouldn't typecheck! why does C++ allow
-                        // Def to cse_base(const DefNode*) ?!
-                    //return cse_base((db->body_)(arg));
                     return (db->body_)(arg);
                 } else if ((a2 = pairarg->op(1).isa<PrimLit>()) 
                     && !(a1 = pairarg->op(0).isa<PrimLit>())) {
@@ -222,7 +217,7 @@ PrimLit World::literal(int value) {
 Def World::tuple(ArrayRef<Def> elems) {
     if (elems.size() == 1)
         return elems[0];
-    return cse_base(new TupleNode(*this, gid_++, elems.size(), "tuple", elems));
+    return cse_base(new TupleNode(*this, gid_++, elems.size(), elems, "tuple"));
 }
 
 Pi World::fun_type(Def from, Def to) {
@@ -281,7 +276,6 @@ template<class T>
 void World::unlink_and_unregister(T& exprs) {
     for (auto def : exprs) {
         if (!def->live_) {
-            def->unregister_uses();
             def->unlink_representative();
         }
     }
@@ -323,7 +317,7 @@ void World::cleanup() {
         kv.second->live_ = true;
         queue.push(kv.second);
     }
-    for (auto edef : externals_) {
+    for (/*auto*/const DefNode* edef : externals_) {
         edef->live_ = true;
         queue.push(edef);
     }
@@ -336,8 +330,6 @@ void World::cleanup() {
             if (def->type_)
                 enqueue(def->type_);
             
-           // if (auto v = def->isa<VarNode>()) {
-            //    enqueue(v->type());
             if (auto d = def->isa<DummyNode>()) {
                 enqueue(d->arg_type());
                 enqueue(d->return_type());
@@ -371,24 +363,15 @@ const DefNode* World::cse_base(const DefNode* def) {
     proxdef->reduce();
     auto rdef = *proxdef;
     if (def != rdef) {
-        std::cout << def << " != " << rdef << std::endl;
         rdef->type_ = type;
-        def->unregister_uses();
         def->unlink_representative();
         delete def;
     }
     
     def = rdef;
-   // std::cout << "created: ";
-   // Def(def).dump();
-   // std::cout << std::endl;
     
     auto i = expressions_.find(def);
     if (i != expressions_.end() && *i != def) {
-        std::cout << "expr: ";
-        Def(def).dump();
-        std::cout << " dup. def = " << def << " , i = " << *i << std::endl;
-        def->unregister_uses();
         def->unlink_representative();
         delete def;
         def = *i;

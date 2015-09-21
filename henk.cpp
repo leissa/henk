@@ -1,4 +1,3 @@
-#include <algorithm> // std::is_permutation
 #include <typeinfo>
 #include <sstream>
 
@@ -54,19 +53,6 @@ template class Proxy<ProjNode>;
 template class Proxy<DummyNode>;
 template class Proxy<AppNode>;
 
-/* ----------------------------------------------------
- * Use
- * ------------------------------------------------- */
-
-size_t UseHash::operator () (Use u) const { 
-    return hash_combine(u.def().node()->gid(), u.index());
-}
-
-size_t UseEq::operator () (Use use1, Use use2) const {
-    auto gid1 = use1.def().node()->gid();
-    auto gid2 = use2.def().node()->gid();
-    return (gid1 == gid2) && (use1.index() == use2.index());
-}
 
 /* ----------------------------------------------------
  * DefNode
@@ -80,32 +66,16 @@ void DefNode::set_op(size_t i, Def def) const { // weird constness?
         // to work (that's how star and box are constructed, for instance)
     } else {
         assert(i < size() && "index out of bounds");
-        auto node = *def;
-        ops_[i] = node;
-        assert(def->uses_.count(Use(i, this)) == 0 && "sth uses sth else more than once");
-        auto p = node->uses_.emplace(i, this);
-        assert(p.second);
+        ops_[i] = *def;
     }
-}
-
-void DefNode::unregister_uses() const {
-    for (size_t i = 0, e = size(); i != e; ++i)
-        unregister_use(i);
-}
-
-void DefNode::unregister_use(size_t i) const {
-    auto def = ops_[i].node();
-    assert(def->uses_.count(Use(i, this)) == 1);
-    auto p = def->uses_.erase(Use(i, this));
-    assert(p == 1 && "unregister_use failed");
 }
 
 void DefNode::unlink_representative() const {
     if (is_proxy()) {
         auto num = representative_->representative_of_.erase(this);
         assert(num == 1);
-        representative_ = this;
     }
+    representative_ = this;
 }
 
 void DefNode::set_representative(const DefNode* repr) const {
@@ -115,17 +85,6 @@ void DefNode::set_representative(const DefNode* repr) const {
         repr->representative_of_.insert(this);
         repr->non_reduced_repr_ = non_reduced_repr();
     }
-}
-
-void DefNode::unset_op(size_t i) {
-    assert(ops_[i] && "must be set");
-    unregister_use(i);
-    ops_[i] = nullptr;
-}
-
-void DefNode::unset_ops() {
-    for (size_t i = 0, e = size(); i != e; ++i)
-        unset_op(i);
 }
 
 bool DefNode::has_subexpr(Def sub) const {
@@ -159,7 +118,6 @@ bool DefNode::has_subexpr(Def sub) const {
 
 void AbsNode::close(Def body) const {
     assert(body->is_closed() && "closing AbsNode with unclosed body");
-    // world_.reduce(body); // unnecessary?
     set_op(1, body);
     world_.introduce(this);
 }
@@ -175,38 +133,32 @@ Array<Def> TupleNode::elem_types() const {
  * constructors
  */
 
-DefNode::DefNode(World& world, size_t gid, size_t size, std::string name)
+DefNode::DefNode(World& world, size_t gid, ArrayRef<Def> ops, std::string name)
     : representative_(this)
     , world_(world)
-    , ops_(size)
+    , ops_(ops.size())
     , gid_(gid)
     , name_(name)
-{}
+{
+    for (size_t i = 0, e = ops.size(); i != e; ++i) {
+        if (auto op = ops[i])
+            set_op(i, ops[i]);
+    }
+}
 
 AbsNode::AbsNode(World& world, size_t gid, Def var_type, std::string name)
-    : DefNode(world, gid, 2, name)
+    : DefNode(world, gid, { new VarNode(world, gid + 1, var_type, this, name), nullptr }, name)
 {
-    auto v = new VarNode(world, gid + 1, var_type, this, name);
-    v->update_non_reduced_repr();
-    set_op(0, v);
+    var()->update_non_reduced_repr();
 }
 
-AbsNode::AbsNode(World& world, size_t gid, Def var)
-    : DefNode(world, gid, 2, "some abs")
-{ set_op(0, var); }
-
-TupleNode::TupleNode(World& world, size_t gid, size_t size, std::string name, ArrayRef<Def> elems)
-    : DefNode(world, gid, size, name)
-{ 
-    std::copy(elems.begin(), elems.end(), ops_.begin());
-}
+TupleNode::TupleNode(World& world, size_t gid, size_t size, ArrayRef<Def> elems, std::string name)
+    : DefNode(world, gid, elems, name)
+{} 
 
 AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
-    : DefNode(world, gid, 2, name)
-{
-    set_op(0, fun);
-    set_op(1, arg);
-}
+    : DefNode(world, gid, { fun, arg }, name)
+{}
 
 /*
  * destructors
@@ -301,21 +253,17 @@ Def AbsNode::reduce(Def2Def& map) const {
 }
 
 Def TupleNode::reduce(Def2Def& map) const {
-  //  if (ops_.size() == 1) {
-   //     return __reduce(**ops_[0], map);
- //   } else {
-        bool changed = false;
-        std::vector<Def> nops;//(ops_.size());
-        for (auto& d : ops_) {
-            auto nd = __reduce(**d, map);
-            nops.push_back(nd);
-            changed &= *nd == *d;
-        }
-        if (changed) {
-            return world_.tuple(nops);
-        } else
-            return this;
-   // }
+    bool changed = false;
+    std::vector<Def> nops;
+    for (auto& d : ops_) {
+        auto nd = __reduce(**d, map);
+        nops.push_back(nd);
+        changed &= *nd == *d;
+    }
+    if (changed) {
+        return world_.tuple(nops);
+    } else
+        return this;
 }
 
 Def DimNode::reduce(Def2Def&) const { return this; }
@@ -346,12 +294,13 @@ Def AppNode::reduce(Def2Def& map) const {
         else
             return this;
     } else if (auto abs = rfun.isa<Abs>()) {
-        if(auto dummyb = abs->body().isa<Dummy>()) {
+        if (auto dummyb = abs->body().isa<Dummy>()) {
             auto fv = rarg->free_vars();
             for(auto& kv : map) {
                 fv.erase(kv.first);
             }
-            if(/*rarg->free_vars()*/fv.empty() && dummyb->is_reducable()) {
+            if (/*rarg->free_vars()*/fv.empty() && dummyb->is_reducable()) {
+                // TODO: triple-check if that makes sense :)
            // if((v = rarg.isa<Var>()) || (a = rarg)) { // what about map?!
                 auto f = dummyb->body_;
                 return f(rarg);
@@ -359,13 +308,13 @@ Def AppNode::reduce(Def2Def& map) const {
                 goto cannotdumuchappnodereduce;                
             }
         } else {
-            map[*(abs->var())] = *rarg;
+            map[*abs->var()] = *rarg;
             return __reduce(**abs->body(), map);
         }
     } else {
 
 cannotdumuchappnodereduce:
-        if(*rfun != *(fun()) || *rarg != *(arg()))
+        if (*rfun != *fun() || *rarg != *arg())
             return world_.app(rfun, rarg);
         else
             return this;
@@ -412,7 +361,7 @@ Def TupleNode::typecheck() const {
         if (ops_[i]->isa<BottomNode>()) {
             std::ostringstream msg;
             msg << "tuple ";
-            dump(msg); msg << " has bottom type as " << i << " elem";
+            vdump(msg); msg << " has bottom type as " << i << " elem";
             return world_.bottom(msg.str());
         }
     }
@@ -569,11 +518,11 @@ bool ProjNode::eq(const DefNode& other, Def2Def& map) const {
         && m_ == other.as<ProjNode>()->m_;
 }
 
-bool DummyNode::eq (const DefNode& other, Def2Def& map) const {
+bool DummyNode::eq(const DefNode& other, Def2Def& map) const {
     return this == &other;
 }
 
-bool AppNode::eq (const DefNode& other, Def2Def& map) const {
+bool AppNode::eq(const DefNode& other, Def2Def& map) const {
     bool sametypes = DefNode::eq(other, map);
     if (!sametypes)
         return false;
@@ -725,23 +674,22 @@ void AppNode::update_non_reduced_repr() const {
  * dump
  */
 
-void DefNode::vdump() const { dump(std::cout); std::cout << std::endl; }
-void DefNode::dump() const { dump(std::cout); std::cout << std::endl; }
-
 template<class T>
 void Proxy<T>::dump(std::ostream& stream) const {
     if (is_empty())
         stream << "'nullptr'";
     else
-        deref()->dump(stream);
+        deref()->vdump(stream);
 }
 
-void LambdaNode::dump(std::ostream& stream) const {
+void DefNode::dump() const { vdump(std::cout); std::cout << std::endl; }
+
+void LambdaNode::vdump(std::ostream& stream) const {
     stream << "λ";
     dump_body(stream);
 }
 
-void PiNode::dump(std::ostream& stream) const {
+void PiNode::vdump(std::ostream& stream) const {
     if (body().is_empty()) {
         stream << "Π";
         dump_body(stream);
@@ -768,7 +716,7 @@ void AbsNode::dump_body(std::ostream& stream) const {
     body().dump(stream);
 }
 
-void TupleNode::dump(std::ostream& stream) const {
+void TupleNode::vdump(std::ostream& stream) const {
     stream << "<";
     if (size() > 0)
         ops_[0].dump(stream);
@@ -779,27 +727,27 @@ void TupleNode::dump(std::ostream& stream) const {
     stream << ">";
 }
 
-void DimNode::dump(std::ostream& stream) const {
+void DimNode::vdump(std::ostream& stream) const {
     stream << n_ << "ᵈ";
 }
 
-void ProjNode::dump(std::ostream& stream) const {
+void ProjNode::vdump(std::ostream& stream) const {
     stream << "proj{" << m_ << "_" << n_ << "}";
 }
 
-void BottomNode::dump(std::ostream& stream) const {
+void BottomNode::vdump(std::ostream& stream) const {
     stream << name() << " { " << info() << " }";
 }
 
-void VarNode::dump(std::ostream& stream) const {
+void VarNode::vdump(std::ostream& stream) const {
     stream << name();
 }
 
-void PrimLitNode::dump(std::ostream& stream) const {
+void PrimLitNode::vdump(std::ostream& stream) const {
     stream << value();
 }
 
-void DummyNode::dump (std::ostream& stream) const {
+void DummyNode::vdump(std::ostream& stream) const {
     stream << "Dummy{(";
     arg_type().dump(stream);
     stream << ") -> (";
@@ -807,7 +755,7 @@ void DummyNode::dump (std::ostream& stream) const {
     stream << ")}";
 }
 
-void AppNode::dump (std::ostream& stream) const {
+void AppNode::vdump(std::ostream& stream) const {
     stream << "(";
     fun().dump(stream);
     stream << ") (";

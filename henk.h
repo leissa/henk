@@ -49,14 +49,12 @@ public:
     const T* representative() const { return node_->representative_->template as<T>(); }
     const T* node() const { assert(node_ != nullptr); return node_; }
     const T* deref() const;
-    //const T* operator  * () const { return node()->is_unified() ? representative() : node(); }
     const T* operator  * () const { return deref(); }
     const T* operator -> () const { return *(*this); }
     
     bool is_empty() const { return node_ == nullptr; }
     void dump(std::ostream& stream) const;
-    void dump() const { dump(std::cout); }
-    void vdump() const { dump(); std::cout << std::endl; }
+    void dump() const { dump(std::cout); std::cout << std::endl; }
     
     // casts
 
@@ -83,36 +81,6 @@ private:
     const T* node_;
 };
 
-/**
- * References a user.
- * A \p Def u which uses \p Def d as i^th operand is a \p Use with \p index_ i of \p Def d.
- */
-class Use {
-public:
-    Use() {}
-    Use(size_t index, Def def)
-        : index_(index)
-        , def_(def)
-    {}
-
-    size_t index() const { return index_; }
-    const Def& def() const { return def_; }
-    operator Def() const { return def_; }
-    const Def& operator -> () const { return def_; }
-
-private:
-    size_t index_;
-    Def def_;
-};
-
-struct UseHash {
-    size_t operator () (Use u) const;
-};
-
-struct UseEq {
-    size_t operator () (Use use1, Use use2) const;
-};
-
 //------------------------------------------------------------------------------
 
 template<class T>
@@ -135,13 +103,10 @@ using Def2Def = DefMap<const DefNode*>;
 /// Base class for all @p Def%s.
 class DefNode : public thorin::MagicCast<DefNode> {
 protected:   
-    DefNode(World& world, size_t gid, size_t size, std::string name);
+    DefNode(World& world, size_t gid, thorin::ArrayRef<Def> ops, std::string name);
     
     virtual ~DefNode() {}
 
-    void unregister_use(size_t i) const;
-    void unregister_uses() const;
-    void resize(size_t n) { ops_.resize(n, nullptr); }
     void unlink_representative() const;
     void set_representative(const DefNode* repr) const;
     void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<DefNode*>(this)->gid_) = gid; }
@@ -149,7 +114,6 @@ protected:
     virtual void update_non_reduced_repr() const;
     std::string __get_non_reduced_repr(const DefNode& def) const;
     virtual Def typecheck() const = 0;
-    //virtual std::list<Def> flatten() const { return this; }
     void reduce() const;
     void reduce(Def oldd, Def newd) const; // acts as substitution
     virtual Def reduce(Def2Def& map) const = 0;
@@ -169,27 +133,21 @@ protected:
     Def __reduce(const DefNode& def, Def2Def& map) const; 
     
 public:
-    virtual DefSet free_vars () const;
-    std::string non_reduced_repr () const { return non_reduced_repr_; }
-    void vdump () const;
-    virtual void dump (std::ostream& stream) const = 0;
-    void dump () const;// { dump(std::cout); }
+    virtual DefSet free_vars() const;
+    std::string non_reduced_repr() const { return non_reduced_repr_; }
+    void dump() const;
+    virtual void vdump(std::ostream& stream) const = 0;
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
     Def type() const { assert(!type_.is_empty()); return type_; }
     size_t size() const { return ops_.size(); }
     bool empty() const { return ops_.empty(); }
     void set_op(size_t i, Def def) const;
-    void unset_op(size_t i);
-    void unset_ops();
-    const thorin::HashSet<Use, UseHash, UseEq>& uses() const { return uses_; }
-    size_t num_uses() const { return uses().size(); }
     bool is_proxy() const { return representative_ != this; }
-    bool has_uses() const;
     bool has_subexpr(Def) const;
     size_t gid() const { return gid_; }
     World& world() const { return world_; }
-    const std::vector<Def>& ops() const { return ops_; }
-    Def op(size_t i) const { assert(i < ops().size() && "index out of bounds"); return ops_[i]; }
+    thorin::ArrayRef<Def> ops() const { return ops_; }
+    Def op(size_t i) const { return ops_[i]; }
     const std::string& name() const { return name_; }
     virtual bool is_closed() const = 0;
     bool equal(const DefNode& other) const;
@@ -199,14 +157,12 @@ protected:
     mutable std::string non_reduced_repr_;
     mutable const DefNode* representative_;
     World& world_;
-    mutable std::vector<Def> ops_;
+    mutable thorin::Array<Def> ops_;
     mutable size_t gid_;
     mutable std::string name_;
-    mutable thorin::HashSet<Use, UseHash, UseEq> uses_;
     mutable DefSet representative_of_;
     mutable size_t hash_ = 0;
     mutable bool live_ = false;
-    // mutable const DefNode* equiv_ = nullptr; // hack-ptr useful when testing for equality
     mutable Def type_ = nullptr;
     
     template<class T> friend class Proxy;
@@ -216,7 +172,6 @@ protected:
 class AbsNode : public DefNode {
 protected:
     AbsNode(World& world, size_t gid, Def var_type, std::string name);
-    AbsNode(World& world, size_t gid, Def var);
     
     virtual ~AbsNode();
     
@@ -224,8 +179,7 @@ protected:
     void __update_non_reduced_repr_body(std::ostringstream& r) const;
     
 public:
-    virtual DefSet free_vars () const;
-    virtual void dump (std::ostream& stream) const = 0;
+    virtual DefSet free_vars() const override;
     Var var() const { return op(0).as<Var>(); }
     Def body() const { return op(1); }
     void close(Def body) const;
@@ -249,7 +203,7 @@ protected:
     virtual void update_non_reduced_repr() const override;
     
 public:
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
 
     friend class World;
 };
@@ -260,22 +214,18 @@ protected:
         : AbsNode(world, gid, var_type, name)
     {}
     
-    PiNode(World& world, size_t gid, Def var)
-        : AbsNode(world, gid, var)
-    {}
-    
     virtual Def typecheck() const override;
     virtual void update_non_reduced_repr() const override;
     
 public:
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
 
     friend class World;
 };
 
 class TupleNode : public DefNode {
 protected:
-    TupleNode(World& world, size_t gid, size_t size, std::string name, thorin::ArrayRef<Def> elems);
+    TupleNode(World& world, size_t gid, size_t size, thorin::ArrayRef<Def> elems, std::string name);
     
     virtual Def typecheck() const override;
     virtual Def reduce(Def2Def& map) const override;
@@ -283,8 +233,8 @@ protected:
     
 public:
     thorin::Array<Def> elem_types() const;
-    virtual void dump(std::ostream& stream) const override;
-    virtual DefSet free_vars () const;
+    virtual void vdump(std::ostream& stream) const override;
+    virtual DefSet free_vars() const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
@@ -298,7 +248,7 @@ protected:
 class DimNode : public DefNode {
 protected:
     DimNode(World& world, size_t gid, int n)
-        : DefNode(world, gid, 0, "dimension")
+        : DefNode(world, gid, {}, "dimension")
         , n_(n)
     {}
     
@@ -308,7 +258,7 @@ protected:
     
 public:
     int n() const { return n_; }
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
@@ -324,7 +274,7 @@ protected:
 class ProjNode : public DefNode {
 protected:
     ProjNode(World& world, size_t gid, int n, int m)
-        : DefNode(world, gid, 0, "projection")
+        : DefNode(world, gid, {}, "projection")
         , n_(n)
         , m_(m)
     {}
@@ -336,7 +286,7 @@ protected:
 public:
     int n() const { return n_; }
     int m() const { return m_; }
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
@@ -352,7 +302,7 @@ protected:
 class BottomNode : public DefNode {
 protected:
     BottomNode(World& world, size_t gid, std::string info)
-        : DefNode(world, gid, 0, "⊥")
+        : DefNode(world, gid, {}, "⊥")
         , info_(info)
     {}
     
@@ -361,7 +311,7 @@ protected:
     
 public:
     std::string info() const { return info_; }
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
@@ -376,11 +326,10 @@ protected:
 class VarNode : public DefNode {
 protected:
     VarNode(World& world, size_t gid, Def type, Abs abs, std::string name)
-        : DefNode(world, gid, 1, name)
+        : DefNode(world, gid, { type }, name)
         , abs_(abs)
     {
         type_ = type;
-        set_op(0, type);//type_ = type);
     }
     
     virtual Def typecheck() const override;
@@ -388,8 +337,8 @@ protected:
     
 public:
     Abs abs() const { return abs_; }
-    virtual void dump(std::ostream& stream) const override;
-    virtual DefSet free_vars () const;
+    virtual void vdump(std::ostream& stream) const override;
+    virtual DefSet free_vars() const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
@@ -405,9 +354,11 @@ protected:
 class PrimLitNode : public DefNode {
 protected:
     PrimLitNode(World& world, size_t gid, Def type, int/*will become Box later on*/ value, std::string name)
-        : DefNode(world, gid, 1, name)
+        : DefNode(world, gid, { type }, name)
         , value_(value)
-    { set_op(0, type); }
+    {
+        type_ = type;
+    }
 
     virtual Def typecheck() const;
     virtual Def reduce(Def2Def& map) const;
@@ -415,7 +366,7 @@ protected:
     virtual size_t vhash() const override;
     
 public:
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     Def type() const { return op(0); }
     int value() const { return value_; };
@@ -431,7 +382,7 @@ class DummyNode : public DefNode {
 protected:
     DummyNode(World& world, size_t gid, Def arg_type, Def return_type, 
         bool is_commutative, bool is_associative)
-        : DefNode(world, gid, 0, "Dummy")
+        : DefNode(world, gid, {}, "Dummy")
         , arg_type_(arg_type)
         , return_type_(return_type)
         , is_commutative_(is_commutative)
@@ -441,19 +392,19 @@ protected:
     size_t vhash() const;
     
     virtual Def typecheck() const;
-    virtual void update_non_reduced_repr () const;
+    virtual void update_non_reduced_repr() const;
     virtual Def reduce(Def2Def& map) const;
     
 public:
-    Def arg_type () const { return arg_type_; }
-    Def return_type () const { return return_type_; }
+    Def arg_type() const { return arg_type_; }
+    Def return_type() const { return return_type_; }
     bool is_reducable() const { return body_.operator bool(); }
     bool is_commutative() const { return is_commutative_; }
     bool is_associative() const { return is_associative_; }
     void put_body(std::function<Def(Def)> body) const { assert(!body_.operator bool() && "dummy already holds a body"); body_ = body; } 
-    virtual void dump (std::ostream& stream) const;
+    virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
-    virtual bool eq (const DefNode& other, Def2Def& map) const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
 protected:
     Def arg_type_;
@@ -476,10 +427,10 @@ protected:
     virtual Def reduce(Def2Def& map) const override;
     
 public:
-    virtual DefSet free_vars () const;
+    virtual DefSet free_vars() const override;
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }
-    virtual void dump(std::ostream& stream) const override;
+    virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 

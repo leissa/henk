@@ -18,9 +18,9 @@ void test1(World& world) {
 
     auto atype = type_lambda->type();
     std::cout << std::endl;
-    type_lambda.dump();
+    type_lambda.dump(std::cout);
     std::cout << " : ";
-    atype.dump();
+    atype.dump(std::cout);
     std::cout << std::endl;
 }
 
@@ -38,12 +38,12 @@ void test2(World& world) {
     world.cleanup();
     //world.show_expressions();
 
-    auto app = world.app(lambda, world.literal(33));//get_prim_const("Int"));
+    auto app = world.app(lambda, world.literal(33));
     std::cout << app->non_reduced_repr() << " reduced to ";
-    app.dump();
+    app.dump(std::cout);
     auto tapp = app->type();
     std::cout << " : ";
-    tapp.dump();
+    tapp.dump(std::cout);
     std::cout << std::endl;
 }
 
@@ -56,32 +56,28 @@ void test3(World& world) {
     auto inf = world.lambda(f->var(), "x");
     inf->close(world.literal(42));
     f->close(inf);
-
-    /*f->close(world.fun_type(
-            f->var(), world.get_prim_const("Int")
-        )
-    );*/
+    
     auto forallb = world.pi(world.get_prim_const("*"), "β");
     forallb->close(world.fun_type(forallb->var(), forallb->var()));
     std::cout << "f = ";
-    f.dump();
+    f.dump(std::cout);
     std::cout << " : ";
-    f->type().dump();
+    f->type().dump(std::cout);
     std::cout << std::endl;
     std::cout << "g = ";
-    forallb.dump();
+    forallb.dump(std::cout);
     std::cout << " : ";
-    forallb->type().dump();
+    forallb->type().dump(std::cout);
     
     std::cout << std::endl;
     auto app = world.app(f, forallb);
     std::cout << "f g = ";
-    app.dump();
+    app.dump(std::cout);
     std::cout << std::endl;
     
     std::cout << "f g : ";
     auto apptype = app->type();
-    apptype.dump();
+    apptype.dump(std::cout);
     std::cout << std::endl;
 
 }
@@ -95,39 +91,39 @@ void test4(World& world) {
     
     auto id1 = poly_id(world, "α", "x");
     std::cout << "id1 = ";
-    id1.dump();
+    id1.dump(std::cout);
     std::cout << std::endl;
     std::cout << "id2 = ";
     auto id2 = poly_id(world, "β", "y");
-    id2.dump();
+    id2.dump(std::cout);
     std::cout << "\nin memory: id1 = " << *id1 << ", id2 = " << *id2 << std::endl;
     assert(*id1 == *id2 && "id functions have different addresses");
 }
 
 void test5(World& world) {
     auto singl = world.tuple({world.literal(42)});
-    singl.dump();
+    singl.dump(std::cout);
     std::cout << ": ";
-    singl->type().dump();
+    singl->type().dump(std::cout);
     auto p = world.tuple({world.literal(23), singl});
     std::cout << std::endl;
-    p.dump();
+    p.dump(std::cout);
     std::cout << ": ";
-    p->type().dump();
+    p->type().dump(std::cout);
     
     auto p2 = world.extract(p, 1);
     std::cout << std::endl;
-    p2.dump();
+    p2.dump(std::cout);
 }
 
 void test6(World& world) {
     auto i42 = world.literal(42);
     auto i8 = world.literal(8);
     auto plus = world.get_primop("+");
-    plus.dump();
+    plus.dump(std::cout);
     auto r = world.app(plus, world.tuple(std::vector<Def> {i42, i8}));
     std::cout << std::endl;
-    r.dump();
+    r.dump(std::cout);
 }
 
 void test7(World& world) {
@@ -137,15 +133,11 @@ void test7(World& world) {
     l1->close(world.app(plus, 
         world.tuple(std::vector<Def> {l1->var(), world.literal(7)})));
     auto l2 = world.lambda(dint, "y");
-    std::cout << " AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA " << std::endl;
-    auto a = world.app(plus, 
-        world.tuple(std::vector<Def>{world.literal(3), world.literal(4)}));
-    std::cout << "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" << std::endl;
-    l2->close(world.app(plus, world.tuple(std::vector<Def>{/*world.app(plus, 
-        world.tuple(std::vector<Def>{world.literal(3), world.literal(4)}))*/a, l2->var()})));
-    l1.dump();
+    l2->close(world.app(plus, world.tuple(std::vector<Def>{world.app(plus, 
+        world.tuple(std::vector<Def>{world.literal(3), world.literal(4)})), l2->var()})));
+    l1.dump(std::cout);
     std::cout << std::endl;
-    l2.dump();
+    l2.dump(std::cout);
     
     assert(l1 == l2 && "lambdas differ");
 }
@@ -183,6 +175,6 @@ int main(int argc, char* argv[]) {
     }
 
     //std::cout << "\n\nworld has expressions: " << std::endl;
-    //world->dump();
+    //world->dump(std::cout);
     std::cout << std::endl;
 }

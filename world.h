@@ -70,7 +70,7 @@ protected:
     
     mutable size_t gid_; // global id for expressions
     std::map<std::string, const DefNode*> prim_consts;
-    std::map<std::string, /*std::function<Def(Def)>*/Lambda > prim_ops;
+    std::map<std::string, Lambda > prim_ops;
     std::map<std::pair<const DefNode*, const DefNode*>, const DefNode*> wavy_arrow_rules;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> expressions_;
     mutable thorin::HashSet<const DefNode*, ExprHash, ExprEqual> externals_;
