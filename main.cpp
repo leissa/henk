@@ -123,12 +123,6 @@ void test5(World& world) {
 void test6(World& world) {
     auto i42 = world.literal(42);
     auto i8 = world.literal(8);
-  /*  auto plus = world->lambda("p", 
-        world->tuple(std::vector<Def> {world->get_prim_const("Int"), world->get_prim_const("Int")}));
-    auto primpl = world->get_primop("+");
-    auto dummypl = world->dummy(plus, world->get_prim_const("Int"));
-    dummypl->put_body(primpl);
-    plus->close(dummypl);*/
     auto plus = world.get_primop("+");
     plus.dump();
     auto r = world.app(plus, world.tuple(std::vector<Def> {i42, i8}));
@@ -143,8 +137,12 @@ void test7(World& world) {
     l1->close(world.app(plus, 
         world.tuple(std::vector<Def> {l1->var(), world.literal(7)})));
     auto l2 = world.lambda(dint, "y");
-    l2->close(world.app(plus, world.tuple(std::vector<Def>{world.app(plus, 
-        world.tuple(std::vector<Def>{world.literal(3), world.literal(4)})), l2->var()})));
+    std::cout << " AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA " << std::endl;
+    auto a = world.app(plus, 
+        world.tuple(std::vector<Def>{world.literal(3), world.literal(4)}));
+    std::cout << "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" << std::endl;
+    l2->close(world.app(plus, world.tuple(std::vector<Def>{/*world.app(plus, 
+        world.tuple(std::vector<Def>{world.literal(3), world.literal(4)}))*/a, l2->var()})));
     l1.dump();
     std::cout << std::endl;
     l2.dump();

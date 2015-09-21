@@ -379,7 +379,8 @@ protected:
         : DefNode(world, gid, 1, name)
         , abs_(abs)
     {
-        set_op(0, type_ = type);
+        type_ = type;
+        set_op(0, type);//type_ = type);
     }
     
     virtual Def typecheck() const override;

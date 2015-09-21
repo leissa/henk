@@ -30,8 +30,6 @@ public:
     Def tuple(thorin::ArrayRef<Def> elems);
     /// @p def is of type @p Def instead of @p Tuple because we can extract from non-tuples due to "<2> = 2".
     Def extract(Def def, size_t i);
-    //Proj projection(int n, int m);
-    //Bottom bottom(std::string name = "");
     Dummy dummy(Abs abs, Def return_type, bool is_commutative = false, bool is_associative = false);
     
 protected:

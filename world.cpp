@@ -80,6 +80,8 @@ World::World()
         if((t = d.isa<Tuple>()) && t->size() == 2) {
             PrimLit p0, p1;
             if((p0 = t->op(0).isa<PrimLit>()) && (p1 = t->op(1).isa<PrimLit>())) {
+                std::cout << "dodamy: ";
+                p0.dump(); std::cout << "  i  "; p1.dump(); std::cout << std::endl;
                 return literal(p0->value() + p1->value());
             } else {
                 return bottom("one of arguments types of primitve plus is not int");
@@ -144,7 +146,10 @@ Def World::app(Def fun, Def arg) {
                 if ((a1 = pairarg->op(0).isa<PrimLit>()) 
                     && (a2 = pairarg->op(1).isa<PrimLit>())
                     && db->is_reducable()) {
-                    return cse_base((db->body_)(arg));
+                        // this shouldn't typecheck! why does C++ allow
+                        // Def to cse_base(const DefNode*) ?!
+                    //return cse_base((db->body_)(arg));
+                    return (db->body_)(arg);
                 } else if ((a2 = pairarg->op(1).isa<PrimLit>()) 
                     && !(a1 = pairarg->op(0).isa<PrimLit>())) {
                     auto p = is_app_of_dummy(pairarg->op(0));
@@ -366,7 +371,10 @@ const DefNode* World::cse_base(const DefNode* def) {
     proxdef->reduce();
     auto rdef = *proxdef;
     if (def != rdef) {
+        std::cout << def << " != " << rdef << std::endl;
         rdef->type_ = type;
+        def->unregister_uses();
+        def->unlink_representative();
         delete def;
     }
     
@@ -377,6 +385,11 @@ const DefNode* World::cse_base(const DefNode* def) {
     
     auto i = expressions_.find(def);
     if (i != expressions_.end() && *i != def) {
+        std::cout << "expr: ";
+        Def(def).dump();
+        std::cout << " dup. def = " << def << " , i = " << *i << std::endl;
+        def->unregister_uses();
+        def->unlink_representative();
         delete def;
         def = *i;
     } else if (i != expressions_.end()) {

@@ -96,7 +96,8 @@ void DefNode::unregister_uses() const {
 void DefNode::unregister_use(size_t i) const {
     auto def = ops_[i].node();
     assert(def->uses_.count(Use(i, this)) == 1);
-    def->uses_.erase(Use(i, this));
+    auto p = def->uses_.erase(Use(i, this));
+    assert(p == 1 && "unregister_use failed");
 }
 
 void DefNode::unlink_representative() const {
