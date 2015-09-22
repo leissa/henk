@@ -22,6 +22,7 @@ World::World()
     auto box2 = cse(new VarNode(*this, gid_++, botbox2, nullptr, "⬜⬜"));
     auto star2 = cse(new VarNode(*this, gid_++, box2, nullptr, "**"));
     auto dim = cse(new VarNode(*this, gid_++, box, nullptr, "D"));
+    auto rdim = cse(new VarNode(*this, gid_++, box, nullptr, "RD"));
     
     botbox->update_non_reduced_repr();
     box->update_non_reduced_repr();
@@ -32,18 +33,19 @@ World::World()
     box2->update_non_reduced_repr();
     star2->update_non_reduced_repr();
     dim->update_non_reduced_repr();
+    rdim->update_non_reduced_repr();
     
     expressions_.insert(botbox); expressions_.insert(box);
     expressions_.insert(star);   expressions_.insert(pint);
     expressions_.insert(pbool);  expressions_.insert(botbox2);
     expressions_.insert(box2);   expressions_.insert(star2);
-    expressions_.insert(dim);
+    expressions_.insert(dim);    expressions_.insert(rdim);
     
     prim_consts["*"] = star;     prim_consts["**"] = star2;
     prim_consts["⬜"] = box;      prim_consts["⬜⬜"] = box2;
     prim_consts["Int"] = pint;   prim_consts["Bool"] = pbool;
     prim_consts["⊥ ⬜"] = botbox; prim_consts["⊥ ⬜⬜"] = botbox2;
-    prim_consts["D"] = dim;
+    prim_consts["D"] = dim;      prim_consts["RD"] = rdim;
     
     wavy_arrow_rules[std::make_pair(star, star)]   = star;
     wavy_arrow_rules[std::make_pair(star, star2)]  = star2;
@@ -72,6 +74,11 @@ World::World()
     wavy_arrow_rules[std::make_pair(star, dim)]    = star; // or dim?
     wavy_arrow_rules[std::make_pair(star2, dim)]   = star2; // or dim?
     wavy_arrow_rules[std::make_pair(box, dim)]     = box; // or dim?
+    
+    // records
+    // TODO
+    
+    //
 
     /* primitive operators */
     
@@ -217,7 +224,15 @@ PrimLit World::literal(int value) {
 Def World::tuple(ArrayRef<Def> elems) {
     if (elems.size() == 1)
         return elems[0];
-    return cse_base(new TupleNode(*this, gid_++, elems.size(), elems, "tuple"));
+    return cse_base(new TupleNode(*this, gid_++, /*elems.size(),*/ elems, "tuple"));
+}
+
+AbsRecord World::abs_record(std::map<std::string, Def> label2type) {
+    return cse(new AbsRecordNode(*this, gid_++, label2type, "abs_record"));
+}
+
+InstRecord World::inst_record(std::map<std::string, Def> label2elem, AbsRecord ascribed_type) {
+    return cse(new InstRecordNode(*this, gid_++, label2elem, ascribed_type, "inst_record"));
 }
 
 Pi World::fun_type(Def from, Def to) {
@@ -239,6 +254,14 @@ Def World::extract(Def def, size_t i) {
 
 Dim World::dimension(int n) {
     return cse(new DimNode(*this, gid_++, n));
+}
+
+RecordDim World::record_dimension(std::set<std::string> labels) {
+    return cse(new RecordDimNode(*this, gid_++, labels));
+}
+
+RecordProj World::record_projection(std::set<std::string> labels, std::string label) {
+    return cse(new RecordProjNode(*this, gid_++, labels, label));
 }
 
 Dummy World::dummy(Abs abs, Def return_type, bool is_commutative, bool is_associative) {

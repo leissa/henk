@@ -3,6 +3,8 @@
 
 #include <functional>
 #include <vector>
+#include <map>
+#include <set>
 
 #include "thorin/util/cast.h"
 #include "thorin/util/hash.h"
@@ -21,8 +23,12 @@ class AbsNode;     typedef Proxy<AbsNode>     Abs;
 class LambdaNode;  typedef Proxy<LambdaNode>  Lambda;
 class PiNode;      typedef Proxy<PiNode>      Pi;
 class TupleNode;   typedef Proxy<TupleNode>   Tuple;
+class InstRecordNode; typedef Proxy<InstRecordNode> InstRecord;
+class AbsRecordNode; typedef Proxy<AbsRecordNode> AbsRecord;
 class DimNode;     typedef Proxy<DimNode>     Dim;
+class RecordDimNode; typedef Proxy<RecordDimNode> RecordDim;
 class ProjNode;    typedef Proxy<ProjNode>    Proj;
+class RecordProjNode; typedef Proxy<RecordProjNode> RecordProj;
 class DummyNode;   typedef Proxy<DummyNode>   Dummy;
 class AppNode;     typedef Proxy<AppNode>     App;
 
@@ -111,6 +117,7 @@ protected:
     void set_representative(const DefNode* repr) const;
     void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<DefNode*>(this)->gid_) = gid; }
     virtual size_t vhash() const = 0;
+    void resize(size_t n) { ops_.resize(n, nullptr); }
     virtual void update_non_reduced_repr() const;
     std::string __get_non_reduced_repr(const DefNode& def) const;
     virtual Def typecheck() const = 0;
@@ -154,7 +161,7 @@ protected:
     mutable std::string non_reduced_repr_;
     mutable const DefNode* representative_;
     World& world_;
-    mutable thorin::Array<Def> ops_;
+    mutable /*thorin::Array<Def>*/std::vector<Def> ops_;
     mutable size_t gid_;
     mutable std::string name_;
     mutable DefSet representative_of_;
@@ -174,6 +181,7 @@ protected:
     
     virtual Def vreduce(Def2Def& map) const override;
     void __update_non_reduced_repr_body(std::ostringstream& r) const;
+    virtual size_t vhash() const override;
     
 public:
     virtual DefSet free_vars() const override;
@@ -184,9 +192,6 @@ public:
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
-protected:
-    virtual size_t vhash() const override;
-    
     friend class World;
 };
 
@@ -222,11 +227,12 @@ public:
 
 class TupleNode : public DefNode {
 protected:
-    TupleNode(World& world, size_t gid, size_t size, thorin::ArrayRef<Def> elems, std::string name);
+    TupleNode(World& world, size_t gid, thorin::ArrayRef<Def> elems, std::string name);
     
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
     virtual void update_non_reduced_repr() const override;
+    virtual size_t vhash() const override;
     
 public:
     thorin::Array<Def> elem_types() const;
@@ -234,12 +240,59 @@ public:
     virtual DefSet free_vars() const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
+
+    friend class World;
+};
+
+class Field;
+
+class AbsRecordNode : public DefNode {
+protected:
+    AbsRecordNode(World& world, size_t gid, std::map<std::string, Def> label2type, std::string name);
+    
+    virtual Def typecheck() const override;
+    virtual Def vreduce(Def2Def& map) const override;
+    virtual void update_non_reduced_repr() const override;
+    virtual size_t vhash() const override;
+    
+public:
+    std::map<std::string, Def> label2type() const;
+    const std::set<std::string> labels () const;
+    virtual void vdump(std::ostream& stream) const override;
+    virtual bool is_closed() const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
 protected:
-    virtual size_t vhash() const override;
+    mutable std::map<std::string, Def> label2type_;
     
     friend class World;
 };
+
+class InstRecordNode : public DefNode {
+protected:
+    InstRecordNode(World& world, size_t gid, std::map<std::string, Def> label2elem, AbsRecord ascribed_type, std::string name);
+    
+    virtual Def typecheck() const override;
+    virtual Def vreduce(Def2Def& map) const override;
+    virtual void update_non_reduced_repr() const override;
+    virtual size_t vhash() const override;
+    
+public:
+    const std::set<std::string> labels () const;
+    std::map<std::string, Def> label2elem() const;
+    virtual void vdump(std::ostream& stream) const override;
+    virtual DefSet free_vars() const override;
+    virtual bool is_closed() const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
+    
+protected:
+    mutable AbsRecord ascribed_type_;
+    mutable std::map<std::string, Def> label2elem_;
+    
+    friend class World;
+};
+
+class Field
 
 // dimension -- used for typechecking tuples
 class DimNode : public DefNode {
@@ -252,7 +305,8 @@ protected:
     virtual void update_non_reduced_repr() const override;
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
-    
+    virtual size_t vhash() const override;
+        
 public:
     int n() const { return n_; }
     virtual void vdump(std::ostream& stream) const override;
@@ -260,9 +314,31 @@ public:
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
 protected:
-    virtual size_t vhash() const override;
-    
     int n_;
+    
+    friend class World;
+};
+
+class RecordDimNode : public DefNode {
+protected:
+    RecordDimNode(World& world, size_t gid, std::set<std::string> labels)
+        : DefNode(world, gid, {}, "record dimension")
+        , labels_(labels)
+    {}
+    
+    virtual void update_non_reduced_repr() const override;
+    virtual Def typecheck() const override;
+    virtual Def vreduce(Def2Def& map) const override;
+    virtual size_t vhash() const override;
+        
+public:
+    std::set<std::string> labels() const { return labels_; }
+    virtual void vdump(std::ostream& stream) const override;
+    virtual bool is_closed() const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
+
+protected:
+    std::set<std::string> labels_;
     
     friend class World;
 };
@@ -279,6 +355,7 @@ protected:
     virtual void update_non_reduced_repr() const override;
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
+    virtual size_t vhash() const override;
     
 public:
     int n() const { return n_; }
@@ -288,10 +365,35 @@ public:
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
 protected:
-    virtual size_t vhash() const override;
-    
     int n_;
     int m_;
+    
+    friend class World;
+};
+
+class RecordProjNode : public DefNode {
+protected:
+    RecordProjNode(World& world, size_t gid, std::set<std::string> labels, std::string label)
+        : DefNode(world, gid, {}, "projection")
+        , labels_(labels)
+        , label_(label)
+    {}
+    
+    virtual void update_non_reduced_repr() const override;
+    virtual Def typecheck() const override;
+    virtual Def vreduce(Def2Def& map) const override;
+    virtual size_t vhash() const override;
+    
+public:
+    std::set<std::string> labels() const { return labels_; }
+    std::string label() const { return label_; }
+    virtual void vdump(std::ostream& stream) const override;
+    virtual bool is_closed() const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
+
+protected:
+    std::set<std::string> labels_;
+    std::string label_;
     
     friend class World;
 };
@@ -305,6 +407,7 @@ protected:
     
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
+    virtual size_t vhash() const override;
     
 public:
     std::string info() const { return info_; }
@@ -313,8 +416,6 @@ public:
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
 protected:
-    virtual size_t vhash() const override;
-    
     std::string info_;
 
     friend class World;
@@ -331,6 +432,7 @@ protected:
     
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
+    virtual size_t vhash() const override;
     
 public:
     Abs abs() const { return abs_; }
@@ -340,8 +442,6 @@ public:
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
 protected:
-    virtual size_t vhash() const override;
-
     Abs abs_;
 
     friend class World;
@@ -359,7 +459,6 @@ protected:
 
     virtual Def typecheck() const;
     virtual Def vreduce(Def2Def& map) const;
-    
     virtual size_t vhash() const override;
     
 public:

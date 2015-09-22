@@ -31,6 +31,10 @@ public:
     /// @p def is of type @p Def instead of @p Tuple because we can extract from non-tuples due to "<2> = 2".
     Def extract(Def def, size_t i);
     Dummy dummy(Abs abs, Def return_type, bool is_commutative = false, bool is_associative = false);
+    AbsRecord abs_record(std::map<std::string, Def> label2type);
+    InstRecord inst_record(std::map<std::string, Def> label2elem, AbsRecord ascribed_type);
+    RecordDim record_dimension(std::set<std::string> labels);
+    RecordProj record_projection(std::set<std::string> labels, std::string label);
     
 protected:
     Proj projection(int n, int m);
@@ -80,6 +84,8 @@ protected:
     friend Def PiNode::typecheck() const; // uses wavy_arrow_rules
     friend Def AppNode::typecheck() const; // uses bottom(std::string)
     friend Def TupleNode::typecheck() const; // uses bottom(std::string)
+    friend Def AbsRecordNode::typecheck() const;
+    friend Def InstRecordNode::typecheck() const;
 };
 
 }
