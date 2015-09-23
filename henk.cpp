@@ -915,7 +915,7 @@ void AbsRecordNode::update_non_reduced_repr() const {
         if(i != 0) {
             r << "; ";
         }
-        r << kv.first << ": " << __get_non_reduced_repr(**kv.second);
+        r << "'" << kv.first << "': " << __get_non_reduced_repr(**kv.second);
         ++i;
     }
     r << "}";
@@ -931,7 +931,7 @@ void InstRecordNode::update_non_reduced_repr() const {
         if(i != 0) {
             r << "; ";
         }
-        r << labels_[i] << ": " << __get_non_reduced_repr(**ops_[i]);
+        r << "'" << labels_[i] << "': " << __get_non_reduced_repr(**ops_[i]);
     }
     r << "}";
     non_reduced_repr_ = r.str();
@@ -1056,7 +1056,7 @@ void AbsRecordNode::vdump(std::ostream& stream) const {
         if(i != 0) {
             stream << "; ";
         }
-        stream << kv.first << ": ";
+        stream << "'" << kv.first << "': ";
         kv.second.dump(stream);
         ++i;
     }
@@ -1071,7 +1071,7 @@ void InstRecordNode::vdump(std::ostream& stream) const {
         if(i != 0) {
             stream << "; ";
         }
-        stream << labels_[i] << ": ";
+        stream << "'" << labels_[i] << "': ";
         ops_[i].dump(stream);
     }
     stream << "}";

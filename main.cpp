@@ -164,6 +164,8 @@ void test8(World& world) {
         std::cout << "at field " << f.label() << " r has ";
         elem.dump(std::cout); std::cout << " : "; type.dump();
     }
+    
+    
 }
 
 int main(int argc, char* argv[]) {
