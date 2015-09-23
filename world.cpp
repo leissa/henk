@@ -225,28 +225,26 @@ Def World::tuple(ArrayRef<Def> elems) {
     return cse_base(new TupleNode(*this, gid_++, elems, "tuple"));
 }
 
-AbsRecord World::abs_record(thorin::Array<std::pair<std::string, Def> > label2type) {
+AbsRecord World::abs_record(thorin::ArrayRef<std::pair<std::string, Def> > label2type) {
     std::set<std::string> s;
     for(auto kv : label2type) {
         auto r = s.insert(kv.first);
-        assert(!r.second && "duplicate fields when creating AbsRecord");
+        assert(r.second && "duplicate fields when creating AbsRecord");
     }
     
     return cse(new AbsRecordNode(*this, gid_++, label2type, "abs_record"));
 }
 
-InstRecord World::inst_record(thorin::Array<std::pair<std::string, Def> > label2elem, AbsRecord ascribed_type) {
+InstRecord World::inst_record(thorin::ArrayRef<std::pair<std::string, Def> > label2elem, AbsRecord ascribed_type) {
     std::set<std::string> s;
     thorin::Array<std::string> labels(label2elem.size());
     thorin::Array<Def> elems(label2elem.size());
     size_t i = 0;
     for (auto& p : label2elem) {
         auto r = s.insert(p.first);
-        assert(!r.second && "duplicate fields when creating InstRecord");
+        assert(r.second && "duplicate fields when creating InstRecord");
         labels[i] = p.first;
         elems[i] = p.second;
-        //labels.push_back(p.first);
-        //elems.push_back(p.second);
         ++i;
     }
     return cse(new InstRecordNode(*this, gid_++, labels, elems, ascribed_type, "inst_record"));

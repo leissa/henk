@@ -31,8 +31,8 @@ public:
     /// @p def is of type @p Def instead of @p Tuple because we can extract from non-tuples due to "<2> = 2".
     Def extract(Def def, size_t i);
     Dummy dummy(Abs abs, Def return_type, bool is_commutative = false, bool is_associative = false);
-    AbsRecord abs_record(thorin::Array<std::pair<std::string, Def> > label2type);
-    InstRecord inst_record(thorin::Array<std::pair<std::string, Def> > label2elem, AbsRecord ascribed_type);
+    AbsRecord abs_record(thorin::ArrayRef<std::pair<std::string, Def> > label2type);
+    InstRecord inst_record(thorin::ArrayRef<std::pair<std::string, Def> > label2elem, AbsRecord ascribed_type);
     RecordDim record_dimension(AbsRecord of_record);
     RecordProj record_projection(Field field);
     

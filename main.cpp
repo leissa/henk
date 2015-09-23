@@ -142,6 +142,30 @@ void test7(World& world) {
     assert(l1 == l2 && "lambdas differ");
 }
 
+void test8(World& world) {
+    auto intt = world.get_prim_const("Int");
+    auto R = world.abs_record( std::vector<std::pair<std::string, Def> >{std::make_pair("num", intt), 
+        std::make_pair<std::string, Def>("fun", world.fun_type(intt, intt))} );
+    R.dump();
+    
+    auto l = world.lambda(intt, "x");
+    l->close(l->var());
+    
+    auto r = world.inst_record(std::vector<std::pair<std::string, Def> >{
+        std::make_pair<std::string, Def>("fun", l),
+        std::make_pair<std::string, Def>("num", world.literal(42))
+    }, R);
+    r.dump(std::cout); std::cout << ": "; r->type().dump();
+    
+    for(auto& f : R->get_fields()) {
+        auto proj = world.record_projection(f);
+        auto elem = world.app(r, proj);
+        auto type = world.app(R, proj);
+        std::cout << "at field " << f.label() << " r has ";
+        elem.dump(std::cout); std::cout << " : "; type.dump();
+    }
+}
+
 int main(int argc, char* argv[]) {
     std::unique_ptr<World> world(new World());
     world->dump_prims(std::cout);
@@ -156,6 +180,7 @@ int main(int argc, char* argv[]) {
             test5(*world);
             test6(*world);
             test7(*world);
+            test8(*world);
             break;
         case 2:
             switch (std::atoi(argv[1])) {
@@ -166,12 +191,13 @@ int main(int argc, char* argv[]) {
                 case 5: test5(*world); break;
                 case 6: test6(*world); break;
                 case 7: test7(*world); break;
+                case 8: test8(*world); break;
                 default: 
                     throw std::runtime_error("wrong number of test case");
             }
             break;
         default:
-            throw std::runtime_error("give number of test case from 1 to 7");
+            throw std::runtime_error("give number of test case from 1 to 8");
     }
 
     //std::cout << "\n\nworld has expressions: " << std::endl;

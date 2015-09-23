@@ -337,7 +337,7 @@ Def AbsRecordNode::vreduce(Def2Def& map) const { return this; } // types should 
 Def InstRecordNode::vreduce(Def2Def& map) const {
     bool changed = false;
     thorin::Array<Def> nops(size());
-    thorin::Array<std::pair<std::string, Def> > nl2d;
+    thorin::Array<std::pair<std::string, Def> > nl2d(size());
     size_t i = 0;
     for (auto& d : ops_) {
         auto nd = __reduce(**d, map);
@@ -932,7 +932,6 @@ void InstRecordNode::update_non_reduced_repr() const {
             r << "; ";
         }
         r << labels_[i] << ": " << __get_non_reduced_repr(**ops_[i]);
-        ++i;
     }
     r << "}";
     non_reduced_repr_ = r.str();
@@ -1074,7 +1073,6 @@ void InstRecordNode::vdump(std::ostream& stream) const {
         }
         stream << labels_[i] << ": ";
         ops_[i].dump(stream);
-        ++i;
     }
     stream << "}";
 }
