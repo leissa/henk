@@ -96,9 +96,7 @@ World::World()
         }
     };
     
-    auto tt = tuple(std::vector<Def> { pint, pint });
-    auto l = lambda(tt, "p");
-    
+    auto l = lambda(tuple(std::vector<Def> { pint, pint }), "p");
     auto dummypl = dummy(l, pint, true, true);
     dummypl->put_body(plus);
     l->close(dummypl);
@@ -224,15 +222,34 @@ PrimLit World::literal(int value) {
 Def World::tuple(ArrayRef<Def> elems) {
     if (elems.size() == 1)
         return elems[0];
-    return cse_base(new TupleNode(*this, gid_++, /*elems.size(),*/ elems, "tuple"));
+    return cse_base(new TupleNode(*this, gid_++, elems, "tuple"));
 }
 
-AbsRecord World::abs_record(std::map<std::string, Def> label2type) {
+AbsRecord World::abs_record(thorin::Array<std::pair<std::string, Def> > label2type) {
+    std::set<std::string> s;
+    for(auto kv : label2type) {
+        auto r = s.insert(kv.first);
+        assert(!r.second && "duplicate fields when creating AbsRecord");
+    }
+    
     return cse(new AbsRecordNode(*this, gid_++, label2type, "abs_record"));
 }
 
-InstRecord World::inst_record(std::map<std::string, Def> label2elem, AbsRecord ascribed_type) {
-    return cse(new InstRecordNode(*this, gid_++, label2elem, ascribed_type, "inst_record"));
+InstRecord World::inst_record(thorin::Array<std::pair<std::string, Def> > label2elem, AbsRecord ascribed_type) {
+    std::set<std::string> s;
+    thorin::Array<std::string> labels(label2elem.size());
+    thorin::Array<Def> elems(label2elem.size());
+    size_t i = 0;
+    for (auto& p : label2elem) {
+        auto r = s.insert(p.first);
+        assert(!r.second && "duplicate fields when creating InstRecord");
+        labels[i] = p.first;
+        elems[i] = p.second;
+        //labels.push_back(p.first);
+        //elems.push_back(p.second);
+        ++i;
+    }
+    return cse(new InstRecordNode(*this, gid_++, labels, elems, ascribed_type, "inst_record"));
 }
 
 Pi World::fun_type(Def from, Def to) {
@@ -256,12 +273,12 @@ Dim World::dimension(int n) {
     return cse(new DimNode(*this, gid_++, n));
 }
 
-RecordDim World::record_dimension(std::set<std::string> labels) {
-    return cse(new RecordDimNode(*this, gid_++, labels));
+RecordDim World::record_dimension(AbsRecord of_record) {
+    return cse(new RecordDimNode(*this, gid_++, of_record));
 }
 
-RecordProj World::record_projection(std::set<std::string> labels, std::string label) {
-    return cse(new RecordProjNode(*this, gid_++, labels, label));
+RecordProj World::record_projection(Field field) {
+    return cse(new RecordProjNode(*this, gid_++, field));
 }
 
 Dummy World::dummy(Abs abs, Def return_type, bool is_commutative, bool is_associative) {

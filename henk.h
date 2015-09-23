@@ -117,7 +117,7 @@ protected:
     void set_representative(const DefNode* repr) const;
     void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<DefNode*>(this)->gid_) = gid; }
     virtual size_t vhash() const = 0;
-    void resize(size_t n) { ops_.resize(n, nullptr); }
+   // void resize(size_t n) { ops_.resize(n, nullptr); }
     virtual void update_non_reduced_repr() const;
     std::string __get_non_reduced_repr(const DefNode& def) const;
     virtual Def typecheck() const = 0;
@@ -161,7 +161,7 @@ protected:
     mutable std::string non_reduced_repr_;
     mutable const DefNode* representative_;
     World& world_;
-    mutable /*thorin::Array<Def>*/std::vector<Def> ops_;
+    mutable thorin::Array<Def> ops_;//std::vector<Def> ops_;
     mutable size_t gid_;
     mutable std::string name_;
     mutable DefSet representative_of_;
@@ -248,7 +248,7 @@ class Field;
 
 class AbsRecordNode : public DefNode {
 protected:
-    AbsRecordNode(World& world, size_t gid, std::map<std::string, Def> label2type, std::string name);
+    AbsRecordNode(World& world, size_t gid, thorin::Array<std::pair<std::string, Def> > label2type, std::string name);
     
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
@@ -256,21 +256,24 @@ protected:
     virtual size_t vhash() const override;
     
 public:
-    std::map<std::string, Def> label2type() const;
-    const std::set<std::string> labels () const;
+    thorin::Array<std::pair<std::string, Def> > label2type() const { return label2type_; }
+    thorin::Array<Field> get_fields () const;// { return fields_; }
     virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
-protected:
-    mutable std::map<std::string, Def> label2type_;
+//protected:
+    mutable thorin::Array<std::pair<std::string, Def> > label2type_; // aka lexi2reali
+    mutable /*std::vector*/thorin::Array<Field> fields_;
+    mutable std::vector<size_t> reali2lexi;
     
     friend class World;
 };
 
 class InstRecordNode : public DefNode {
 protected:
-    InstRecordNode(World& world, size_t gid, std::map<std::string, Def> label2elem, AbsRecord ascribed_type, std::string name);
+    InstRecordNode(World& world, size_t gid, thorin::Array<std::string> labels, 
+        thorin::Array<Def> elems, AbsRecord ascribed_type, std::string name);
     
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
@@ -278,21 +281,45 @@ protected:
     virtual size_t vhash() const override;
     
 public:
-    const std::set<std::string> labels () const;
-    std::map<std::string, Def> label2elem() const;
+   // std::map<std::string, Def> label2elem() const;
     virtual void vdump(std::ostream& stream) const override;
     virtual DefSet free_vars() const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
-protected:
+//protected:
     mutable AbsRecord ascribed_type_;
-    mutable std::map<std::string, Def> label2elem_;
+    mutable thorin::Array<std::string> labels_;
+    mutable std::vector<size_t> lexi2reali;
+    mutable std::vector<size_t> reali2lexi;
     
     friend class World;
 };
 
-class Field
+class Field {
+public:
+    Field()
+    {}
+protected:
+    Field(std::string l, size_t i, AbsRecord o)
+        : label_(l)
+        , index_(i)
+        , owner_(o)
+    {}
+    
+public:
+    std::string label () const { return label_; }
+    size_t index () const { return index_; }
+    
+//protected:
+    std::string label_;
+    size_t index_;
+    AbsRecord owner_;
+    
+    friend class AbsRecordNode;
+    friend class InstRecordNode;
+    friend class World;
+};
 
 // dimension -- used for typechecking tuples
 class DimNode : public DefNode {
@@ -321,9 +348,9 @@ protected:
 
 class RecordDimNode : public DefNode {
 protected:
-    RecordDimNode(World& world, size_t gid, std::set<std::string> labels)
+    RecordDimNode(World& world, size_t gid, AbsRecord of_record)
         : DefNode(world, gid, {}, "record dimension")
-        , labels_(labels)
+        , of_record_(of_record)
     {}
     
     virtual void update_non_reduced_repr() const override;
@@ -332,13 +359,12 @@ protected:
     virtual size_t vhash() const override;
         
 public:
-    std::set<std::string> labels() const { return labels_; }
     virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
 protected:
-    std::set<std::string> labels_;
+    AbsRecord of_record_;
     
     friend class World;
 };
@@ -373,10 +399,9 @@ protected:
 
 class RecordProjNode : public DefNode {
 protected:
-    RecordProjNode(World& world, size_t gid, std::set<std::string> labels, std::string label)
+    RecordProjNode(World& world, size_t gid, Field field)
         : DefNode(world, gid, {}, "projection")
-        , labels_(labels)
-        , label_(label)
+        , field_(field)
     {}
     
     virtual void update_non_reduced_repr() const override;
@@ -385,15 +410,12 @@ protected:
     virtual size_t vhash() const override;
     
 public:
-    std::set<std::string> labels() const { return labels_; }
-    std::string label() const { return label_; }
     virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
-protected:
-    std::set<std::string> labels_;
-    std::string label_;
+//protected:
+    Field field_;
     
     friend class World;
 };
