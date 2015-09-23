@@ -513,8 +513,8 @@ Def InstRecordNode::typecheck() const {
             return world_.bottom(msg.str());
         } else if(ascrt != op(insti)->type()) {
             std::ostringstream msg;
-            msg << "incorrect ascribtion: types at field " << f.label();
-            msg << " doesn't match in "; vdump(msg); msg << " # "; ASCT.dump(msg);
+            msg << "incorrect ascribtion: types of fields don't match --";
+            msg << "in "; vdump(msg); msg << " # "; ASCT.dump(msg);
             return world_.bottom(msg.str());
         }
     }

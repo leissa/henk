@@ -147,6 +147,7 @@ void test8(World& world) {
     auto R = world.abs_record( std::vector<std::pair<std::string, Def> >{std::make_pair("num", intt), 
         std::make_pair<std::string, Def>("fun", world.fun_type(intt, intt))} );
     R.dump();
+    std::cout << "has type: "; R->type().dump();
     
     auto l = world.lambda(intt, "x");
     l->close(l->var());
@@ -164,8 +165,21 @@ void test8(World& world) {
         std::cout << "at field " << f.label() << " r has ";
         elem.dump(std::cout); std::cout << " : "; type.dump();
     }
+    std::cout << std::endl;
     
+    auto r2 = world.inst_record(std::vector<std::pair<std::string, Def> >{
+        std::make_pair<std::string, Def>("fun", l),
+        std::make_pair<std::string, Def>("blah", world.literal(42))
+    }, R);
+    r2.dump(std::cout); std::cout << ": "; r2->type().dump();
     
+    std::cout << std::endl;
+    
+    auto r3 = world.inst_record(std::vector<std::pair<std::string, Def> >{
+        std::make_pair<std::string, Def>("fun", l),
+        std::make_pair<std::string, Def>("num", l)
+    }, R);
+    r3.dump(std::cout); std::cout << ": "; r3->type().dump();
 }
 
 int main(int argc, char* argv[]) {
