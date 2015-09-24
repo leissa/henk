@@ -401,9 +401,9 @@ Def AppNode::vreduce(Def2Def& map) const {
             return this;
     } else if (auto sig = rfun.isa<Pair>()) {
         if(rarg == world_.get_prim_const("𝟙").as<Def>())
-            return sig.first();
+            return sig->first();
         else if(rarg == world_.get_prim_const("𝟚").as<Def>())
-            return sig.second();
+            return sig->second();
         else if (*rfun != *fun())
             return world_.app(rfun, rarg);
         else
@@ -464,7 +464,7 @@ Def PiNode::typecheck() const {
     }
     else {
         std::ostringstream msg;
-        msg << "no wavy arrow rule for " << var_type_type->name();
+        msg << "Π: no wavy_arrow rule for " << var_type_type->name();
         msg << " ⤳  " << body_type->name();
         return world_.bottom(msg.str());
     }
@@ -535,8 +535,40 @@ Def InstRecordNode::typecheck() const {
 }
 
 Def SigmaNode::typecheck() const {
-    // TODO
-    assert(false);
+    auto var_type = var()->type();
+    auto var_type_type = var_type->type();
+    auto body_type = body()->type();
+    auto p = world_.wavy_arrow_rules.find(std::make_pair(
+        *var_type_type,
+        *body_type)
+    );
+    if (p != world_.wavy_arrow_rules.end()) {
+        return p->second;
+    }
+    else {
+        std::ostringstream msg;
+        msg << "Σ: no wavy_arrow rule for " << var_type_type->name();
+        msg << " ⤳  " << body_type->name();
+        return world_.bottom(msg.str());
+    }
+}
+
+Def PairNode::typecheck() const {
+    Def redb = ascribed_type_->body()->reduce({{ascribed_type_->var(), first()}} , false);
+    if(first()->type() != ascribed_type_->var()->type()) {
+        std::ostringstream msg;
+        msg << "incorrect ascribtion: first element's type (";
+        first()->type().dump(msg); msg << ") differs from sigma's var type (";
+        ascribed_type_->var()->type().dump(msg); msg << ")";
+        return world_.bottom(msg.str());
+    } else if(second()->type() != redb) {
+        std::ostringstream msg;
+        msg << "incorrect ascribtion: second element's type (";
+        first()->type().dump(msg); msg << ") differs from sigma's body after substitution (";
+        redb.dump(msg); msg << ")";
+        return world_.bottom(msg.str());
+    } else
+        return ascribed_type_;
 }
 
 Def DimNode::typecheck() const {
@@ -693,8 +725,20 @@ Def AppNode::typecheck() const {
             return world_.bottom(msg.str());
         }
     } else if (auto sigt = funt.isa<Sigma>()) {
-        // TODO
-        assert(false);
+        if(argt == world_.get_prim_const("Σ¹").as<Def>()) {
+            return sigt->var()->type();
+        } else if(argt == world_.get_prim_const("Σ²").as<Def>()) {
+            return sigt->body()->reduce(
+                {{sigt->var(), world_.app(fun(), world_.get_prim_const("𝟙"))}}, false
+            );
+        } else {
+            std::ostringstream msg;
+            msg << "in application: (";
+            fun().dump(msg); msg << ") ("; arg().dump(msg);
+            msg << ") -- type of argument (";
+            argt.dump(msg); msg << ") is neither Σ¹ nor Σ²";
+            return world_.bottom(msg.str());
+        }
     } else {
         std::ostringstream msg;
         msg << "in application: (";
@@ -753,6 +797,12 @@ bool TupleNode::eq(const DefNode& other, Def2Def& map) const {
         return compeq;
     }
     return false;
+}
+
+bool PairNode::eq(const DefNode& other, Def2Def& map) const {
+    return DefNode::eq(other, map) && ops_[0]->eq(**other.as<PairNode>()->first(), map)
+        && ops_[1]->eq(**other.as<PairNode>()->second(), map)
+        && ascribed_type_->eq(**other.as<PairNode>()->ascribed_type_, map);
 }
 
 bool AbsRecordNode::eq(const DefNode& other, Def2Def& map) const {
@@ -832,6 +882,9 @@ size_t InstRecordNode::vhash() const {
         r = hash_combine(r, d->hash());
     return r;
 }
+size_t PairNode::vhash() const {
+    return hash_combine(2357, hash_combine(first()->hash(), second()->hash()));
+}
 size_t DimNode::vhash() const { return hash_combine(hash_begin(197), n_); }
 size_t RecordDimNode::vhash() const { return hash_begin(777); }
 size_t ProjNode::vhash() const { return hash_combine(hash_begin(73), hash_combine(n_, m_)); }
@@ -853,6 +906,9 @@ bool TupleNode::is_closed() const {
         closed &= d->is_closed();
     }
     return closed;
+}
+bool PairNode::is_closed() const {
+    return first()->is_closed() && second()->is_closed();
 }
 bool AbsRecordNode::is_closed() const {
     /*bool closed = true;
@@ -933,6 +989,14 @@ void TupleNode::update_non_reduced_repr() const {
     non_reduced_repr_ = r.str();
 }
 
+void PairNode::update_non_reduced_repr() const {
+    std::ostringstream r;
+    r << "|" << __get_non_reduced_repr(**ops_[0]);
+    r << ", " << __get_non_reduced_repr(**ops_[1]);
+    r << "|";
+    non_reduced_repr_ = r.str();
+}
+
 void AbsRecordNode::update_non_reduced_repr() const {
     std::ostringstream r;
     r << "AbsRecord{";
@@ -951,9 +1015,7 @@ void AbsRecordNode::update_non_reduced_repr() const {
 void InstRecordNode::update_non_reduced_repr() const {
     std::ostringstream r;
     r << "InstRecord{";
-    //size_t i = 0;
     for(size_t i = 0; i < size(); ++i) {
-    //for(auto& kv : label2elem_) {
         if(i != 0) {
             r << "; ";
         }
@@ -1089,6 +1151,14 @@ void TupleNode::vdump(std::ostream& stream) const {
     stream << ">";
 }
 
+void PairNode::vdump(std::ostream& stream) const {
+    stream << "|";
+    ops_[0].dump(stream);
+    stream << ", ";
+    ops_[1].dump(stream);
+    stream << "|";
+}
+
 void AbsRecordNode::vdump(std::ostream& stream) const {
     stream << "AbsRecord{";
     size_t i = 0;
@@ -1105,9 +1175,7 @@ void AbsRecordNode::vdump(std::ostream& stream) const {
 
 void InstRecordNode::vdump(std::ostream& stream) const {
     stream << "InstRecord{";
-   // size_t i = 0;
    for(size_t i = 0; i < size(); ++i) {
-    //for(auto& kv : label2elem_) {
         if(i != 0) {
             stream << "; ";
         }

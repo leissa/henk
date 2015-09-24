@@ -510,10 +510,10 @@ public:
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
 protected:
-    mutable AbsRecord ascribed_type_;
+    mutable Sigma ascribed_type_;
     
     friend class World;
-}
+};
 
 class PrimLitNode : public DefNode {
 protected:

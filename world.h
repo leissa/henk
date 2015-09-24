@@ -85,7 +85,9 @@ protected:
     mutable DefSet duplicates_;
     
     friend void AbsNode::close(Def) const; // uses introduce(DefNode*)
-    friend Def PiNode::typecheck() const; // uses wavy_arrow_rules
+    friend Def PiNode::typecheck() const; // uses pi_rules
+    friend Def SigmaNode::typecheck() const;
+    friend Def PairNode::typecheck() const;
     friend Def AppNode::typecheck() const; // uses bottom(std::string)
     friend Def TupleNode::typecheck() const; // uses bottom(std::string)
     friend Def AbsRecordNode::typecheck() const;
