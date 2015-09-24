@@ -23,6 +23,8 @@ public:
     Lambda lambda(Def var_type, std::string var_name = "");
     Pi fun_type(Def from, Def to);
     Pi pi(Def var_type, std::string var_name = "");
+    Sigma sigma(Def var_type, std::string var_name = "");
+    Pair pair(Def first, Def second, Sigma ascribed_type);
     Def app(Def appl, Def arg);
     PrimLit literal(int value);
     Dim dimension(int n);

@@ -23,6 +23,11 @@ World::World()
     auto star2 = cse(new VarNode(*this, gid_++, box2, nullptr, "**"));
     auto dim = cse(new VarNode(*this, gid_++, box, nullptr, "D"));
     auto rdim = cse(new VarNode(*this, gid_++, box, nullptr, "RD"));
+    auto sigdim = cse(new VarNode(*this, gid_++, box, nullptr, "ΣD"));
+    auto sig1 = cse(new VarNode(*this, gid_++, sigdim, nullptr, "Σ¹"));
+    auto sig2 = cse(new VarNode(*this, gid_++, sigdim, nullptr, "Σ²"));
+    auto sigp1 = cse(new VarNode(*this, gid_++, sig1, nullptr, "𝟙"));
+    auto sigp2 = cse(new VarNode(*this, gid_++, sig2, nullptr, "𝟚"));
     
     botbox->update_non_reduced_repr();
     box->update_non_reduced_repr();
@@ -34,18 +39,29 @@ World::World()
     star2->update_non_reduced_repr();
     dim->update_non_reduced_repr();
     rdim->update_non_reduced_repr();
+    sigdim->update_non_reduced_repr();
+    sig1->update_non_reduced_repr();
+    sig2->update_non_reduced_repr();
+    sigp1->update_non_reduced_repr();
+    sigp2->update_non_reduced_repr();
     
     expressions_.insert(botbox); expressions_.insert(box);
     expressions_.insert(star);   expressions_.insert(pint);
     expressions_.insert(pbool);  expressions_.insert(botbox2);
     expressions_.insert(box2);   expressions_.insert(star2);
     expressions_.insert(dim);    expressions_.insert(rdim);
+    expressions_.insert(sigdim); expressions_.insert(sig1);
+    expressions_.insert(sig2);   expressions_.insert(sigp1);
+    expressions_.insert(sigp2);
     
     prim_consts["*"] = star;     prim_consts["**"] = star2;
     prim_consts["⬜"] = box;      prim_consts["⬜⬜"] = box2;
     prim_consts["Int"] = pint;   prim_consts["Bool"] = pbool;
     prim_consts["⊥ ⬜"] = botbox; prim_consts["⊥ ⬜⬜"] = botbox2;
     prim_consts["D"] = dim;      prim_consts["RD"] = rdim;
+    prim_consts["ΣD"] = sigdim;  prim_consts["Σ¹"] = sig1;
+    prim_consts["Σ²"] = sig2;    prim_consts["𝟙"] = sigp1;
+    prim_consts["𝟚"] = sigp2;
     
     wavy_arrow_rules[std::make_pair(star, star)]   = star;
     wavy_arrow_rules[std::make_pair(star, star2)]  = star2;
@@ -84,6 +100,16 @@ World::World()
     wavy_arrow_rules[std::make_pair(star, rdim)]   = star;
     wavy_arrow_rules[std::make_pair(star2, rdim)]  = star2;
     wavy_arrow_rules[std::make_pair(box, rdim)]    = box;
+    
+    // all of the above for Sigma types (they are kind of special, unlike Pi's)
+    wavy_arrow_rules[std::make_pair(sigdim, sigdim)]  = star;
+    wavy_arrow_rules[std::make_pair(sigdim, star)]    = star;
+    wavy_arrow_rules[std::make_pair(sigdim, box)]     = box;
+    wavy_arrow_rules[std::make_pair(sigdim, star2)]   = star2;
+    wavy_arrow_rules[std::make_pair(sigdim, box2)]    = box2;
+    wavy_arrow_rules[std::make_pair(star, sigdim)]    = star;
+    wavy_arrow_rules[std::make_pair(star2, sigdim)]   = star2;
+    wavy_arrow_rules[std::make_pair(box, sigdim)]     = box;
 
     /* primitive operators */
     
@@ -147,6 +173,17 @@ Pi World::pi(Def var_type, std::string name) {
     size_t g = gid_;
     gid_ += 2; // world knows that Abs creates Var
     return cse(new PiNode(*this, g, var_type, name));
+}
+
+Sigma World::sigma(Def var_type, std::string name) {
+    assert(var_type->is_closed() && "type of sigma variable is an unclosed term");
+    size_t g = gid_;
+    gid_ += 2; // world knows that Abs creates Var
+    return cse(new SigmaNode(*this, g, var_type, name));
+}
+
+Pair World::pair(Def first, Def second, Sigma ascribed_type) {
+    return cse(new PairNode(*this, gid_++, first, second, ascribed_type, "pair"));
 }
 
 Def World::app(Def fun, Def arg) {

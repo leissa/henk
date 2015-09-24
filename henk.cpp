@@ -48,6 +48,8 @@ template class Proxy<PrimLitNode>;
 template class Proxy<AbsNode>;
 template class Proxy<LambdaNode>;
 template class Proxy<PiNode>;
+template class Proxy<SigmaNode>;
+template class Proxy<PairNode>;
 template class Proxy<TupleNode>;
 template class Proxy<AbsRecordNode>;
 template class Proxy<InstRecordNode>;
@@ -204,12 +206,7 @@ InstRecordNode::InstRecordNode(World& world, size_t gid, thorin::Array<std::stri
     for(size_t i = 0; i < lexi2reali.size(); ++i) {
         reali2lexi[lexi2reali[i]] = i;
     }
-    
 }
-
-AppNode::AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
-    : DefNode(world, gid, { fun, arg }, name)
-{}
 
 /*
  * destructors
@@ -253,6 +250,13 @@ DefSet VarNode::free_vars() const {
     return DefSet { this };
 }
 
+DefSet PairNode::free_vars() const {
+    auto r1 = first()->free_vars();
+    auto r2 = second()->free_vars();
+    r1.insert(r2.begin(), r2.end());
+    return r1;
+}
+
 DefSet AppNode::free_vars() const {
     auto r1 = fun()->free_vars();
     auto r2 = arg()->free_vars();
@@ -290,8 +294,12 @@ Def AbsNode::vreduce(Def2Def& map) const {
     Abs nabs;
     if (this->isa<LambdaNode>())
         nabs = world_.lambda(ntype, nvarn.str());
-    else
+    else if(this->isa<AbsNode>())
         nabs = world_.pi(ntype, nvarn.str());
+    else if(this->isa<SigmaNode>())
+        nabs = world_.sigma(ntype, nvarn.str());
+    else
+        assert(false && "AbsNode::vreduce has unknown Abs- node");
     map[*var()] = *nabs->var();
     auto nbody = __reduce(**body(), map);
     nabs->close(nbody);
@@ -308,6 +316,20 @@ Def TupleNode::vreduce(Def2Def& map) const {
     }
     if (changed) {
         return world_.tuple(nops);
+    } else
+        return this;
+}
+
+Def PairNode::vreduce(Def2Def& map) const {
+    bool changed = false;
+    std::vector<Def> nops;
+    for (auto& d : ops_) {
+        auto nd = __reduce(**d, map);
+        nops.push_back(nd);
+        changed &= *nd == *d;
+    }
+    if (changed) {
+        return world_.pair(nops[0], nops[1], ascribed_type_);
     } else
         return this;
 }
@@ -374,6 +396,15 @@ Def AppNode::vreduce(Def2Def& map) const {
             auto instreali = instrec->lexi2reali[abslexi];
             return instrec->op(instreali);
         } else if (*rfun != *fun())
+            return world_.app(rfun, rarg);
+        else
+            return this;
+    } else if (auto sig = rfun.isa<Pair>()) {
+        if(rarg == world_.get_prim_const("𝟙").as<Def>())
+            return sig.first();
+        else if(rarg == world_.get_prim_const("𝟚").as<Def>())
+            return sig.second();
+        else if (*rfun != *fun())
             return world_.app(rfun, rarg);
         else
             return this;
@@ -501,6 +532,11 @@ Def InstRecordNode::typecheck() const {
     auto t = world_.pi(world_.record_dimension(ASCT), "i");
     t->close(world_.app(ASCT, t->var()));
     return t;
+}
+
+Def SigmaNode::typecheck() const {
+    // TODO
+    assert(false);
 }
 
 Def DimNode::typecheck() const {
@@ -655,12 +691,15 @@ Def AppNode::typecheck() const {
             pifunt->var()->type().dump(msg);
             msg << ")";
             return world_.bottom(msg.str());
-        } 
+        }
+    } else if (auto sigt = funt.isa<Sigma>()) {
+        // TODO
+        assert(false);
     } else {
         std::ostringstream msg;
         msg << "in application: (";
         fun().dump(msg); msg << ") ("; arg().dump(msg);
-        msg << ") -- type of fun is not Pi, but: ";
+        msg << ") -- type of fun is neither Pi, nor Sigma, but: ";
         funt.dump(msg);
         return world_.bottom(msg.str());
     }
@@ -861,6 +900,12 @@ void PiNode::update_non_reduced_repr() const {
     __update_non_reduced_repr_body(r);
 }
 
+void SigmaNode::update_non_reduced_repr() const {
+    std::ostringstream r;
+    r << "Σ";
+    __update_non_reduced_repr_body(r);
+}
+
 void AbsNode::__update_non_reduced_repr_body(std::ostringstream& r) const {
     r << __get_non_reduced_repr(**var()) << ":";
     if (var()->type().is_empty())
@@ -1009,6 +1054,20 @@ void PiNode::vdump(std::ostream& stream) const {
         stream << "Π";
         dump_body(stream);
     }  
+}
+
+void SigmaNode::vdump(std::ostream& stream) const {
+    if (body().is_empty()) {
+        stream << "Σ";
+        dump_body(stream);
+    } else if (var().as<Var>()->type().as<Def>() == world_.get_prim_const("*").as<Def>()
+        && var().as<Def>() == body().as<Def>()) {
+        stream << "∃" << var()->name() << ". ";
+        body().dump(stream);
+    } else {
+        stream << "Σ";
+        dump_body(stream);
+    }
 }
 
 void AbsNode::dump_body(std::ostream& stream) const {

@@ -29,6 +29,8 @@ class DimNode;         typedef Proxy<DimNode>         Dim;
 class RecordDimNode;   typedef Proxy<RecordDimNode>   RecordDim;
 class ProjNode;        typedef Proxy<ProjNode>        Proj;
 class RecordProjNode;  typedef Proxy<RecordProjNode>  RecordProj;
+class SigmaNode;       typedef Proxy<SigmaNode>       Sigma;
+class PairNode;        typedef Proxy<PairNode>        Pair;
 class DummyNode;       typedef Proxy<DummyNode>       Dummy;
 class AppNode;         typedef Proxy<AppNode>         App;
 class Field;
@@ -472,6 +474,47 @@ protected:
     friend class AbsNode;
 };
 
+class SigmaNode : public AbsNode {
+protected:
+    SigmaNode(World& world, size_t gid, Def var_type, std::string name)
+        : AbsNode(world, gid, var_type, name)
+    {}
+    
+    virtual Def typecheck() const override;
+    virtual void update_non_reduced_repr() const override;
+    
+public:
+    virtual void vdump(std::ostream& stream) const override;
+
+    friend class World;
+};
+
+class PairNode : public DefNode {
+protected:
+    PairNode(World& world, size_t gid, Def first, Def second, Sigma ascribed_type, std::string name)
+        : DefNode(world, gid, { first, second }, name)
+        , ascribed_type_(ascribed_type)
+    {}
+    
+    virtual Def typecheck() const override;
+    virtual Def vreduce(Def2Def& map) const override;
+    virtual void update_non_reduced_repr() const override;
+    virtual size_t vhash() const override;
+    
+public:
+    Def first () const { return op(0); }
+    Def second () const { return op(1); }
+    virtual void vdump(std::ostream& stream) const override;
+    virtual DefSet free_vars() const override;
+    virtual bool is_closed() const override;
+    virtual bool eq(const DefNode& other, Def2Def& map) const override;
+    
+protected:
+    mutable AbsRecord ascribed_type_;
+    
+    friend class World;
+}
+
 class PrimLitNode : public DefNode {
 protected:
     PrimLitNode(World& world, size_t gid, Def type, int/*will become Box later on*/ value, std::string name)
@@ -539,7 +582,9 @@ protected:
 
 class AppNode : public DefNode {
 protected:
-    AppNode(World& world, size_t gid, Def fun, Def arg, std::string name);
+    AppNode(World& world, size_t gid, Def fun, Def arg, std::string name)
+        : DefNode(world, gid, { fun, arg }, name)
+    {}
     
     virtual size_t vhash() const override;
     virtual Def typecheck() const override;
