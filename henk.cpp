@@ -496,7 +496,11 @@ Def InstRecordNode::typecheck() const {
         }
     }
     
-    return ascribed_type_;
+    //return ascribed_type_;
+    // we need to adjust the type to be a Pi -- otherwise projections won't work!
+    auto t = world_.pi(world_.record_dimension(ASCT), "i");
+    t->close(world_.app(ASCT, t->var()));
+    return t;
 }
 
 Def DimNode::typecheck() const {
@@ -578,6 +582,7 @@ Def AppNode::typecheck() const {
                     size_t i = 0;
                     for(auto& p : rec->label2type_) {
                         nl2t[i] = std::make_pair(p.first, p.second->type());
+                        ++i;
                     }
                     
                     return world_.app(world_.abs_record(nl2t), argv);

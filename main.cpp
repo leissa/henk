@@ -163,6 +163,8 @@ void test8(World& world) {
         auto type = world.abs_record_extract(R, f);
         std::cout << "at field " << f.label() << " r has ";
         elem.dump(std::cout); std::cout << " : "; type.dump();
+        std::cout << "elem: "; elem->type().dump();
+        std::cout << "type: "; type->type().dump();
     }
     std::cout << std::endl;
     

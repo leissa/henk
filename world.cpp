@@ -65,20 +65,25 @@ World::World()
     wavy_arrow_rules[std::make_pair(star, box2)]   = box2;
     wavy_arrow_rules[std::make_pair(star2, box2)]  = box2;
     
-    // tuples
+    // all of the above for tuples
     wavy_arrow_rules[std::make_pair(dim, dim)]     = star;
     wavy_arrow_rules[std::make_pair(dim, star)]    = star;
     wavy_arrow_rules[std::make_pair(dim, box)]     = box;
     wavy_arrow_rules[std::make_pair(dim, star2)]   = star2;
     wavy_arrow_rules[std::make_pair(dim, box2)]    = box2;
-    wavy_arrow_rules[std::make_pair(star, dim)]    = star; // or dim?
-    wavy_arrow_rules[std::make_pair(star2, dim)]   = star2; // or dim?
-    wavy_arrow_rules[std::make_pair(box, dim)]     = box; // or dim?
+    wavy_arrow_rules[std::make_pair(star, dim)]    = star;
+    wavy_arrow_rules[std::make_pair(star2, dim)]   = star2;
+    wavy_arrow_rules[std::make_pair(box, dim)]     = box;
     
-    // records
-    // TODO wavy_arrow_rules
-    
-    //
+    // all of the above for records
+    wavy_arrow_rules[std::make_pair(rdim, rdim)]   = star;
+    wavy_arrow_rules[std::make_pair(rdim, star)]   = star;
+    wavy_arrow_rules[std::make_pair(rdim, box)]    = box;
+    wavy_arrow_rules[std::make_pair(rdim, star2)]  = star2;
+    wavy_arrow_rules[std::make_pair(rdim, box2)]   = box2;
+    wavy_arrow_rules[std::make_pair(star, rdim)]   = star;
+    wavy_arrow_rules[std::make_pair(star2, rdim)]  = star2;
+    wavy_arrow_rules[std::make_pair(box, rdim)]    = box;
 
     /* primitive operators */
     
