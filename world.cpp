@@ -131,6 +131,12 @@ Lambda World::lambda(Def var_type, std::string name) {
     return cse(new LambdaNode(*this, g, var_type, name));
 }
 
+Pi World::fun_type(Def from, Def to) {
+    auto npi = pi(from, "_");
+    npi->close(to); // upon closing, cse should be fired automatically
+    return npi; // so there's no need to call cse again
+}
+
 Pi World::pi(Def var_type, std::string name) {
     assert(var_type->is_closed() && "type of pi variable is an unclosed term");
     size_t g = gid_;
@@ -219,10 +225,30 @@ PrimLit World::literal(int value) {
     return cse(new PrimLitNode(*this, gid_++, get_prim_const("Int"), value, "someint"));
 }
 
+Dim World::dimension(int n) {
+    return cse(new DimNode(*this, gid_++, n));
+}
+
 Def World::tuple(ArrayRef<Def> elems) {
     if (elems.size() == 1)
         return elems[0];
     return cse_base(new TupleNode(*this, gid_++, elems, "tuple"));
+}
+
+Def World::extract(Def def, size_t i) {
+    if (auto tuple = def.isa<Tuple>())
+        return app(tuple, projection(tuple->size(), i));
+    else if (i > 0) {
+        std::ostringstream msg;
+        msg << "trying to extract " << i << "th element out of a non-tuple value";
+        return bottom(msg.str());
+    } else
+        return def;
+}
+
+Dummy World::dummy(Abs abs, Def return_type, bool is_commutative, bool is_associative) {
+    return cse(new DummyNode(*this, gid_++, abs->var()->type(), 
+        return_type, is_commutative, is_associative));
 }
 
 AbsRecord World::abs_record(thorin::ArrayRef<std::pair<std::string, Def> > label2type) {
@@ -253,42 +279,24 @@ InstRecord World::inst_record(thorin::ArrayRef<std::pair<std::string, Def> > lab
     return cse(new InstRecordNode(*this, gid_++, labels, elems, ascribed_type, "inst_record"));
 }
 
-Pi World::fun_type(Def from, Def to) {
-    auto npi = pi(from, "_");
-    npi->close(to); // upon closing, cse should be fired automatically
-    return npi; // so there's no need to call cse again
-}
-
-Def World::extract(Def def, size_t i) {
-    if (auto tuple = def.isa<Tuple>())
-        return app(tuple, projection(tuple->size(), i));
-    else if (i > 0) {
-        std::ostringstream msg;
-        msg << "trying to extract " << i << "th element out of a non-tuple value";
-        return bottom(msg.str());
-    } else
-        return def;
-}
-
-Dim World::dimension(int n) {
-    return cse(new DimNode(*this, gid_++, n));
-}
-
 RecordDim World::record_dimension(AbsRecord of_record) {
     return cse(new RecordDimNode(*this, gid_++, of_record));
 }
 
-RecordProj World::record_projection(Field field) {
-    return cse(new RecordProjNode(*this, gid_++, field));
+Def World::inst_record_extract(InstRecord r, Field field) {
+    return app(r, record_projection(field));
 }
 
-Dummy World::dummy(Abs abs, Def return_type, bool is_commutative, bool is_associative) {
-    return cse(new DummyNode(*this, gid_++, abs->var()->type(), 
-        return_type, is_commutative, is_associative));
+Def World::abs_record_extract(AbsRecord r, Field field) {
+    return app(r, record_projection(field));
 }
 
 Proj World::projection(int n, int m) {
     return cse(new ProjNode(*this, gid_++, n, m));
+}
+
+RecordProj World::record_projection(Field field) {
+    return cse(new RecordProjNode(*this, gid_++, field));
 }
 
 Bottom World::bottom(std::string info) {

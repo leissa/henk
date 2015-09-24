@@ -34,10 +34,12 @@ public:
     AbsRecord abs_record(thorin::ArrayRef<std::pair<std::string, Def> > label2type);
     InstRecord inst_record(thorin::ArrayRef<std::pair<std::string, Def> > label2elem, AbsRecord ascribed_type);
     RecordDim record_dimension(AbsRecord of_record);
-    RecordProj record_projection(Field field);
+    Def inst_record_extract(InstRecord r, Field field);
+    Def abs_record_extract(AbsRecord r, Field field);
     
 protected:
     Proj projection(int n, int m);
+    RecordProj record_projection(Field field);
     Bottom bottom(std::string info);
 
 public:

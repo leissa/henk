@@ -159,9 +159,8 @@ void test8(World& world) {
     r.dump(std::cout); std::cout << ": "; r->type().dump();
     
     for(auto& f : R->get_fields()) {
-        auto proj = world.record_projection(f);
-        auto elem = world.app(r, proj);
-        auto type = world.app(R, proj);
+        auto elem = world.inst_record_extract(r, f);
+        auto type = world.abs_record_extract(R, f);
         std::cout << "at field " << f.label() << " r has ";
         elem.dump(std::cout); std::cout << " : "; type.dump();
     }
