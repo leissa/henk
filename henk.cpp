@@ -134,22 +134,6 @@ Array<Def> TupleNode::elem_types() const {
     return result;
 }
 
-thorin::Array<Field> AbsRecordNode::get_fields () const { return fields_; }
-/*
-const std::set<std::string> AbsRecordNode::labels() const {
-    std::set<std::string> s;
-    for(auto& kv : label2type_)
-        s.insert(kv.first);
-    return s;
-}
-
-const std::set<std::string> InstRecordNode::labels() const {
-    std::set<std::string> s;
-    for(auto& kv : label2elem_)
-        s.insert(kv.first);
-    return s;
-}*/
-
 /*
  * constructors
  */
@@ -184,9 +168,7 @@ AbsRecordNode::AbsRecordNode(World& world, size_t gid, thorin::Array<std::pair<s
     , reali2lexi(label2type.size())
 {
     size_t i = 0;
-    //fields_{label2type_.size()};
     for(auto& p : label2type) {
-        //fields_.push_back(Field(p.first, i, this));
         fields_[i] = Field(p.first, i, this);
         ++i;
     }
@@ -194,7 +176,6 @@ AbsRecordNode::AbsRecordNode(World& world, size_t gid, thorin::Array<std::pair<s
         return f1.label() < f2.label();
     });
     
-    //reali2lexi(label2type.size());
     for(size_t i = 0; i < label2type.size(); ++i) {
         reali2lexi[fields_[i].index()] = i;
     }
@@ -220,7 +201,6 @@ InstRecordNode::InstRecordNode(World& world, size_t gid, thorin::Array<std::stri
         lexi2reali.push_back(f.index());
     }
     
-    //reali2lexi(lexi2reali.size());
     for(size_t i = 0; i < lexi2reali.size(); ++i) {
         reali2lexi[lexi2reali[i]] = i;
     }
@@ -342,7 +322,6 @@ Def InstRecordNode::vreduce(Def2Def& map) const {
     for (auto& d : ops_) {
         auto nd = __reduce(**d, map);
         nl2d[i] = std::make_pair(labels_[i], nd);
-        //nl2d.push_back(std::make_pair(labels_[i], nd));
         changed &= *nd == *d;
         ++i;
     }
@@ -383,18 +362,17 @@ Def AppNode::vreduce(Def2Def& map) const {
             return this;
     } else if (auto absrec = rfun.isa<AbsRecord>()) {
         if (auto rproj = rarg.isa<RecordProj>()) {
-            return absrec->label2type()[rproj->field_.index()].second;
+            return absrec->label2type()[rproj->field().index()].second;
         } else if (*rfun != *fun())
             return world_.app(rfun, rarg);
         else
             return this;
     } else if (auto instrec = rfun.isa<InstRecord>()) {
         if (auto rproj = rarg.isa<RecordProj>()) {
-            auto absreali = rproj->field_.index();
-            auto abslexi = rproj->field_.owner_->reali2lexi[absreali];
+            auto absreali = rproj->field().index();
+            auto abslexi = rproj->field().owner()->reali2lexi[absreali];
             auto instreali = instrec->lexi2reali[abslexi];
             return instrec->op(instreali);
-            //return instrec->label2elem()[rproj->label()];
         } else if (*rfun != *fun())
             return world_.app(rfun, rarg);
         else
@@ -490,7 +468,6 @@ Def AbsRecordNode::typecheck() const {
     thorin::Array<std::pair<std::string, Def> > nl2t(label2type_.size());
     size_t i = 0;
     for (auto& p : label2type_) {
-        //nl2t.push_back(std::make_pair(p.first, p.second->type()));
         nl2t[i] = std::make_pair(p.first, p.second->type());
         ++i;
     }
@@ -535,7 +512,7 @@ Def ProjNode::typecheck() const {
 }
 
 Def RecordProjNode::typecheck() const {
-    return world_.record_dimension(field_.owner_);
+    return world_.record_dimension(field_.owner());
 }
 
 Def BottomNode::typecheck() const {
@@ -600,7 +577,6 @@ Def AppNode::typecheck() const {
                     thorin::Array<std::pair<std::string, Def> > nl2t(rec->label2type().size());
                     size_t i = 0;
                     for(auto& p : rec->label2type_) {
-                        //nl2t.push_back(std::make_pair(p.first, p.second->type()));
                         nl2t[i] = std::make_pair(p.first, p.second->type());
                     }
                     
@@ -614,8 +590,8 @@ Def AppNode::typecheck() const {
                 }
                 
             } else if (auto argp = arg().isa<RecordProj>()) {
-                auto f = argp->field_;
-                if(f.owner_ == rec) {
+                auto f = argp->field();
+                if(f.owner() == rec) {
                     return rec->label2type_[f.index()].second->type();
                 } else {
                     std::ostringstream msg;
@@ -646,8 +622,8 @@ Def AppNode::typecheck() const {
                 }
                 
             } else if (auto argp = arg().isa<RecordProj>()) {
-                auto f = argp->field_;
-                if(f.owner_ == rec->ascribed_type_) {
+                auto f = argp->field();
+                if(f.owner() == rec->ascribed_type_) {
                     return rec->ascribed_type_->label2type_[f.index()].second;
                 } else {
                     std::ostringstream msg;
@@ -758,7 +734,7 @@ bool ProjNode::eq(const DefNode& other, Def2Def& map) const {
 
 bool RecordProjNode::eq(const DefNode& other, Def2Def& map) const {
     return DefNode::eq(other, map) && field_.index() == other.as<RecordProjNode>()->field_.index()
-        && field_.owner_->eq(**other.as<RecordProjNode>()->field_.owner_, map);
+        && field_.owner()->eq(**other.as<RecordProjNode>()->field_.owner(), map);
 }
 
 bool DummyNode::eq(const DefNode& other, Def2Def& map) const {
@@ -966,7 +942,7 @@ void RecordProjNode::update_non_reduced_repr() const {
         ++i;
     }
     r << "}}";*/
-    r << "recoproj{" << field_.label() << "}";
+    r << "recproj{" << field_.label() << "}";
     non_reduced_repr_ = r.str();
 }
 

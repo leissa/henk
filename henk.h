@@ -15,22 +15,23 @@ class DefNode;
 class World;
 
 template<class T> class Proxy;
-class DefNode;     typedef Proxy<DefNode>     Def;
-class BottomNode;  typedef Proxy<BottomNode>  Bottom;
-class VarNode;     typedef Proxy<VarNode>     Var;
-class PrimLitNode; typedef Proxy<PrimLitNode> PrimLit;
-class AbsNode;     typedef Proxy<AbsNode>     Abs;
-class LambdaNode;  typedef Proxy<LambdaNode>  Lambda;
-class PiNode;      typedef Proxy<PiNode>      Pi;
-class TupleNode;   typedef Proxy<TupleNode>   Tuple;
-class InstRecordNode; typedef Proxy<InstRecordNode> InstRecord;
-class AbsRecordNode; typedef Proxy<AbsRecordNode> AbsRecord;
-class DimNode;     typedef Proxy<DimNode>     Dim;
-class RecordDimNode; typedef Proxy<RecordDimNode> RecordDim;
-class ProjNode;    typedef Proxy<ProjNode>    Proj;
-class RecordProjNode; typedef Proxy<RecordProjNode> RecordProj;
-class DummyNode;   typedef Proxy<DummyNode>   Dummy;
-class AppNode;     typedef Proxy<AppNode>     App;
+class DefNode;         typedef Proxy<DefNode>         Def;
+class BottomNode;      typedef Proxy<BottomNode>      Bottom;
+class VarNode;         typedef Proxy<VarNode>         Var;
+class PrimLitNode;     typedef Proxy<PrimLitNode>     PrimLit;
+class AbsNode;         typedef Proxy<AbsNode>         Abs;
+class LambdaNode;      typedef Proxy<LambdaNode>      Lambda;
+class PiNode;          typedef Proxy<PiNode>          Pi;
+class TupleNode;       typedef Proxy<TupleNode>       Tuple;
+class InstRecordNode;  typedef Proxy<InstRecordNode>  InstRecord;
+class AbsRecordNode;   typedef Proxy<AbsRecordNode>   AbsRecord;
+class DimNode;         typedef Proxy<DimNode>         Dim;
+class RecordDimNode;   typedef Proxy<RecordDimNode>   RecordDim;
+class ProjNode;        typedef Proxy<ProjNode>        Proj;
+class RecordProjNode;  typedef Proxy<RecordProjNode>  RecordProj;
+class DummyNode;       typedef Proxy<DummyNode>       Dummy;
+class AppNode;         typedef Proxy<AppNode>         App;
+class Field;
 
 template<class T>
 class Proxy {
@@ -117,7 +118,6 @@ protected:
     void set_representative(const DefNode* repr) const;
     void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<DefNode*>(this)->gid_) = gid; }
     virtual size_t vhash() const = 0;
-   // void resize(size_t n) { ops_.resize(n, nullptr); }
     virtual void update_non_reduced_repr() const;
     std::string __get_non_reduced_repr(const DefNode& def) const;
     virtual Def typecheck() const = 0;
@@ -161,7 +161,7 @@ protected:
     mutable std::string non_reduced_repr_;
     mutable const DefNode* representative_;
     World& world_;
-    mutable thorin::Array<Def> ops_;//std::vector<Def> ops_;
+    mutable thorin::Array<Def> ops_;
     mutable size_t gid_;
     mutable std::string name_;
     mutable DefSet representative_of_;
@@ -244,8 +244,6 @@ public:
     friend class World;
 };
 
-class Field;
-
 class AbsRecordNode : public DefNode {
 protected:
     AbsRecordNode(World& world, size_t gid, thorin::Array<std::pair<std::string, Def> > label2type, std::string name);
@@ -257,16 +255,18 @@ protected:
     
 public:
     thorin::Array<std::pair<std::string, Def> > label2type() const { return label2type_; }
-    thorin::Array<Field> get_fields () const;// { return fields_; }
+    thorin::Array<Field> get_fields () const { return fields_; }
     virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
-//protected:
+protected:
     mutable thorin::Array<std::pair<std::string, Def> > label2type_; // aka lexi2reali
-    mutable /*std::vector*/thorin::Array<Field> fields_;
+    mutable thorin::Array<Field> fields_;
     mutable std::vector<size_t> reali2lexi;
     
+    friend class AppNode;
+    friend class InstRecordNode;
     friend class World;
 };
 
@@ -281,18 +281,18 @@ protected:
     virtual size_t vhash() const override;
     
 public:
-   // std::map<std::string, Def> label2elem() const;
     virtual void vdump(std::ostream& stream) const override;
     virtual DefSet free_vars() const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
-//protected:
+protected:
     mutable AbsRecord ascribed_type_;
     mutable thorin::Array<std::string> labels_;
     mutable std::vector<size_t> lexi2reali;
     mutable std::vector<size_t> reali2lexi;
     
+    friend class AppNode;
     friend class World;
 };
 
@@ -310,8 +310,9 @@ protected:
 public:
     std::string label () const { return label_; }
     size_t index () const { return index_; }
+    AbsRecord owner () const { return owner_; }
     
-//protected:
+protected:
     std::string label_;
     size_t index_;
     AbsRecord owner_;
@@ -413,8 +414,9 @@ public:
     virtual void vdump(std::ostream& stream) const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
+    Field field () const { return field_; }
 
-//protected:
+protected:
     Field field_;
     
     friend class World;

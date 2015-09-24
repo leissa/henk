@@ -76,7 +76,7 @@ World::World()
     wavy_arrow_rules[std::make_pair(box, dim)]     = box; // or dim?
     
     // records
-    // TODO
+    // TODO wavy_arrow_rules
     
     //
 
@@ -247,7 +247,8 @@ InstRecord World::inst_record(thorin::ArrayRef<std::pair<std::string, Def> > lab
         elems[i] = p.second;
         ++i;
     }
-    assert(label2elem.size() == ascribed_type->label2type().size() && "incorrect ascribtion: records have different number of fields");
+    assert(label2elem.size() == ascribed_type->label2type().size() && 
+        "incorrect ascribtion: records have different number of fields");
     
     return cse(new InstRecordNode(*this, gid_++, labels, elems, ascribed_type, "inst_record"));
 }
