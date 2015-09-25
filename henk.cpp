@@ -1110,8 +1110,7 @@ void SigmaNode::vdump(std::ostream& stream) const {
         dump_body(stream);
     } else if (var().as<Var>()->type().as<Def>() == world_.get_prim_const("*").as<Def>()
         && var().as<Def>() == body().as<Def>()) {
-        stream << "∃" << var()->name() << ". ";
-        body().dump(stream);
+        stream << "∃" << var()->name();
     } else {
         stream << "Σ";
         dump_body(stream);
