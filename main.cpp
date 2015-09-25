@@ -183,6 +183,37 @@ void test8(World& world) {
     r3.dump(std::cout); std::cout << ": "; r3->type().dump();
 }
 
+void test9(World& world) {
+    auto intt = world.get_prim_const("Int");
+    auto star = world.get_prim_const("*");
+    auto sig = world.sigma(star, "x");
+    sig->close(world.fun_type(sig->var(), sig->var()));
+    sig.dump(std::cout); std::cout << ": "; sig->type().dump();
+    
+    auto l = world.lambda(intt, "y");
+    l->close(l->var());
+    auto p = world.pair(intt, l, sig);
+    p.dump(std::cout); std::cout << ": "; p->type().dump();
+    
+    auto booll = world.get_prim_const("Bool");
+    auto l2 = world.lambda(booll, "z");
+    l2->close(world.fun_type(booll, booll));
+    l2.dump(std::cout); std::cout << ": "; l2->type().dump();
+    auto p2 = world.pair(booll, l2, sig);
+    p2.dump(std::cout); std::cout << ": "; p2->type().dump();
+}
+
+void test10(World& world) {
+    auto intt = world.get_prim_const("Int");
+    auto star = world.get_prim_const("*");
+    auto sig = world.sigma(star, "x");
+    sig->close(sig->var());
+    sig.dump(std::cout); std::cout << ": "; sig->type().dump();
+    
+    auto p = world.pair(intt, world.literal(42), sig);
+    p.dump(std::cout); std::cout << ": "; p->type().dump();
+}
+
 int main(int argc, char* argv[]) {
     std::unique_ptr<World> world(new World());
     world->dump_prims(std::cout);
@@ -198,6 +229,8 @@ int main(int argc, char* argv[]) {
             test6(*world);
             test7(*world);
             test8(*world);
+            test9(*world);
+            test10(*world);
             break;
         case 2:
             switch (std::atoi(argv[1])) {
@@ -209,12 +242,14 @@ int main(int argc, char* argv[]) {
                 case 6: test6(*world); break;
                 case 7: test7(*world); break;
                 case 8: test8(*world); break;
+                case 9: test9(*world); break;
+                case 10: test10(*world); break;
                 default: 
                     throw std::runtime_error("wrong number of test case");
             }
             break;
         default:
-            throw std::runtime_error("give number of test case from 1 to 8");
+            throw std::runtime_error("give number of test case from 1 to 9");
     }
 
     //std::cout << "\n\nworld has expressions: " << std::endl;

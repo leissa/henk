@@ -564,7 +564,7 @@ Def PairNode::typecheck() const {
     } else if(second()->type() != redb) {
         std::ostringstream msg;
         msg << "incorrect ascribtion: second element's type (";
-        first()->type().dump(msg); msg << ") differs from sigma's body after substitution (";
+        second()->type().dump(msg); msg << ") differs from sigma's body after substitution (";
         redb.dump(msg); msg << ")";
         return world_.bottom(msg.str());
     } else
