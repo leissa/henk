@@ -777,6 +777,7 @@ bool PrimLitNode::eq(const DefNode& other, Def2Def& map) const {
 }
 
 bool AbsNode::eq(const DefNode& other, Def2Def& map) const {
+    
     if (DefNode::eq(other, map)) {
         auto aother = other.as<AbsNode>();
         map[*this->var()] = *aother->var();
@@ -836,21 +837,6 @@ bool DummyNode::eq(const DefNode& other, Def2Def& map) const {
 }
 
 bool AppNode::eq(const DefNode& other, Def2Def& map) const {
-    bool sametypes = DefNode::eq(other, map);
-    if (!sametypes)
-        return false;
-   /* 
-    assert((!fun()->isa<AbsNode>() || fun()->isa<TupleNode>()) 
-        && (!other.as<AppNode>()->fun()->isa<AbsNode>() || other.as<AppNode>()->fun()->isa<TupleNode>()) 
-        && "an abstraction in fun position in AppNode::eq"
-        " contradicts strong normalization (reduction) policy");
-    */ // problems when dummies are bodies...
-   /* if(auto lam = fun().isa<Lam>()) {
-        if(auto dummyb = lam->body().isa<Dummy>()) {
-            
-        }
-    }*/
-    
     return DefNode::eq(other, map)
         && fun()->eq(**other.as<AppNode>()->fun(), map)
         && arg()->eq(**other.as<AppNode>()->arg(), map);
@@ -890,7 +876,7 @@ size_t RecordDimNode::vhash() const { return hash_begin(777); }
 size_t ProjNode::vhash() const { return hash_combine(hash_begin(73), hash_combine(n_, m_)); }
 size_t RecordProjNode::vhash() const { return hash_begin(931); }
 size_t DummyNode::vhash() const { return hash_combine(hash_begin(55), hash_combine(arg_type()->hash(), return_type()->hash())); }
-size_t AppNode::vhash() const { return hash_combine(fun()->gid(), arg()->gid()); }
+size_t AppNode::vhash() const { return hash_combine(fun()->hash(), arg()->hash()); }
 
 /*
  * is_closed

@@ -14,17 +14,17 @@ Lambda poly_id(World& world, std::string tvar, std::string var) {
 }
 
 void test1(World& world) {
+    std::cout << "\n===  test1  ===\n\n"; 
     auto type_lambda = poly_id(world, "a", "x");
 
     auto atype = type_lambda->type();
-    std::cout << std::endl;
     type_lambda.dump(std::cout);
     std::cout << " : ";
-    atype.dump(std::cout);
-    std::cout << std::endl;
+    atype.dump();
 }
 
 void test2(World& world) {
+    std::cout << "\n===  test2  ===\n\n";
      // u = lambda y:* . Int
     // (lambda x: (u Bool). 42) (Int)
     
@@ -43,11 +43,11 @@ void test2(World& world) {
     app.dump(std::cout);
     auto tapp = app->type();
     std::cout << " : ";
-    tapp.dump(std::cout);
-    std::cout << std::endl;
+    tapp.dump();
 }
 
 void test3(World& world) {
+    std::cout << "\n===  test3  ===\n\n";
      // f (forall b. b -> b)
     // where f: forall a. a -> Int
     // should fail in predicative system
@@ -62,27 +62,24 @@ void test3(World& world) {
     std::cout << "f = ";
     f.dump(std::cout);
     std::cout << " : ";
-    f->type().dump(std::cout);
-    std::cout << std::endl;
+    f->type().dump();
     std::cout << "g = ";
     forallb.dump(std::cout);
     std::cout << " : ";
-    forallb->type().dump(std::cout);
+    forallb->type().dump();
     
-    std::cout << std::endl;
     auto app = world.app(f, forallb);
     std::cout << "f g = ";
-    app.dump(std::cout);
-    std::cout << std::endl;
+    app.dump();
     
     std::cout << "f g : ";
     auto apptype = app->type();
-    apptype.dump(std::cout);
-    std::cout << std::endl;
+    apptype.dump();
 
 }
 
 void test4(World& world) {
+    std::cout << "\n===  test4  ===\n\n";
     auto i42 = world.literal(42);
     auto i42prim = world.literal(42);
     std::cout << "created two numbers 42 and their physical addresses are ";
@@ -101,48 +98,47 @@ void test4(World& world) {
 }
 
 void test5(World& world) {
+    std::cout << "\n===  test5  ===\n\n";
     auto singl = world.tuple({world.literal(42)});
     singl.dump(std::cout);
     std::cout << ": ";
-    singl->type().dump(std::cout);
+    singl->type().dump();
     auto p = world.tuple({world.literal(23), singl});
-    std::cout << std::endl;
     p.dump(std::cout);
     std::cout << ": ";
-    p->type().dump(std::cout);
-    
+    p->type().dump();
     auto p2 = world.extract(p, 1);
-    std::cout << std::endl;
-    p2.dump(std::cout);
+    p2.dump();
 }
 
 void test6(World& world) {
+    std::cout << "\n===  test6  ===\n\n";
     auto i42 = world.literal(42);
     auto i8 = world.literal(8);
     auto plus = world.get_primop("+");
-    plus.dump(std::cout);
+    plus.dump();
     auto r = world.app(plus, world.tuple(std::vector<Def> {i42, i8}));
-    std::cout << std::endl;
-    r.dump(std::cout);
+    r.dump();
 }
 
 void test7(World& world) {
+    std::cout << "\n===  test7  ===\n\n";
     auto dint = world.get_prim_const("Int");
     auto plus = world.get_primop("+");
     auto l1 = world.lambda(dint, "x");
     l1->close(world.app(plus, 
         world.tuple(std::vector<Def> {l1->var(), world.literal(7)})));
     auto l2 = world.lambda(dint, "y");
+    
     l2->close(world.app(plus, world.tuple(std::vector<Def>{world.app(plus, 
         world.tuple(std::vector<Def>{world.literal(3), world.literal(4)})), l2->var()})));
-    l1.dump(std::cout);
-    std::cout << std::endl;
-    l2.dump(std::cout);
-    
-    assert(l1 == l2 && "lambdas differ");
+    l1.dump();
+    l2.dump();
+    assert(*l1 == *l2 && "lambdas differ");
 }
 
 void test8(World& world) {
+    std::cout << "\n===  test8  ===\n\n";
     auto intt = world.get_prim_const("Int");
     auto R = world.abs_record( std::vector<std::pair<std::string, Def> >{std::make_pair("num", intt), 
         std::make_pair<std::string, Def>("fun", world.fun_type(intt, intt))} );
@@ -193,6 +189,7 @@ void test8(World& world) {
 }
 
 void test9(World& world) {
+    std::cout << "\n===  test9  ===\n\n";
     auto intt = world.get_prim_const("Int");
     auto star = world.get_prim_const("*");
     auto sig = world.sigma(star, "x");
@@ -219,6 +216,7 @@ void test9(World& world) {
 }
 
 void test10(World& world) {
+    std::cout << "\n===  test10  ===\n\n";
     auto intt = world.get_prim_const("Int");
     auto star = world.get_prim_const("*");
     auto sig = world.sigma(star, "x");

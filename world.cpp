@@ -205,7 +205,8 @@ Def World::app(Def fun, Def arg) {
                 if ((a1 = pairarg->op(0).isa<PrimLit>()) 
                     && (a2 = pairarg->op(1).isa<PrimLit>())
                     && db->is_reducable()) {
-                    return (db->body_)(arg);
+                    //return (db->body_)(arg);
+                    return cse_base((db->body_)(arg));
                 } else if ((a2 = pairarg->op(1).isa<PrimLit>()) 
                     && !(a1 = pairarg->op(0).isa<PrimLit>())) {
                     auto p = is_app_of_dummy(pairarg->op(0));
