@@ -148,6 +148,9 @@ void test8(World& world) {
         std::make_pair<std::string, Def>("fun", world.fun_type(intt, intt))} );
     R.dump();
     std::cout << "has type: "; R->type().dump();
+    auto Rdup = world.abs_record( std::vector<std::pair<std::string, Def> >{std::make_pair("num", intt), 
+        std::make_pair<std::string, Def>("fun", world.fun_type(intt, intt))} );
+    assert(R != Rdup && "equal abstract records contradict nominative typing for them");
     
     auto l = world.lambda(intt, "x");
     l->close(l->var());
@@ -157,6 +160,12 @@ void test8(World& world) {
         std::make_pair<std::string, Def>("num", world.literal(42))
     }, R);
     r.dump(std::cout); std::cout << ": "; r->type().dump();
+    
+    auto rdup = world.inst_record(std::vector<std::pair<std::string, Def> >{
+        std::make_pair<std::string, Def>("fun", l),
+        std::make_pair<std::string, Def>("num", world.literal(42))
+    }, R);
+    assert(r != rdup && "equal instances of records contradict nominative typing for them");
     
     for(auto& f : R->get_fields()) {
         auto elem = world.inst_record_extract(r, f);
