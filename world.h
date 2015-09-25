@@ -25,6 +25,8 @@ public:
     Pi pi(Def var_type, std::string var_name = "");
     Sigma sigma(Def var_type, std::string var_name = "");
     Pair pair(Def first, Def second, Sigma ascribed_type);
+    Def first(Pair p);
+    Def second(Pair p);
     Def app(Def appl, Def arg);
     PrimLit literal(int value);
     Dim dimension(int n);

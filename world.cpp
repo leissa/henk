@@ -186,6 +186,14 @@ Pair World::pair(Def first, Def second, Sigma ascribed_type) {
     return cse(new PairNode(*this, gid_++, first, second, ascribed_type, "pair"));
 }
 
+Def World::first(Pair p) {
+    return app(p, get_prim_const("𝟙"));
+}
+
+Def World::second(Pair p) {
+    return app(p, get_prim_const("𝟚"));
+}
+
 Def World::app(Def fun, Def arg) {
     
     if(auto l = fun.isa<Lambda>()) {

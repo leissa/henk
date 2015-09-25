@@ -194,6 +194,12 @@ void test9(World& world) {
     l->close(l->var());
     auto p = world.pair(intt, l, sig);
     p.dump(std::cout); std::cout << ": "; p->type().dump();
+    std::cout << "first = ";
+    auto fst = world.first(p); fst.dump(std::cout);
+    std::cout << ": "; fst->type().dump();
+    std::cout << "second = ";
+    auto snd = world.second(p); snd.dump(std::cout);
+    std::cout << ": "; snd->type().dump();
     
     auto booll = world.get_prim_const("Bool");
     auto l2 = world.lambda(booll, "z");
