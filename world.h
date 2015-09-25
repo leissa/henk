@@ -73,7 +73,6 @@ protected:
     struct ExprEqual {
         bool operator () (const DefNode* def1, const DefNode* def2) const {
             assert(&def1->world() == &def2->world_ && "testing for eq defs from different worlds");
-           // assert(def1->is_reduced() && def2->is_reduced() && "some def not reduced in ExprEqual");
             return def1->equal(*def2);
         } 
     };

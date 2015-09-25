@@ -139,7 +139,7 @@ protected:
     
 public:
     Def reduce(Def2Def map = {}, bool replace = true) const; // map says what to substitute with what
-    virtual DefSet free_vars() const;
+    DefSet free_vars() const;
     std::string non_reduced_repr() const { return non_reduced_repr_; }
     void dump() const;
     virtual void vdump(std::ostream& stream) const = 0;
@@ -186,7 +186,6 @@ protected:
     virtual size_t vhash() const override;
     
 public:
-    virtual DefSet free_vars() const override;
     Var var() const { return op(0).as<Var>(); }
     Def body() const { return op(1); }
     void close(Def body) const;
@@ -239,7 +238,6 @@ protected:
 public:
     thorin::Array<Def> elem_types() const;
     virtual void vdump(std::ostream& stream) const override;
-    virtual DefSet free_vars() const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
@@ -284,7 +282,6 @@ protected:
     
 public:
     virtual void vdump(std::ostream& stream) const override;
-    virtual DefSet free_vars() const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
@@ -463,7 +460,6 @@ protected:
 public:
     Abs abs() const { return abs_; }
     virtual void vdump(std::ostream& stream) const override;
-    virtual DefSet free_vars() const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
@@ -505,7 +501,6 @@ public:
     Def first () const { return op(0); }
     Def second () const { return op(1); }
     virtual void vdump(std::ostream& stream) const override;
-    virtual DefSet free_vars() const override;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
     
@@ -592,7 +587,6 @@ protected:
     virtual Def vreduce(Def2Def& map) const override;
     
 public:
-    virtual DefSet free_vars() const override;
     Def fun() const { return op(0); }
     Def arg() const { return op(1); }
     virtual void vdump(std::ostream& stream) const override;

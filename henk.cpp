@@ -219,49 +219,36 @@ AbsNode::~AbsNode() { delete *var(); }
  */ 
 
 DefSet DefNode::free_vars() const {
-    return DefSet();
-}
+    DefSet fv;
+    DefSet boundv;
+    DefSet done;
+    std::queue<Def> queue;
+    
+    auto enqueue = [&] (Def def) {
+        if (def) {
+            auto p = done.insert(def);
+            if (p.second)
+                queue.push(def);
+        }
+    };
+    
+    enqueue(this);
+    while (!queue.empty()) {
+        auto def = pop(queue);
+        if (auto v = def.isa<Var>()) {
+            fv.insert(v);
+        } else if(auto abs = def.isa<Abs>()) {
+            boundv.insert(abs->var());
+        }
 
-DefSet AbsNode::free_vars() const {
-    auto r = body()->free_vars();
-    r.erase(var());
-    return r;
-}
-
-DefSet TupleNode::free_vars() const {
-    DefSet r;
-    for(auto& d : ops_) {
-        auto fv = d->free_vars();
-        r.insert(fv.begin(), fv.end());
+        for (auto op : def->ops_)
+            enqueue(op);
     }
-    return r;
-}
-
-DefSet InstRecordNode::free_vars() const {
-    DefSet r;
-    for(auto& d : ops_) {
-        auto fv = d->free_vars();
-        r.insert(fv.begin(), fv.end());
-    }
-    return r;
-}
-
-DefSet VarNode::free_vars() const {
-    return DefSet { this };
-}
-
-DefSet PairNode::free_vars() const {
-    auto r1 = first()->free_vars();
-    auto r2 = second()->free_vars();
-    r1.insert(r2.begin(), r2.end());
-    return r1;
-}
-
-DefSet AppNode::free_vars() const {
-    auto r1 = fun()->free_vars();
-    auto r2 = arg()->free_vars();
-    r1.insert(r2.begin(), r2.end());
-    return r1;
+    
+    for(auto& v : boundv)
+        fv.erase(v);
+    
+    return fv;
 }
 
 /*
