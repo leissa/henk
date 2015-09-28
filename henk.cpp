@@ -115,7 +115,11 @@ bool DefNode::has_subexpr(Def sub) const {
             if (def == sub)
                 return true;
         }
-
+        
+        if (auto a = def.isa<Abs>()) {
+            enqueue(a->var()->type());
+        }
+        
         for (auto op : def->ops_)
             enqueue(op);
     }
@@ -125,7 +129,7 @@ bool DefNode::has_subexpr(Def sub) const {
 
 void AbsNode::close(Def body) const {
     assert(body->is_closed() && "closing AbsNode with unclosed body");
-    set_op(1, body);
+    set_op(0, body);
     world_.introduce(this);
 }
 
@@ -154,7 +158,8 @@ DefNode::DefNode(World& world, size_t gid, ArrayRef<Def> ops, std::string name)
 }
 
 AbsNode::AbsNode(World& world, size_t gid, Def var_type, std::string name)
-    : DefNode(world, gid, { new VarNode(world, gid + 1, var_type, this, name), nullptr }, name)
+    : DefNode(world, gid, { nullptr }, name)
+    , var_(new VarNode(world, gid + 1, var_type, this, name))
 {
     var()->update_non_reduced_repr();
 }
@@ -239,6 +244,7 @@ DefSet DefNode::free_vars() const {
             fv.insert(v);
         } else if(auto abs = def.isa<Abs>()) {
             boundv.insert(abs->var());
+            enqueue(abs->var()->type());
         }
 
         for (auto op : def->ops_)
@@ -439,8 +445,7 @@ Def LambdaNode::typecheck() const {
 }
 
 Def PiNode::typecheck() const {
-    auto var_type = var()->type();
-    auto var_type_type = var_type->type();
+    auto var_type_type = var()->type()->type();
     auto body_type = body()->type();
     auto p = world_.wavy_arrow_rules.find(std::make_pair(
         *var_type_type,
@@ -522,8 +527,7 @@ Def InstRecordNode::typecheck() const {
 }
 
 Def SigmaNode::typecheck() const {
-    auto var_type = var()->type();
-    auto var_type_type = var_type->type();
+    auto var_type_type = var()->type()->type();
     auto body_type = body()->type();
     auto p = world_.wavy_arrow_rules.find(std::make_pair(
         *var_type_type,

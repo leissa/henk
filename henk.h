@@ -186,13 +186,15 @@ protected:
     virtual size_t vhash() const override;
     
 public:
-    Var var() const { return op(0).as<Var>(); }
-    Def body() const { return op(1); }
+    Var var() const { return var_; }
+    Def body() const { return op(0); }
     void close(Def body) const;
     void dump_body(std::ostream& stream) const;
     virtual bool is_closed() const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
 
+protected:
+    Var var_;
     friend class World;
 };
 
@@ -447,7 +449,7 @@ protected:
 class VarNode : public DefNode {
 protected:
     VarNode(World& world, size_t gid, Def type, Abs abs, std::string name)
-        : DefNode(world, gid, { type }, name)
+        : DefNode(world, gid, {}, name)
         , abs_(abs)
     {
         type_ = type;
@@ -513,7 +515,7 @@ protected:
 class PrimLitNode : public DefNode {
 protected:
     PrimLitNode(World& world, size_t gid, Def type, int/*will become Box later on*/ value, std::string name)
-        : DefNode(world, gid, { type }, name)
+        : DefNode(world, gid, {}, name)
         , value_(value)
     {
         type_ = type;
@@ -526,7 +528,6 @@ protected:
 public:
     virtual void vdump(std::ostream& stream) const override;
     virtual bool eq(const DefNode& other, Def2Def& map) const override;
-    Def type() const { return op(0); }
     int value() const { return value_; };
     virtual bool is_closed() const override;
     

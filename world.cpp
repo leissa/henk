@@ -433,6 +433,9 @@ void World::cleanup() {
             if (auto d = def->isa<DummyNode>()) {
                 enqueue(d->arg_type());
                 enqueue(d->return_type());
+            } else if (auto a = def->isa<AbsNode>()) {
+                enqueue(a->var()); // wrong?
+                enqueue(a->body());
             } else for (auto op : def->ops_) {
                 enqueue(op);
             }
