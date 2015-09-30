@@ -866,7 +866,7 @@ size_t DimNode::vhash() const { return hash_combine(hash_begin(197), n_); }
 size_t RecordDimNode::vhash() const { return hash_begin(777); }
 size_t ProjNode::vhash() const { return hash_combine(hash_begin(73), hash_combine(n_, m_)); }
 size_t RecordProjNode::vhash() const { return hash_begin(931); }
-size_t DummyNode::vhash() const { return hash_combine(hash_begin(55), hash_combine(arg_type()->hash(), return_type()->hash())); }
+size_t DummyNode::vhash() const { return hash_combine(hash_begin(55), gid()); }
 size_t AppNode::vhash() const { return hash_combine(fun()->hash(), arg()->hash()); }
 
 /*
