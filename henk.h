@@ -120,8 +120,6 @@ protected:
     void set_representative(const DefNode* repr) const;
     void set_gid(size_t gid) const { const_cast<size_t&>(const_cast<DefNode*>(this)->gid_) = gid; }
     virtual size_t vhash() const = 0;
-    virtual void update_non_reduced_repr() const;
-    std::string __get_non_reduced_repr(const DefNode& def) const;
     virtual Def typecheck() const = 0;
     virtual Def vreduce(Def2Def& map) const = 0;
     // '__reduce...' method is a workaround to being able to call protected methods
@@ -140,7 +138,6 @@ protected:
 public:
     Def reduce(Def2Def map = {}, bool replace = true) const; // map says what to substitute with what
     DefSet free_vars() const;
-    std::string non_reduced_repr() const { return non_reduced_repr_; }
     void dump() const;
     virtual void vdump(std::ostream& stream) const = 0;
     size_t hash() const { return hash_ == 0 ? hash_ = vhash() : hash_; }
@@ -160,7 +157,6 @@ public:
     virtual bool eq(const DefNode& other, Def2Def& map) const;
 
 protected:
-    mutable std::string non_reduced_repr_;
     mutable const DefNode* representative_;
     World& world_;
     mutable thorin::Array<Def> ops_;
@@ -182,7 +178,6 @@ protected:
     virtual ~AbsNode();
     
     virtual Def vreduce(Def2Def& map) const override;
-    void __update_non_reduced_repr_body(std::ostringstream& r) const;
     virtual size_t vhash() const override;
     
 public:
@@ -205,7 +200,6 @@ protected:
     {}
     
     virtual Def typecheck() const override;
-    virtual void update_non_reduced_repr() const override;
     
 public:
     virtual void vdump(std::ostream& stream) const override;
@@ -220,7 +214,6 @@ protected:
     {}
     
     virtual Def typecheck() const override;
-    virtual void update_non_reduced_repr() const override;
     
 public:
     virtual void vdump(std::ostream& stream) const override;
@@ -234,7 +227,6 @@ protected:
     
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
-    virtual void update_non_reduced_repr() const override;
     virtual size_t vhash() const override;
     
 public:
@@ -252,7 +244,6 @@ protected:
     
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
-    virtual void update_non_reduced_repr() const override;
     virtual size_t vhash() const override;
     
 public:
@@ -279,7 +270,6 @@ protected:
     
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
-    virtual void update_non_reduced_repr() const override;
     virtual size_t vhash() const override;
     
 public:
@@ -331,7 +321,6 @@ protected:
         , n_(n)
     {}
     
-    virtual void update_non_reduced_repr() const override;
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
     virtual size_t vhash() const override;
@@ -355,7 +344,6 @@ protected:
         , of_record_(of_record)
     {}
     
-    virtual void update_non_reduced_repr() const override;
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
     virtual size_t vhash() const override;
@@ -380,7 +368,6 @@ protected:
         , m_(m)
     {}
     
-    virtual void update_non_reduced_repr() const override;
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
     virtual size_t vhash() const override;
@@ -406,7 +393,6 @@ protected:
         , field_(field)
     {}
     
-    virtual void update_non_reduced_repr() const override;
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
     virtual size_t vhash() const override;
@@ -479,7 +465,6 @@ protected:
     {}
     
     virtual Def typecheck() const override;
-    virtual void update_non_reduced_repr() const override;
     
 public:
     virtual void vdump(std::ostream& stream) const override;
@@ -496,7 +481,6 @@ protected:
     
     virtual Def typecheck() const override;
     virtual Def vreduce(Def2Def& map) const override;
-    virtual void update_non_reduced_repr() const override;
     virtual size_t vhash() const override;
     
 public:
@@ -551,7 +535,6 @@ protected:
     size_t vhash() const;
     
     virtual Def typecheck() const;
-    virtual void update_non_reduced_repr() const;
     virtual Def vreduce(Def2Def& map) const;
     
 public:
@@ -584,7 +567,6 @@ protected:
     
     virtual size_t vhash() const override;
     virtual Def typecheck() const override;
-    virtual void update_non_reduced_repr() const override;
     virtual Def vreduce(Def2Def& map) const override;
     
 public:

@@ -29,22 +29,6 @@ World::World()
     auto sigp1 = cse(new VarNode(*this, gid_++, sig1, nullptr, "𝟙"));
     auto sigp2 = cse(new VarNode(*this, gid_++, sig2, nullptr, "𝟚"));
     
-    botbox->update_non_reduced_repr();
-    box->update_non_reduced_repr();
-    star->update_non_reduced_repr();
-    pint->update_non_reduced_repr();
-    pbool->update_non_reduced_repr();
-    botbox2->update_non_reduced_repr();
-    box2->update_non_reduced_repr();
-    star2->update_non_reduced_repr();
-    dim->update_non_reduced_repr();
-    rdim->update_non_reduced_repr();
-    sigdim->update_non_reduced_repr();
-    sig1->update_non_reduced_repr();
-    sig2->update_non_reduced_repr();
-    sigp1->update_non_reduced_repr();
-    sigp2->update_non_reduced_repr();
-    
     expressions_.insert(botbox); expressions_.insert(box);
     expressions_.insert(star);   expressions_.insert(pint);
     expressions_.insert(pbool);  expressions_.insert(botbox2);
@@ -454,8 +438,6 @@ void World::cleanup() {
  */
 
 const DefNode* World::cse_base(const DefNode* def) {
-    def->update_non_reduced_repr();
-    
     if (!def->is_closed())
         return def;
     
@@ -490,8 +472,6 @@ const DefNode* World::cse_base(const DefNode* def) {
 }
 
 void World::introduce(const DefNode* def)  {
-    def->update_non_reduced_repr();
-    
     auto type = def->typecheck();
     def->type_ = type;
     

@@ -90,7 +90,6 @@ void DefNode::set_representative(const DefNode* repr) const {
     representative_ = repr;
     if (this != repr) {
         repr->representative_of_.insert(this);
-        repr->non_reduced_repr_ = non_reduced_repr();
     }
 }
 
@@ -160,9 +159,7 @@ DefNode::DefNode(World& world, size_t gid, ArrayRef<Def> ops, std::string name)
 AbsNode::AbsNode(World& world, size_t gid, Def var_type, std::string name)
     : DefNode(world, gid, { nullptr }, name)
     , var_(new VarNode(world, gid + 1, var_type, this, name))
-{
-    var()->update_non_reduced_repr();
-}
+{}
 
 TupleNode::TupleNode(World& world, size_t gid, ArrayRef<Def> elems, std::string name)
     : DefNode(world, gid, elems, name)
@@ -903,156 +900,6 @@ bool ProjNode::is_closed() const { return true; }
 bool RecordProjNode::is_closed() const { return true; }
 bool DummyNode::is_closed() const { return true; } // yes, true!
 bool AppNode::is_closed() const { return fun()->is_closed() && arg()->is_closed(); }
-
-/*
- * update_non_reduced_repr
- */
-
-std::string DefNode::__get_non_reduced_repr(const DefNode& def) const {
-    return def.non_reduced_repr_;
-}
-
-void DefNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    Def(this).dump(r);
-    non_reduced_repr_ = r.str();
-}
-
-void LambdaNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    r << "λ";
-    __update_non_reduced_repr_body(r);
-}
-
-void PiNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    r << "Π";
-    __update_non_reduced_repr_body(r);
-}
-
-void SigmaNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    r << "Σ";
-    __update_non_reduced_repr_body(r);
-}
-
-void AbsNode::__update_non_reduced_repr_body(std::ostringstream& r) const {
-    r << __get_non_reduced_repr(**var()) << ":";
-    if (var()->type().is_empty())
-        r << "'nullptr'";
-    else
-        r << __get_non_reduced_repr(**var()->type());
-    r << ". ";
-    if (body().is_empty())
-        r << "'nullptr'";
-    else
-        r << __get_non_reduced_repr(**body());
-    
-    non_reduced_repr_ = r.str();
-}
-
-void TupleNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    r << "<";
-    if (size() > 0)
-        r << __get_non_reduced_repr(**ops_[0]);
-    for (size_t i = 1; i < ops_.size(); ++i) {
-        r << ", " << __get_non_reduced_repr(**ops_[i]);
-    }
-    r << ">";
-    non_reduced_repr_ = r.str();
-}
-
-void PairNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    r << "|" << __get_non_reduced_repr(**ops_[0]);
-    r << ", " << __get_non_reduced_repr(**ops_[1]);
-    r << "|";
-    non_reduced_repr_ = r.str();
-}
-
-void AbsRecordNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    r << "AbsRecord{";
-    size_t i = 0;
-    for(auto& kv : label2type_) {
-        if(i != 0) {
-            r << "; ";
-        }
-        r << "'" << kv.first << "': " << __get_non_reduced_repr(**kv.second);
-        ++i;
-    }
-    r << "}";
-    non_reduced_repr_ = r.str();
-}
-
-void InstRecordNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    r << "InstRecord{";
-    for(size_t i = 0; i < size(); ++i) {
-        if(i != 0) {
-            r << "; ";
-        }
-        r << "'" << labels_[i] << "': " << __get_non_reduced_repr(**ops_[i]);
-    }
-    r << "}";
-    non_reduced_repr_ = r.str();
-}
-
-void DimNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    r << n_ << "ᵈ";
-    non_reduced_repr_ = r.str();
-}
-
-void RecordDimNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    r << __get_non_reduced_repr(**of_record_) << "ᵈ";
-    non_reduced_repr_ = r.str();
-}
-
-void ProjNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    r << "proj{" << m_ << "_" << n_ << "}";
-    non_reduced_repr_ = r.str();
-}
-
-void RecordProjNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    /*size_t i = 0;
-    r << "recproj{" << label_ << ", {";
-    for (auto& s : labels_) {
-        if(i != 0)
-            r << ", ";
-        r << s;
-        ++i;
-    }
-    r << "}}";*/
-    r << "recproj{" << field_.label() << "}";
-    non_reduced_repr_ = r.str();
-}
-
-void DummyNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    r << "Dummy{(" << __get_non_reduced_repr(**arg_type());
-    r << ") -> (" << __get_non_reduced_repr(**return_type()) << ")}";
-    non_reduced_repr_ = r.str();
-}
-
-void AppNode::update_non_reduced_repr() const {
-    std::ostringstream r;
-    r << "(";
-    if (fun().is_empty())
-        r << "'nullptr'";
-    else 
-        r << __get_non_reduced_repr(**fun()) << ") (";
-    if (arg().is_empty())
-        r << "'nullptr'";
-    else
-        r << __get_non_reduced_repr(**arg()) << ")";
-    non_reduced_repr_ = r.str();
-}
-
 
 /*
  * dump

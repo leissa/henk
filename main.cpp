@@ -39,11 +39,9 @@ void test2(World& world) {
     //world.show_expressions();
 
     auto app = world.app(lambda, world.literal(33));
-    std::cout << app->non_reduced_repr() << " reduced to ";
-    app.dump(std::cout);
-    auto tapp = app->type();
-    std::cout << " : ";
-    tapp.dump();
+    std::cout << "reducing 33: " << std::endl;
+    lambda->dump();
+    app->dump();
 }
 
 void test3(World& world) {
