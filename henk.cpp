@@ -848,10 +848,7 @@ size_t TupleNode::vhash() const {
     return r;
 }
 size_t AbsRecordNode::vhash() const {
-    size_t r = hash_begin(634);
-    for (auto& kv : label2type_)
-        r = hash_combine(r, kv.second->hash());
-    return r;
+    return hash_combine(hash_begin(634), gid());
 }
 size_t InstRecordNode::vhash() const {
     size_t r = hash_begin(108);
