@@ -40,8 +40,6 @@ public:
     RecordDim record_dimension(AbsRecord of_record);
     Def inst_record_extract(InstRecord r, Field field);
     Def abs_record_extract(AbsRecord r, Field field);
-    
-protected:
     Proj projection(int n, int m);
     RecordProj record_projection(Field field);
     Bottom bottom(std::string info);
