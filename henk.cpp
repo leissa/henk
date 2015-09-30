@@ -268,7 +268,7 @@ Def DefNode::__reduce(const DefNode& def, Def2Def& map) const {
 Def DefNode::reduce(Def2Def map, bool replace) const {
     assert(is_closed() && "unclosed def in reduce");
     auto res = vreduce(map);
-    if(replace)
+    if (replace)
         set_representative(*res);
     
     return res;
